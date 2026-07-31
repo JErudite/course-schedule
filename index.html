@@ -48,7 +48,7 @@
           </button>
           <button class="auth-button" id="authButton" type="button" aria-label="管理员登录">
             <i data-lucide="lock-keyhole"></i>
-            <span id="authButtonText">管理员登录</span>
+            <span>管理员登录</span>
           </button>
         </div>
       </header>
@@ -56,14 +56,13 @@
       <section class="schedule-section" aria-labelledby="scheduleTitle">
         <div class="section-heading">
           <div>
-            <p class="eyebrow" id="todayText">星期一，4月13日</p>
+            <p class="eyebrow" id="todayText">周一，4月13日</p>
             <h2 id="scheduleTitle">本周安排</h2>
           </div>
-          <div class="legend" aria-label="课程类型图例">
-            <span><i class="legend-dot dot-required"></i>必修</span>
-            <span><i class="legend-dot dot-elective"></i>选修</span>
-            <span><i class="legend-dot dot-practice"></i>实践</span>
-          </div>
+          <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
+            <i data-lucide="plus"></i>
+            <span>新增课程</span>
+          </button>
         </div>
 
         <div class="schedule-scroll" id="scheduleScroll">
@@ -72,8 +71,12 @@
       </section>
 
       <footer class="page-footer">
-        <p>共 <strong id="courseCount">0</strong> 门课程 · 每周 <strong id="durationCount">0</strong> 小时</p>
-        <p id="permissionHint">只读模式 · 修改会实时同步到所有设备</p>
+        <p>
+          共 <strong id="courseCount">0</strong> 门课程 · 本周
+          <strong id="occurrenceCount">0</strong> 次 ·
+          <strong id="durationCount">0</strong> 小时
+        </p>
+        <p id="permissionHint">只读模式 · 管理员的修改会实时显示在这里</p>
       </footer>
     </main>
 
@@ -81,48 +84,67 @@
       <div class="dialog-accent" id="dialogAccent"></div>
       <div class="dialog-header">
         <div class="dialog-heading-copy">
-          <p class="eyebrow" id="dialogType">必修课程</p>
+          <p class="eyebrow" id="dialogType">课程详情</p>
           <div class="dialog-title-row">
             <h3 id="dialogTitle">课程名称</h3>
-            <button class="icon-button edit-course-button" id="editCourse" type="button" aria-label="编辑课程信息" title="编辑课程信息" hidden>
-              <i data-lucide="pencil"></i>
-            </button>
+            <div class="dialog-course-actions" id="dialogCourseActions" hidden>
+              <button class="icon-button edit-course-button" id="editCourse" type="button" aria-label="编辑课程" title="编辑课程">
+                <i data-lucide="pencil"></i>
+              </button>
+              <button class="icon-button delete-course-button" id="deleteCourse" type="button" aria-label="删除课程" title="删除课程">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
           </div>
         </div>
         <button class="icon-button dialog-close" id="closeDialog" type="button" aria-label="关闭" title="关闭">
           <i data-lucide="x"></i>
         </button>
       </div>
+
       <div class="dialog-details" id="dialogDetails">
         <p><i data-lucide="clock-3"></i><span id="dialogTime"></span></p>
-        <p><i data-lucide="map-pin"></i><span id="dialogRoom"></span></p>
         <p><i data-lucide="user-round"></i><span id="dialogTeacher"></span></p>
+        <p><i data-lucide="repeat-2"></i><span id="dialogRepeat"></span></p>
+        <div class="dialog-notes">
+          <i data-lucide="notebook-pen"></i>
+          <div>
+            <small>备注</small>
+            <p id="dialogNotes">暂无备注</p>
+          </div>
+        </div>
       </div>
+
       <form class="dialog-form" id="courseForm" hidden>
         <label class="form-field form-field-wide">
           <span>课程名称</span>
-          <input id="courseNameInput" name="name" type="text" maxlength="30" required />
+          <input id="courseNameInput" name="name" type="text" maxlength="60" required />
         </label>
-        <label class="form-field">
+        <label class="form-field form-field-wide">
           <span>任课老师</span>
-          <input id="courseTeacherInput" name="teacher" type="text" maxlength="20" required />
+          <input id="courseTeacherInput" name="teacher" type="text" maxlength="40" required />
         </label>
         <label class="form-field">
-          <span>上课教室</span>
-          <input id="courseRoomInput" name="room" type="text" maxlength="30" required />
+          <span>首次上课日期</span>
+          <input id="courseStartDateInput" name="startDate" type="date" required />
         </label>
         <label class="form-field">
-          <span>课程类型</span>
-          <select id="courseTypeInput" name="type">
-            <option value="required">必修</option>
-            <option value="elective">选修</option>
-            <option value="practice">实践</option>
-            <option value="other">公共</option>
+          <span>重复方式</span>
+          <select id="courseRepeatInput" name="repeat">
+            <option value="">不重复</option>
+            <option value="1">每天</option>
+            <option value="2">每 2 天</option>
+            <option value="3">每 3 天</option>
+            <option value="7">每周</option>
+            <option value="custom">自定义间隔</option>
           </select>
         </label>
-        <label class="form-field">
-          <span>星期</span>
-          <select id="courseDayInput" name="day"></select>
+        <label class="form-field form-field-wide" id="customRepeatField" hidden>
+          <span>间隔天数</span>
+          <div class="number-field-with-suffix">
+            <input id="courseRepeatDaysInput" name="repeatDays" type="number" min="1" max="365" step="1" value="4" />
+            <span>天</span>
+          </div>
         </label>
         <label class="form-field">
           <span>开始时间</span>
@@ -132,14 +154,28 @@
           <span>持续时长</span>
           <select id="courseDurationInput" name="duration"></select>
         </label>
+        <label class="form-field form-field-wide">
+          <span>备注</span>
+          <textarea id="courseNotesInput" name="notes" maxlength="500" rows="4" placeholder="记录课程要求、准备事项等"></textarea>
+        </label>
         <div class="form-actions">
           <button class="secondary-button" id="cancelEdit" type="button">取消</button>
           <button class="primary-button" id="saveCourse" type="submit">
             <i data-lucide="save"></i>
-            <span>保存修改</span>
+            <span id="saveCourseText">保存修改</span>
           </button>
         </div>
       </form>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteDialog">
+      <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+      <h3>删除课程</h3>
+      <p>“<strong id="deleteCourseName"></strong>”及其全部重复安排都将被删除。</p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="cancelDelete" type="button">取消</button>
+        <button class="danger-button" id="confirmDelete" type="button">确认删除</button>
+      </div>
     </dialog>
 
     <dialog class="login-dialog" id="loginDialog">

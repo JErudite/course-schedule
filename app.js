@@ -4,18 +4,7 @@ const ADMIN_EMAIL = "703223232@qq.com";
 const SITE_URL = "https://jerudite.github.io/course-schedule/";
 
 const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
-const typeNames = {
-  required: "必修课程",
-  elective: "选修课程",
-  practice: "实践课程",
-  other: "公共课程",
-};
-const typeColors = {
-  required: "#2f6b4f",
-  elective: "#326a88",
-  practice: "#9a533e",
-  other: "#826b28",
-};
+const toneColors = ["#2f6b4f", "#326a88", "#9a533e", "#826b28"];
 const timelineStart = 8 * 60;
 const timelineEnd = 21 * 60;
 const snapMinutes = 10;
@@ -23,9 +12,12 @@ const slotCount = (timelineEnd - timelineStart) / snapMinutes;
 const semesterStart = startOfWeek(new Date(2026, 1, 16));
 const scheduleToday = new Date(2026, 3, 13);
 const currentWeekStart = startOfWeek(scheduleToday);
+const repeatPresets = new Set([1, 2, 3, 7]);
 
 let selectedWeekStart = new Date(currentWeekStart);
 let selectedCourseId = null;
+let selectedOccurrenceDate = null;
+let formMode = "view";
 let schedule = [];
 let currentSession = null;
 let canEdit = false;
@@ -39,16 +31,21 @@ const weekRange = document.querySelector("#weekRange");
 const dialog = document.querySelector("#courseDialog");
 const courseForm = document.querySelector("#courseForm");
 const dialogDetails = document.querySelector("#dialogDetails");
-const editCourseButton = document.querySelector("#editCourse");
-const dayInput = document.querySelector("#courseDayInput");
+const dialogCourseActions = document.querySelector("#dialogCourseActions");
+const dayStartInput = document.querySelector("#courseStartDateInput");
 const startTimeInput = document.querySelector("#courseStartTimeInput");
 const durationInput = document.querySelector("#courseDurationInput");
+const repeatInput = document.querySelector("#courseRepeatInput");
+const repeatDaysInput = document.querySelector("#courseRepeatDaysInput");
+const customRepeatField = document.querySelector("#customRepeatField");
 const saveCourseButton = document.querySelector("#saveCourse");
 const statusMessage = document.querySelector("#statusMessage");
 const authButton = document.querySelector("#authButton");
 const loginDialog = document.querySelector("#loginDialog");
 const loginForm = document.querySelector("#loginForm");
 const loginSubmit = document.querySelector("#loginSubmit");
+const deleteDialog = document.querySelector("#deleteDialog");
+const confirmDeleteButton = document.querySelector("#confirmDelete");
 
 if (!window.supabase) {
   setSyncState("offline", "连接组件加载失败");
@@ -84,8 +81,35 @@ function sameDay(first, second) {
     && first.getDate() === second.getDate();
 }
 
+function parseISODate(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function toISODate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function daysBetween(first, second) {
+  return Math.round((startOfDay(second) - startOfDay(first)) / (24 * 60 * 60 * 1000));
+}
+
+function startOfDay(date) {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
 function formatMonthDay(date) {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+function formatFullDate(date) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
 function formatTime(minutes) {
@@ -104,6 +128,13 @@ function formatDuration(minutes) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return remainder ? `${hours} 小时 ${remainder} 分钟` : `${hours} 小时`;
+}
+
+function getRepeatDescription(interval) {
+  if (interval === null) return "不重复";
+  if (interval === 1) return "每天重复";
+  if (interval === 7) return "每周重复";
+  return `每 ${interval} 天重复`;
 }
 
 function getWeekNumber(date) {
@@ -125,71 +156,120 @@ function getCourseEnd(course) {
   return course.startTime + course.duration;
 }
 
-function hasConflict(candidate, ignoredId) {
+function gcd(first, second) {
+  let a = Math.abs(first);
+  let b = Math.abs(second);
+  while (b) [a, b] = [b, a % b];
+  return a;
+}
+
+function seriesShareADate(first, second) {
+  const firstStart = parseISODate(first.startDate);
+  const secondStart = parseISODate(second.startDate);
+  const difference = daysBetween(secondStart, firstStart);
+
+  if (first.repeatIntervalDays === null && second.repeatIntervalDays === null) {
+    return difference === 0;
+  }
+  if (first.repeatIntervalDays === null) {
+    return difference >= 0 && difference % second.repeatIntervalDays === 0;
+  }
+  if (second.repeatIntervalDays === null) {
+    return difference <= 0 && Math.abs(difference) % first.repeatIntervalDays === 0;
+  }
+  return difference % gcd(first.repeatIntervalDays, second.repeatIntervalDays) === 0;
+}
+
+function hasSeriesConflict(candidate, ignoredId) {
   return schedule.some((course) => course.id !== ignoredId
-    && course.day === candidate.day
     && candidate.startTime < getCourseEnd(course)
-    && candidate.startTime + candidate.duration > course.startTime);
+    && getCourseEnd(candidate) > course.startTime
+    && seriesShareADate(candidate, course));
+}
+
+function courseOccursOnDate(course, date) {
+  const difference = daysBetween(parseISODate(course.startDate), date);
+  if (difference < 0) return false;
+  if (course.repeatIntervalDays === null) return difference === 0;
+  return difference % course.repeatIntervalDays === 0;
+}
+
+function getVisibleOccurrences() {
+  const occurrences = [];
+  schedule.forEach((course) => {
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      const date = addDays(selectedWeekStart, dayIndex);
+      if (courseOccursOnDate(course, date)) occurrences.push({ course, date, dayIndex });
+    }
+  });
+  return occurrences.sort((first, second) => first.dayIndex - second.dayIndex || first.course.startTime - second.course.startTime);
 }
 
 function mapCourse(row) {
   return {
     id: row.id,
-    day: Number(row.day),
+    startDate: row.start_date,
+    repeatIntervalDays: row.repeat_interval_days === null ? null : Number(row.repeat_interval_days),
     startTime: Number(row.start_time),
     duration: Number(row.duration),
     name: row.name,
-    room: row.room,
     teacher: row.teacher,
-    type: row.type,
+    notes: row.notes || "",
     version: Number(row.version),
     updatedAt: row.updated_at,
   };
 }
 
-function toDatabaseUpdate(course) {
+function toDatabaseCourse(course) {
   return {
-    day: course.day,
+    start_date: course.startDate,
+    repeat_interval_days: course.repeatIntervalDays,
     start_time: course.startTime,
     duration: course.duration,
     name: course.name,
-    room: course.room,
     teacher: course.teacher,
-    type: course.type,
+    notes: course.notes,
   };
+}
+
+function getCourseTone(courseId) {
+  let hash = 0;
+  for (const character of courseId) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  return Math.abs(hash) % toneColors.length;
 }
 
 function showStatus(message) {
   statusMessage.textContent = message;
   statusMessage.classList.add("is-visible");
   window.clearTimeout(statusTimer);
-  statusTimer = window.setTimeout(() => statusMessage.classList.remove("is-visible"), 3000);
+  statusTimer = window.setTimeout(() => statusMessage.classList.remove("is-visible"), 3200);
 }
 
 function setSyncState(state, text) {
   const syncState = document.querySelector("#syncState");
-  const syncStateText = document.querySelector("#syncStateText");
   syncState.className = `sync-state is-${state}`;
-  syncStateText.textContent = text;
+  document.querySelector("#syncStateText").textContent = text;
 }
 
 function updatePermissionUI() {
-  editCourseButton.hidden = !canEdit;
   document.body.classList.toggle("can-edit", canEdit);
+  document.querySelector("#addCourse").hidden = !canEdit;
+  dialogCourseActions.hidden = !canEdit || formMode !== "view" || !selectedCourseId;
   document.querySelector("#permissionHint").textContent = canEdit
-    ? "管理员模式 · 拖动或点击课程即可修改，变化会实时同步"
+    ? "管理员模式 · 可新增、编辑、删除或拖动整个课程系列"
     : "只读模式 · 管理员的修改会实时显示在这里";
 
   if (currentSession) {
     authButton.classList.add("is-authenticated");
     authButton.setAttribute("aria-label", "退出管理员登录");
-    authButton.innerHTML = `<i data-lucide="log-out"></i><span id="authButtonText">退出登录</span>`;
+    authButton.innerHTML = `<i data-lucide="log-out"></i><span>退出登录</span>`;
   } else {
     authButton.classList.remove("is-authenticated");
     authButton.setAttribute("aria-label", "管理员登录");
-    authButton.innerHTML = `<i data-lucide="lock-keyhole"></i><span id="authButtonText">管理员登录</span>`;
+    authButton.innerHTML = `<i data-lucide="lock-keyhole"></i><span>管理员登录</span>`;
   }
 
+  if (!canEdit && formMode !== "view" && dialog.open) dialog.close();
   if (window.lucide) window.lucide.createIcons();
   renderSchedule();
   refreshOpenDialog();
@@ -228,41 +308,52 @@ function renderSchedule() {
     });
   }
 
-  schedule.forEach((course) => {
-    const card = createElement("button", `course-card ${course.type}${canEdit ? " is-editable" : " is-readonly"}`);
+  const occurrences = getVisibleOccurrences();
+  occurrences.forEach(({ course, date, dayIndex }) => {
+    const tone = getCourseTone(course.id);
+    const card = createElement("button", `course-card tone-${tone}${canEdit ? " is-editable" : " is-readonly"}`);
     card.type = "button";
     card.dataset.courseId = course.id;
-    placeCourseCard(card, course.day, course.startTime, course.duration);
-    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${course.room}，${course.teacher}`);
-    card.title = canEdit ? "拖动调整时间，点击编辑详情" : "点击查看课程详情";
+    card.dataset.occurrenceDate = toISODate(date);
+    placeCourseCard(card, dayIndex, course.startTime, course.duration);
+    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${course.teacher}，${getRepeatDescription(course.repeatIntervalDays)}`);
+    card.title = canEdit ? "拖动将移动整个课程系列，点击可编辑详情" : "点击查看课程详情";
     card.append(
       createElement("strong", "", course.name),
       createElement("span", "course-time", `${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`),
-      createElement("span", "", course.room),
       createElement("span", "", course.teacher),
+      createElement("span", "course-repeat", getRepeatDescription(course.repeatIntervalDays)),
     );
-    enableCourseInteraction(card, course);
+    enableCourseInteraction(card, course, { date, dayIndex });
     grid.append(card);
   });
 
+  if (occurrences.length === 0) {
+    const empty = createElement("div", "schedule-empty", "本周暂无课程");
+    empty.style.gridColumn = "2 / 9";
+    empty.style.gridRow = "2 / span 12";
+    grid.append(empty);
+  }
+
   const weekNumber = getWeekNumber(selectedWeekStart);
   const weekEnd = addDays(selectedWeekStart, 6);
-  const totalMinutes = schedule.reduce((total, course) => total + course.duration, 0);
+  const totalMinutes = occurrences.reduce((total, occurrence) => total + occurrence.course.duration, 0);
   weekLabel.textContent = `第 ${weekNumber} 周`;
   weekRange.textContent = `${formatMonthDay(selectedWeekStart)} - ${formatMonthDay(weekEnd)}`;
   document.querySelector("#todayText").textContent = `${days[scheduleToday.getDay() - 1]}，${formatMonthDay(scheduleToday)}`;
   document.querySelector("#courseCount").textContent = String(schedule.length);
+  document.querySelector("#occurrenceCount").textContent = String(occurrences.length);
   document.querySelector("#durationCount").textContent = (totalMinutes / 60).toFixed(1).replace(".0", "");
 }
 
-function placeCourseCard(card, day, startTime, duration) {
+function placeCourseCard(card, dayIndex, startTime, duration) {
   const startSlot = Math.round((startTime - timelineStart) / snapMinutes);
   const durationSlots = Math.max(1, Math.round(duration / snapMinutes));
-  card.style.gridColumn = String(day + 1);
+  card.style.gridColumn = String(dayIndex + 2);
   card.style.gridRow = `${startSlot + 2} / span ${durationSlots}`;
 }
 
-function enableCourseInteraction(card, course) {
+function enableCourseInteraction(card, course, occurrence) {
   let dragState = null;
   let suppressClick = false;
 
@@ -273,18 +364,17 @@ function enableCourseInteraction(card, course) {
       const firstCell = grid.querySelector(".grid-cell");
       const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 12;
       const timeColumnWidth = parseFloat(getComputedStyle(grid).gridTemplateColumns.split(" ")[0]);
-      const dayWidth = (gridRect.width - timeColumnWidth) / 7;
       dragState = {
         pointerId: event.pointerId,
         originX: event.clientX,
         originY: event.clientY,
         originScrollLeft: scheduleScroll.scrollLeft,
         originScrollTop: scheduleScroll.scrollTop,
-        originalDay: course.day,
+        originalDayIndex: occurrence.dayIndex,
         originalStart: course.startTime,
-        dayWidth,
+        dayWidth: (gridRect.width - timeColumnWidth) / 7,
         slotHeight,
-        nextDay: course.day,
+        nextDayIndex: occurrence.dayIndex,
         nextStart: course.startTime,
         moved: false,
       };
@@ -307,13 +397,13 @@ function enableCourseInteraction(card, course) {
       dragState.moved = true;
       card.classList.add("is-dragging");
       card.setAttribute("aria-grabbed", "true");
-      dragState.nextDay = clamp(dragState.originalDay + Math.round(deltaX / dragState.dayWidth), 1, 7);
+      dragState.nextDayIndex = clamp(dragState.originalDayIndex + Math.round(deltaX / dragState.dayWidth), 0, 6);
       dragState.nextStart = clamp(
         dragState.originalStart + Math.round(deltaY / dragState.slotHeight) * snapMinutes,
         timelineStart,
         timelineEnd - course.duration,
       );
-      placeCourseCard(card, dragState.nextDay, dragState.nextStart, course.duration);
+      placeCourseCard(card, dragState.nextDayIndex, dragState.nextStart, course.duration);
       card.querySelector(".course-time").textContent = `${formatTime(dragState.nextStart)} - ${formatTime(dragState.nextStart + course.duration)}`;
     });
 
@@ -326,20 +416,25 @@ function enableCourseInteraction(card, course) {
       }
 
       suppressClick = true;
-      const candidate = { ...course, day: dragState.nextDay, startTime: dragState.nextStart };
+      const dayShift = dragState.nextDayIndex - dragState.originalDayIndex;
+      const candidate = {
+        ...course,
+        startDate: toISODate(addDays(parseISODate(course.startDate), dayShift)),
+        startTime: dragState.nextStart,
+      };
       dragState = null;
       card.classList.remove("is-dragging");
       card.removeAttribute("aria-grabbed");
 
-      if (hasConflict(candidate, course.id)) {
-        showStatus("该时间段已有课程，已恢复原位置");
+      if (hasSeriesConflict(candidate, course.id)) {
+        showStatus("该课程系列会与现有课程冲突，已恢复原位置");
         renderSchedule();
         return;
       }
 
       card.classList.add("is-saving");
-      showStatus("正在保存课程时间…");
-      await persistCourseUpdate(course, candidate, `已调整至${days[candidate.day - 1]} ${formatTime(candidate.startTime)}`);
+      showStatus("正在移动整个课程系列…");
+      await persistCourseUpdate(course, candidate, "课程系列已移动并实时同步");
     });
 
     card.addEventListener("pointercancel", () => {
@@ -354,62 +449,153 @@ function enableCourseInteraction(card, course) {
       event.preventDefault();
       return;
     }
-    showCourse(course.id);
+    showCourse(course.id, toISODate(occurrence.date));
   });
 }
 
-function showCourse(courseId) {
+function showCourse(courseId, occurrenceDate) {
   const course = schedule.find((item) => item.id === courseId);
   if (!course) return;
   selectedCourseId = courseId;
-  setEditing(false);
-  updateDialogDetails(course);
+  selectedOccurrenceDate = occurrenceDate;
+  formMode = "view";
+  showCourseDetails(course);
   if (!dialog.open) dialog.showModal();
 }
 
-function updateDialogDetails(course) {
+function showCourseDetails(course) {
+  const occurrence = selectedOccurrenceDate ? parseISODate(selectedOccurrenceDate) : parseISODate(course.startDate);
+  const tone = getCourseTone(course.id);
+  dialog.classList.remove("is-editing");
+  courseForm.hidden = true;
+  dialogDetails.hidden = false;
   document.querySelector("#dialogTitle").textContent = course.name;
-  document.querySelector("#dialogType").textContent = typeNames[course.type];
-  document.querySelector("#dialogTime").textContent = `${days[course.day - 1]} · ${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}（${formatDuration(course.duration)}）`;
-  document.querySelector("#dialogRoom").textContent = course.room;
+  document.querySelector("#dialogType").textContent = course.repeatIntervalDays === null ? "单次课程" : "重复课程";
+  document.querySelector("#dialogTime").textContent = `${formatFullDate(occurrence)} · ${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}（${formatDuration(course.duration)}）`;
   document.querySelector("#dialogTeacher").textContent = course.teacher;
-  document.querySelector("#dialogAccent").style.background = typeColors[course.type];
+  document.querySelector("#dialogRepeat").textContent = `${getRepeatDescription(course.repeatIntervalDays)} · 首次 ${formatFullDate(parseISODate(course.startDate))}`;
+  const notes = document.querySelector("#dialogNotes");
+  notes.textContent = course.notes || "暂无备注";
+  notes.classList.toggle("is-empty", !course.notes);
+  document.querySelector("#dialogAccent").style.background = toneColors[tone];
+  dialogCourseActions.hidden = !canEdit;
 }
 
 function refreshOpenDialog() {
-  if (!dialog.open || !selectedCourseId) return;
+  if (!dialog.open || formMode !== "view" || !selectedCourseId) return;
   const course = schedule.find((item) => item.id === selectedCourseId);
   if (!course) {
     dialog.close();
     return;
   }
-  updateDialogDetails(course);
+  showCourseDetails(course);
 }
 
-function populateFormOptions() {
-  days.forEach((day, index) => dayInput.add(new Option(day, String(index + 1))));
+function populateDurationOptions() {
   for (let minutes = 30; minutes <= 240; minutes += 10) {
     durationInput.add(new Option(formatDuration(minutes), String(minutes)));
   }
 }
 
-function setEditing(editing) {
-  const course = schedule.find((item) => item.id === selectedCourseId);
-  const shouldEdit = Boolean(editing && canEdit && course);
-  dialog.classList.toggle("is-editing", shouldEdit);
-  courseForm.hidden = !shouldEdit;
-  dialogDetails.hidden = shouldEdit;
-  editCourseButton.hidden = !canEdit || shouldEdit;
-  if (!shouldEdit || !course) return;
+function setRepeatControls(interval) {
+  if (interval === null) repeatInput.value = "";
+  else if (repeatPresets.has(interval)) repeatInput.value = String(interval);
+  else repeatInput.value = "custom";
+  repeatDaysInput.value = String(interval ?? 4);
+  customRepeatField.hidden = repeatInput.value !== "custom";
+}
 
-  document.querySelector("#courseNameInput").value = course.name;
-  document.querySelector("#courseTeacherInput").value = course.teacher;
-  document.querySelector("#courseRoomInput").value = course.room;
-  document.querySelector("#courseTypeInput").value = course.type;
-  dayInput.value = String(course.day);
-  startTimeInput.value = formatTime(course.startTime);
-  durationInput.value = String(course.duration);
+function readRepeatInterval() {
+  if (repeatInput.value === "") return null;
+  if (repeatInput.value === "custom") return Number(repeatDaysInput.value);
+  return Number(repeatInput.value);
+}
+
+function fillCourseForm(course) {
+  document.querySelector("#courseNameInput").value = course?.name || "";
+  document.querySelector("#courseTeacherInput").value = course?.teacher || "";
+  dayStartInput.value = course?.startDate || toISODate(selectedWeekStart);
+  startTimeInput.value = formatTime(course?.startTime ?? timelineStart);
+  durationInput.value = String(course?.duration ?? 100);
+  document.querySelector("#courseNotesInput").value = course?.notes || "";
+  setRepeatControls(course?.repeatIntervalDays ?? 7);
+}
+
+function openNewCourse() {
+  if (!canEdit) return;
+  selectedCourseId = null;
+  selectedOccurrenceDate = null;
+  formMode = "create";
+  dialog.classList.add("is-editing");
+  document.querySelector("#dialogType").textContent = "新建课程";
+  document.querySelector("#dialogTitle").textContent = "新增课程";
+  document.querySelector("#dialogAccent").style.background = toneColors[0];
+  dialogCourseActions.hidden = true;
+  dialogDetails.hidden = true;
+  courseForm.hidden = false;
+  document.querySelector("#saveCourseText").textContent = "创建课程";
+  fillCourseForm(null);
+  if (!dialog.open) dialog.showModal();
   document.querySelector("#courseNameInput").focus();
+}
+
+function startEditingCourse() {
+  const course = schedule.find((item) => item.id === selectedCourseId);
+  if (!canEdit || !course) return;
+  formMode = "edit";
+  dialog.classList.add("is-editing");
+  dialogDetails.hidden = true;
+  dialogCourseActions.hidden = true;
+  courseForm.hidden = false;
+  document.querySelector("#dialogType").textContent = "编辑课程系列";
+  document.querySelector("#dialogTitle").textContent = course.name;
+  document.querySelector("#saveCourseText").textContent = "保存修改";
+  fillCourseForm(course);
+  document.querySelector("#courseNameInput").focus();
+}
+
+function cancelCourseForm() {
+  if (formMode === "create") {
+    dialog.close();
+    return;
+  }
+  formMode = "view";
+  const course = schedule.find((item) => item.id === selectedCourseId);
+  if (course) showCourseDetails(course);
+}
+
+function sortSchedule() {
+  schedule.sort((first, second) => first.startDate.localeCompare(second.startDate) || first.startTime - second.startTime);
+}
+
+function describeSaveError(error) {
+  const isConflict = error.code === "23P01" || error.message.toLowerCase().includes("conflict");
+  return isConflict ? "该课程系列会与现有课程冲突，请调整日期或时间" : "保存失败，请检查连接后重试";
+}
+
+async function createCourse(candidate) {
+  if (!canEdit) return false;
+  const newCourse = {
+    ...candidate,
+    id: window.crypto?.randomUUID?.() || `course-${Date.now()}`,
+  };
+  const { data, error } = await supabaseClient
+    .from("courses")
+    .insert({ id: newCourse.id, ...toDatabaseCourse(newCourse) })
+    .select()
+    .single();
+
+  if (error) {
+    showStatus(describeSaveError(error));
+    return false;
+  }
+
+  const savedCourse = mapCourse(data);
+  schedule.push(savedCourse);
+  sortSchedule();
+  renderSchedule();
+  showStatus("课程已创建并实时同步");
+  return true;
 }
 
 async function persistCourseUpdate(original, candidate, successMessage) {
@@ -421,19 +607,17 @@ async function persistCourseUpdate(original, candidate, successMessage) {
 
   const { data, error } = await supabaseClient
     .from("courses")
-    .update(toDatabaseUpdate(candidate))
+    .update(toDatabaseCourse(candidate))
     .eq("id", original.id)
     .eq("version", original.version)
     .select()
     .maybeSingle();
 
   if (error) {
-    const isConflict = error.code === "23P01" || error.message.toLowerCase().includes("conflict");
-    showStatus(isConflict ? "该时间段已有课程，修改未保存" : "保存失败，请检查连接后重试");
+    showStatus(describeSaveError(error));
     await loadSchedule({ quiet: true });
     return false;
   }
-
   if (!data) {
     showStatus("这门课程刚被其他设备修改，请确认最新内容后重试");
     await loadSchedule({ quiet: true });
@@ -449,8 +633,35 @@ async function persistCourseUpdate(original, candidate, successMessage) {
   return true;
 }
 
-function sortSchedule() {
-  schedule.sort((first, second) => first.day - second.day || first.startTime - second.startTime);
+async function deleteSelectedCourse() {
+  const course = schedule.find((item) => item.id === selectedCourseId);
+  if (!course || !canEdit) return;
+  confirmDeleteButton.disabled = true;
+  const { data, error } = await supabaseClient
+    .from("courses")
+    .delete()
+    .eq("id", course.id)
+    .eq("version", course.version)
+    .select()
+    .maybeSingle();
+  confirmDeleteButton.disabled = false;
+
+  if (error) {
+    showStatus("删除失败，请检查连接后重试");
+    return;
+  }
+  if (!data) {
+    showStatus("课程已在其他设备变更，请刷新后重试");
+    await loadSchedule({ quiet: true });
+    deleteDialog.close();
+    return;
+  }
+
+  schedule = schedule.filter((item) => item.id !== course.id);
+  deleteDialog.close();
+  dialog.close();
+  renderSchedule();
+  showStatus("课程及其全部重复安排已删除");
 }
 
 async function loadSchedule({ quiet = false } = {}) {
@@ -458,7 +669,7 @@ async function loadSchedule({ quiet = false } = {}) {
   const { data, error } = await supabaseClient
     .from("courses")
     .select("*")
-    .order("day", { ascending: true })
+    .order("start_date", { ascending: true })
     .order("start_time", { ascending: true });
 
   if (error) {
@@ -493,11 +704,7 @@ function subscribeToCourses() {
   if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
   realtimeChannel = supabaseClient
     .channel("course-schedule-live")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "courses" },
-      applyRealtimeChange,
-    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "courses" }, applyRealtimeChange)
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
         setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
@@ -510,50 +717,59 @@ function subscribeToCourses() {
 async function applySession(session) {
   currentSession = session;
   canEdit = false;
-
   if (session) {
     const { data, error } = await supabaseClient.rpc("can_edit_courses");
     canEdit = !error && data === true;
     if (!canEdit) showStatus("当前账号没有课程编辑权限");
   }
-
   updatePermissionUI();
   setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
 }
 
 async function handleCourseSubmit(event) {
   event.preventDefault();
-  const course = schedule.find((item) => item.id === selectedCourseId);
-  if (!course || !canEdit) {
-    setEditing(false);
-    showStatus("当前账号没有编辑权限");
-    return;
-  }
+  if (!canEdit || !["create", "edit"].includes(formMode)) return;
+  const existing = schedule.find((item) => item.id === selectedCourseId);
+  if (formMode === "edit" && !existing) return;
 
   const candidate = {
-    ...course,
-    name: document.querySelector("#courseNameInput").value.trim(),
-    teacher: document.querySelector("#courseTeacherInput").value.trim(),
-    room: document.querySelector("#courseRoomInput").value.trim(),
-    type: document.querySelector("#courseTypeInput").value,
-    day: Number(dayInput.value),
+    ...(existing || {}),
+    startDate: dayStartInput.value,
+    repeatIntervalDays: readRepeatInterval(),
     startTime: parseTime(startTimeInput.value),
     duration: Number(durationInput.value),
+    name: document.querySelector("#courseNameInput").value.trim(),
+    teacher: document.querySelector("#courseTeacherInput").value.trim(),
+    notes: document.querySelector("#courseNotesInput").value.trim(),
   };
 
-  if (candidate.startTime % snapMinutes !== 0 || candidate.startTime < timelineStart || getCourseEnd(candidate) > timelineEnd) {
+  if (!candidate.startDate || candidate.startTime % snapMinutes !== 0 || candidate.startTime < timelineStart || getCourseEnd(candidate) > timelineEnd) {
     showStatus("课程时间需在 08:00 - 21:00 内，并按 10 分钟设置");
     return;
   }
-  if (hasConflict(candidate, course.id)) {
-    showStatus("该时间段已有课程，请选择其他时间");
+  if (candidate.repeatIntervalDays !== null && (!Number.isInteger(candidate.repeatIntervalDays) || candidate.repeatIntervalDays < 1 || candidate.repeatIntervalDays > 365)) {
+    showStatus("重复间隔需为 1 - 365 天的整数");
+    return;
+  }
+  if (hasSeriesConflict(candidate, existing?.id)) {
+    showStatus("该课程系列会与现有课程冲突，请调整日期或时间");
     return;
   }
 
   saveCourseButton.disabled = true;
-  const saved = await persistCourseUpdate(course, candidate, "课程信息已保存并同步");
+  const saved = formMode === "create"
+    ? await createCourse(candidate)
+    : await persistCourseUpdate(existing, candidate, "课程信息已保存并实时同步");
   saveCourseButton.disabled = false;
-  if (saved) setEditing(false);
+
+  if (!saved) return;
+  if (formMode === "create") dialog.close();
+  else {
+    formMode = "view";
+    selectedOccurrenceDate = candidate.startDate;
+    const updated = schedule.find((item) => item.id === selectedCourseId);
+    if (updated) showCourseDetails(updated);
+  }
 }
 
 async function handleLoginSubmit(event) {
@@ -567,18 +783,13 @@ async function handleLoginSubmit(event) {
   loginSubmit.disabled = true;
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: {
-      emailRedirectTo: SITE_URL,
-      shouldCreateUser: true,
-    },
+    options: { emailRedirectTo: SITE_URL, shouldCreateUser: true },
   });
   loginSubmit.disabled = false;
-
   if (error) {
     showStatus("登录邮件发送失败，请稍后重试");
     return;
   }
-
   loginDialog.close();
   loginForm.reset();
   showStatus("登录链接已发送，请前往邮箱查收");
@@ -601,14 +812,32 @@ function bindEvents() {
     selectedWeekStart = new Date(currentWeekStart);
     renderSchedule();
   });
+  document.querySelector("#addCourse").addEventListener("click", openNewCourse);
   document.querySelector("#closeDialog").addEventListener("click", () => dialog.close());
-  editCourseButton.addEventListener("click", () => setEditing(true));
-  document.querySelector("#cancelEdit").addEventListener("click", () => setEditing(false));
+  document.querySelector("#editCourse").addEventListener("click", startEditingCourse);
+  document.querySelector("#deleteCourse").addEventListener("click", () => {
+    const course = schedule.find((item) => item.id === selectedCourseId);
+    if (!course || !canEdit) return;
+    document.querySelector("#deleteCourseName").textContent = course.name;
+    deleteDialog.showModal();
+  });
+  document.querySelector("#cancelEdit").addEventListener("click", cancelCourseForm);
   courseForm.addEventListener("submit", handleCourseSubmit);
+  repeatInput.addEventListener("change", () => {
+    customRepeatField.hidden = repeatInput.value !== "custom";
+    if (!customRepeatField.hidden) repeatDaysInput.focus();
+  });
   dialog.addEventListener("close", () => {
     selectedCourseId = null;
-    setEditing(false);
+    selectedOccurrenceDate = null;
+    formMode = "view";
+    dialog.classList.remove("is-editing");
+    courseForm.hidden = true;
+    dialogDetails.hidden = false;
   });
+
+  document.querySelector("#cancelDelete").addEventListener("click", () => deleteDialog.close());
+  confirmDeleteButton.addEventListener("click", deleteSelectedCourse);
 
   authButton.addEventListener("click", async () => {
     if (currentSession) {
@@ -625,7 +854,7 @@ function bindEvents() {
 }
 
 async function initializeApp() {
-  populateFormOptions();
+  populateDurationOptions();
   bindEvents();
   renderSchedule();
   if (window.lucide) window.lucide.createIcons();
