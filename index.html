@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8f5" />
+    <title>我的课程表</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">课</span>
+          <div>
+            <p class="eyebrow">2025 - 2026 学年 · 春季学期</p>
+            <h1>我的课程表</h1>
+          </div>
+        </div>
+
+        <div class="week-controls" aria-label="周次切换">
+          <button class="icon-button" id="previousWeek" type="button" aria-label="上一周" title="上一周">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <button class="week-picker" id="currentWeek" type="button" aria-label="返回本周">
+            <span id="weekLabel">第 9 周</span>
+            <small id="weekRange">4月13日 - 4月19日</small>
+          </button>
+          <button class="icon-button" id="nextWeek" type="button" aria-label="下一周" title="下一周">
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="today-button" id="todayButton" type="button">
+            <i data-lucide="calendar-days"></i>
+            <span>返回本周</span>
+          </button>
+          <button class="icon-button user-button" type="button" aria-label="个人中心" title="个人中心">
+            <i data-lucide="user-round"></i>
+          </button>
+        </div>
+      </header>
+
+      <section class="schedule-section" aria-labelledby="scheduleTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" id="todayText">星期一，4月13日</p>
+            <h2 id="scheduleTitle">本周安排</h2>
+          </div>
+          <div class="legend" aria-label="课程类型图例">
+            <span><i class="legend-dot dot-required"></i>必修</span>
+            <span><i class="legend-dot dot-elective"></i>选修</span>
+            <span><i class="legend-dot dot-practice"></i>实践</span>
+          </div>
+        </div>
+
+        <div class="schedule-scroll" id="scheduleScroll">
+          <div class="schedule-grid" id="scheduleGrid" aria-label="一周课程表"></div>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <p>共 <strong id="courseCount">0</strong> 门课程 · 每周 <strong id="durationCount">0</strong> 小时</p>
+        <p>点击课程卡片查看详情</p>
+      </footer>
+    </main>
+
+    <dialog class="course-dialog" id="courseDialog">
+      <div class="dialog-accent" id="dialogAccent"></div>
+      <div class="dialog-header">
+        <div class="dialog-heading-copy">
+          <p class="eyebrow" id="dialogType">必修课程</p>
+          <div class="dialog-title-row">
+            <h3 id="dialogTitle">课程名称</h3>
+            <button class="icon-button edit-course-button" id="editCourse" type="button" aria-label="编辑课程信息" title="编辑课程信息">
+              <i data-lucide="pencil"></i>
+            </button>
+          </div>
+        </div>
+        <button class="icon-button dialog-close" id="closeDialog" type="button" aria-label="关闭" title="关闭">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="dialog-details" id="dialogDetails">
+        <p><i data-lucide="clock-3"></i><span id="dialogTime"></span></p>
+        <p><i data-lucide="map-pin"></i><span id="dialogRoom"></span></p>
+        <p><i data-lucide="user-round"></i><span id="dialogTeacher"></span></p>
+      </div>
+      <form class="dialog-form" id="courseForm" hidden>
+        <label class="form-field form-field-wide">
+          <span>课程名称</span>
+          <input id="courseNameInput" name="name" type="text" maxlength="30" required />
+        </label>
+        <label class="form-field">
+          <span>任课教师</span>
+          <input id="courseTeacherInput" name="teacher" type="text" maxlength="20" required />
+        </label>
+        <label class="form-field">
+          <span>上课教室</span>
+          <input id="courseRoomInput" name="room" type="text" maxlength="30" required />
+        </label>
+        <label class="form-field">
+          <span>课程类型</span>
+          <select id="courseTypeInput" name="type">
+            <option value="required">必修</option>
+            <option value="elective">选修</option>
+            <option value="practice">实践</option>
+            <option value="other">公共</option>
+          </select>
+        </label>
+        <label class="form-field">
+          <span>星期</span>
+          <select id="courseDayInput" name="day"></select>
+        </label>
+        <label class="form-field">
+          <span>开始时间</span>
+          <input id="courseStartTimeInput" name="startTime" type="time" min="08:00" max="20:50" step="600" required />
+        </label>
+        <label class="form-field">
+          <span>持续时长</span>
+          <select id="courseDurationInput" name="duration"></select>
+        </label>
+        <div class="form-actions">
+          <button class="secondary-button" id="cancelEdit" type="button">取消</button>
+          <button class="primary-button" type="submit">
+            <i data-lucide="save"></i>
+            <span>保存修改</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
+
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
