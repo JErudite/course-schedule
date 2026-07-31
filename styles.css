@@ -55,9 +55,50 @@ button:focus-visible,
   padding: 28px 36px 24px;
 }
 
+.login-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(rgba(47, 107, 79, 0.04), rgba(47, 107, 79, 0.04)),
+    var(--background);
+}
+
+.login-panel {
+  width: min(390px, 100%);
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 18px 50px rgba(29, 36, 32, 0.1);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+  padding-top: 22px;
+}
+
+.login-error {
+  min-height: 18px;
+  margin: -5px 0 -3px;
+  color: #a33e35;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .topbar {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(220px, 1fr) auto max-content;
   align-items: center;
   gap: 24px;
   padding-bottom: 28px;
@@ -229,6 +270,7 @@ h1 {
   border-radius: 7px;
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .auth-button {
@@ -839,7 +881,7 @@ h1 {
   transform: translateY(0);
 }
 
-.login-dialog {
+.student-dialog {
   width: min(410px, calc(100% - 32px));
   padding: 24px;
   border: 0;
@@ -847,7 +889,7 @@ h1 {
   box-shadow: 0 24px 70px rgba(25, 32, 27, 0.22);
 }
 
-.login-dialog::backdrop {
+.student-dialog::backdrop {
   background: rgba(24, 30, 26, 0.36);
   backdrop-filter: blur(2px);
 }
@@ -865,20 +907,153 @@ h1 {
   font-size: 20px;
 }
 
-.login-dialog form {
-  display: grid;
-  gap: 16px;
-}
-
-.login-note {
-  margin: -3px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
 .login-submit {
   width: 100%;
+}
+
+.student-dialog {
+  width: min(560px, calc(100% - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+}
+
+.student-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.shared-password-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 22px;
+  padding: 10px 12px;
+  border: 1px solid #ded09b;
+  border-radius: 6px;
+  background: var(--yellow-soft);
+  color: #665522;
+  font-size: 12px;
+}
+
+.shared-password-note svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.student-list-heading,
+.student-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-list-heading {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.student-list-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.student-list {
+  max-height: 310px;
+  overflow-y: auto;
+}
+
+.student-row {
+  min-height: 52px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.student-row strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-row .icon-button {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+  color: #a33e35;
+}
+
+.empty-list-hint {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.student-assignment-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.student-assignment-field legend {
+  margin-bottom: 7px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.student-checklist {
+  display: grid;
+  max-height: 154px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  overflow-y: auto;
+}
+
+.student-check-item {
+  display: flex;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fafbf9;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.student-check-item:has(input:checked) {
+  border-color: #8bb49d;
+  background: var(--green-soft);
+}
+
+.student-check-item input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  accent-color: var(--green);
+}
+
+.student-check-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-assignment-field .empty-list-hint {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
 }
 
 .confirm-dialog {
@@ -1069,6 +1244,23 @@ h1 {
   .form-field-wide,
   .form-actions {
     grid-column: 1;
+  }
+
+  .login-screen {
+    padding: 16px;
+  }
+
+  .login-panel {
+    padding: 24px 20px;
+  }
+
+  .student-create-form,
+  .student-checklist {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .student-create-form .primary-button {
+    width: 100%;
   }
 }
 

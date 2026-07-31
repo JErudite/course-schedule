@@ -14,7 +14,34 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
+    <section class="login-screen" id="loginScreen">
+      <div class="login-panel">
+        <div class="login-brand">
+          <span class="brand-mark" aria-hidden="true">课</span>
+          <div>
+            <p class="eyebrow">课程安排与实时同步</p>
+            <h1>登录课程表</h1>
+          </div>
+        </div>
+        <form class="login-form" id="loginForm">
+          <label class="form-field">
+            <span>用户名</span>
+            <input id="loginUsername" name="username" type="text" maxlength="40" autocomplete="username" placeholder="请输入用户名" required />
+          </label>
+          <label class="form-field">
+            <span>密码</span>
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required />
+          </label>
+          <p class="login-error" id="loginError" role="alert" aria-live="polite"></p>
+          <button class="primary-button login-submit" id="loginSubmit" type="submit">
+            <i data-lucide="log-in"></i>
+            <span>进入课程表</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <main class="app-shell" id="appShell" hidden>
       <header class="topbar">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">课</span>
@@ -46,9 +73,13 @@
             <i data-lucide="calendar-days"></i>
             <span>返回本周</span>
           </button>
-          <button class="auth-button" id="authButton" type="button" aria-label="管理员登录">
-            <i data-lucide="lock-keyhole"></i>
-            <span>管理员登录</span>
+          <button class="today-button student-manager-button" id="studentManagerButton" type="button" hidden>
+            <i data-lucide="users"></i>
+            <span>账号管理</span>
+          </button>
+          <button class="auth-button is-authenticated" id="authButton" type="button" aria-label="退出登录">
+            <i data-lucide="log-out"></i>
+            <span>退出登录</span>
           </button>
         </div>
       </header>
@@ -105,6 +136,7 @@
       <div class="dialog-details" id="dialogDetails">
         <p><i data-lucide="clock-3"></i><span id="dialogTime"></span></p>
         <p><i data-lucide="user-round"></i><span id="dialogTeacher"></span></p>
+        <p><i data-lucide="users-round"></i><span id="dialogStudents"></span></p>
         <p><i data-lucide="repeat-2"></i><span id="dialogRepeat"></span></p>
         <div class="dialog-notes">
           <i data-lucide="notebook-pen"></i>
@@ -158,6 +190,11 @@
           <span>备注</span>
           <textarea id="courseNotesInput" name="notes" maxlength="500" rows="4" placeholder="记录课程要求、准备事项等"></textarea>
         </label>
+        <fieldset class="student-assignment-field form-field-wide">
+          <legend>上课学生</legend>
+          <div class="student-checklist" id="studentChecklist"></div>
+          <p class="empty-list-hint" id="studentChecklistEmpty" hidden>暂无学生账号，请先前往账号管理中新增。</p>
+        </fieldset>
         <div class="form-actions">
           <button class="secondary-button" id="cancelEdit" type="button">取消</button>
           <button class="primary-button" id="saveCourse" type="submit">
@@ -178,27 +215,43 @@
       </div>
     </dialog>
 
-    <dialog class="login-dialog" id="loginDialog">
+    <dialog class="student-dialog" id="studentDialog">
       <div class="login-dialog-header">
         <div>
-          <p class="eyebrow">管理员身份验证</p>
-          <h3>登录后编辑课程</h3>
+          <p class="eyebrow">后台管理</p>
+          <h3>访客账号授权</h3>
         </div>
-        <button class="icon-button" id="closeLoginDialog" type="button" aria-label="关闭" title="关闭">
+        <button class="icon-button" id="closeStudentDialog" type="button" aria-label="关闭" title="关闭">
           <i data-lucide="x"></i>
         </button>
       </div>
-      <form id="loginForm">
+      <form class="student-create-form" id="studentForm">
         <label class="form-field">
-          <span>管理员邮箱</span>
-          <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="请输入管理员邮箱" required />
+          <span>学生姓名 / 登录用户名</span>
+          <input id="studentUsernameInput" name="username" type="text" maxlength="40" autocomplete="off" placeholder="例如：张三" required />
         </label>
-        <p class="login-note">登录链接将发送到邮箱，点击邮件中的链接即可完成登录。</p>
-        <button class="primary-button login-submit" id="loginSubmit" type="submit">
-          <i data-lucide="mail"></i>
-          <span>发送登录链接</span>
+        <button class="primary-button" id="addStudentButton" type="submit">
+          <i data-lucide="user-plus"></i>
+          <span>新增账号</span>
         </button>
       </form>
+      <p class="shared-password-note"><i data-lucide="key-round"></i><span>所有访客账号统一使用密码 <strong>88888888</strong></span></p>
+      <div class="student-list-heading">
+        <strong>已授权访客</strong>
+        <span id="studentCount">0 人</span>
+      </div>
+      <div class="student-list" id="studentList"></div>
+      <p class="empty-list-hint" id="studentListEmpty">暂无访客账号</p>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteStudentDialog">
+      <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="user-minus"></i></div>
+      <h3>删除访客账号</h3>
+      <p>删除“<strong id="deleteStudentName"></strong>”后，该账号将失去课程查看权限，已有课程分配也会一并移除。</p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="cancelDeleteStudent" type="button">取消</button>
+        <button class="danger-button" id="confirmDeleteStudent" type="button">确认删除</button>
+      </div>
     </dialog>
 
     <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
