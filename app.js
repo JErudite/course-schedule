@@ -222,7 +222,6 @@ function mapCourse(row) {
     startTime: Number(row.start_time),
     duration: Number(row.duration),
     name: row.name,
-    teacher: row.teacher,
     notes: row.notes || "",
     studentIds: (row.course_students || []).map((assignment) => assignment.student_id),
     version: Number(row.version),
@@ -294,6 +293,8 @@ function renderSchedule() {
   for (let slot = 0; slot < slotCount; slot += 1) {
     days.forEach((_, dayIndex) => {
       const cell = createElement("div", `grid-cell${slot % 6 === 0 ? " is-hour" : ""}`);
+      cell.dataset.dayIndex = String(dayIndex);
+      cell.dataset.slot = String(slot);
       cell.style.gridColumn = String(dayIndex + 2);
       cell.style.gridRow = String(slot + 2);
       if (sameDay(addDays(selectedWeekStart, dayIndex), scheduleToday)) cell.classList.add("is-today");
@@ -309,12 +310,11 @@ function renderSchedule() {
     card.dataset.courseId = course.id;
     card.dataset.occurrenceDate = toISODate(date);
     placeCourseCard(card, dayIndex, course.startTime, course.duration);
-    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${course.teacher}，${getRepeatDescription(course.repeatIntervalDays)}`);
+    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${getRepeatDescription(course.repeatIntervalDays)}`);
     card.title = canEdit ? "拖动将移动整个课程系列，点击可编辑详情" : "点击查看课程详情";
     card.append(
       createElement("strong", "", course.name),
       createElement("span", "course-time", `${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`),
-      createElement("span", "", course.teacher),
       createElement("span", "course-repeat", getRepeatDescription(course.repeatIntervalDays)),
     );
     enableCourseInteraction(card, course, { date, dayIndex });
@@ -446,6 +446,87 @@ function enableCourseInteraction(card, course, occurrence) {
   });
 }
 
+function enableTimelineCreation() {
+  let selection = null;
+
+  function getSlotAtPointer(event) {
+    const gridRect = grid.getBoundingClientRect();
+    const firstCell = grid.querySelector(".grid-cell");
+    const firstHeader = grid.querySelector(".day-header");
+    const slotHeight = firstCell?.getBoundingClientRect().height || 12;
+    const headerHeight = firstHeader?.getBoundingClientRect().height || 64;
+    return clamp(Math.floor((event.clientY - gridRect.top - headerHeight) / slotHeight), 0, slotCount - 1);
+  }
+
+  function updateSelection(currentSlot) {
+    if (!selection) return;
+    selection.currentSlot = currentSlot;
+    const startSlot = Math.min(selection.anchorSlot, currentSlot);
+    const endSlot = Math.max(selection.anchorSlot, currentSlot) + 1;
+    const startTime = timelineStart + startSlot * snapMinutes;
+    const duration = (endSlot - startSlot) * snapMinutes;
+    selection.startSlot = startSlot;
+    selection.startTime = startTime;
+    selection.duration = duration;
+    placeCourseCard(selection.preview, selection.dayIndex, startTime, duration);
+    selection.preview.querySelector("span").textContent = `${formatTime(startTime)} - ${formatTime(startTime + duration)}`;
+  }
+
+  function clearSelection() {
+    if (!selection) return;
+    if (grid.hasPointerCapture(selection.pointerId)) grid.releasePointerCapture(selection.pointerId);
+    selection.preview.remove();
+    selection = null;
+    document.body.classList.remove("is-selecting-course");
+  }
+
+  grid.addEventListener("pointerdown", (event) => {
+    if (!canEdit || event.button !== 0 || dialog.open) return;
+    const cell = event.target.closest(".grid-cell");
+    if (!cell) return;
+
+    event.preventDefault();
+    const preview = createElement("div", "course-create-preview");
+    preview.append(createElement("span", "", ""));
+    selection = {
+      pointerId: event.pointerId,
+      dayIndex: Number(cell.dataset.dayIndex),
+      anchorSlot: Number(cell.dataset.slot),
+      currentSlot: Number(cell.dataset.slot),
+      startSlot: Number(cell.dataset.slot),
+      startTime: timelineStart + Number(cell.dataset.slot) * snapMinutes,
+      duration: snapMinutes,
+      preview,
+    };
+    grid.append(preview);
+    grid.setPointerCapture(event.pointerId);
+    document.body.classList.add("is-selecting-course");
+    updateSelection(selection.anchorSlot);
+  });
+
+  grid.addEventListener("pointermove", (event) => {
+    if (!selection || event.pointerId !== selection.pointerId) return;
+    event.preventDefault();
+    const scrollRect = scheduleScroll.getBoundingClientRect();
+    if (event.clientY < scrollRect.top + 76) scheduleScroll.scrollTop -= 10;
+    if (event.clientY > scrollRect.bottom - 28) scheduleScroll.scrollTop += 10;
+    updateSelection(getSlotAtPointer(event));
+  });
+
+  grid.addEventListener("pointerup", (event) => {
+    if (!selection || event.pointerId !== selection.pointerId) return;
+    const preset = {
+      startDate: toISODate(addDays(selectedWeekStart, selection.dayIndex)),
+      startTime: selection.startTime,
+      duration: selection.duration,
+    };
+    clearSelection();
+    openNewCourse(preset);
+  });
+
+  grid.addEventListener("pointercancel", clearSelection);
+}
+
 function showCourse(courseId, occurrenceDate) {
   const course = schedule.find((item) => item.id === courseId);
   if (!course) return;
@@ -465,7 +546,6 @@ function showCourseDetails(course) {
   document.querySelector("#dialogTitle").textContent = course.name;
   document.querySelector("#dialogType").textContent = course.repeatIntervalDays === null ? "单次课程" : "重复课程";
   document.querySelector("#dialogTime").textContent = `${formatFullDate(occurrence)} · ${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}（${formatDuration(course.duration)}）`;
-  document.querySelector("#dialogTeacher").textContent = course.teacher;
   const assignedNames = canEdit
     ? students.filter((student) => course.studentIds.includes(student.id)).map((student) => student.username)
     : [currentUser?.username].filter(Boolean);
@@ -491,9 +571,20 @@ function refreshOpenDialog() {
 }
 
 function populateDurationOptions() {
-  for (let minutes = 30; minutes <= 240; minutes += 10) {
+  for (let minutes = 10; minutes <= 240; minutes += 10) {
     durationInput.add(new Option(formatDuration(minutes), String(minutes)));
   }
+}
+
+function setDurationValue(minutes) {
+  durationInput.querySelectorAll("option[data-extended-duration]").forEach((option) => option.remove());
+  const value = String(minutes);
+  if (!Array.from(durationInput.options).some((option) => option.value === value)) {
+    const option = new Option(formatDuration(minutes), value);
+    option.dataset.extendedDuration = "true";
+    durationInput.add(option);
+  }
+  durationInput.value = value;
 }
 
 function setRepeatControls(interval) {
@@ -512,10 +603,9 @@ function readRepeatInterval() {
 
 function fillCourseForm(course) {
   document.querySelector("#courseNameInput").value = course?.name || "";
-  document.querySelector("#courseTeacherInput").value = course?.teacher || "";
   dayStartInput.value = course?.startDate || toISODate(selectedWeekStart);
   startTimeInput.value = formatTime(course?.startTime ?? timelineStart);
-  durationInput.value = String(course?.duration ?? 100);
+  setDurationValue(course?.duration ?? 100);
   document.querySelector("#courseNotesInput").value = course?.notes || "";
   setRepeatControls(course?.repeatIntervalDays ?? 7);
   renderStudentChecklist(course?.studentIds || []);
@@ -543,7 +633,7 @@ function readSelectedStudentIds() {
     .map((input) => input.value);
 }
 
-function openNewCourse() {
+function openNewCourse(preset = null) {
   if (!canEdit) return;
   selectedCourseId = null;
   selectedOccurrenceDate = null;
@@ -556,7 +646,7 @@ function openNewCourse() {
   dialogDetails.hidden = true;
   courseForm.hidden = false;
   document.querySelector("#saveCourseText").textContent = "创建课程";
-  fillCourseForm(null);
+  fillCourseForm(preset);
   if (!dialog.open) dialog.showModal();
   document.querySelector("#courseNameInput").focus();
 }
@@ -605,7 +695,6 @@ function toSaveCourseParams(course, expectedVersion) {
     p_start_time: course.startTime,
     p_duration: course.duration,
     p_name: course.name,
-    p_teacher: course.teacher,
     p_notes: course.notes,
     p_student_ids: course.studentIds,
     p_expected_version: expectedVersion,
@@ -871,7 +960,6 @@ async function handleCourseSubmit(event) {
     startTime: parseTime(startTimeInput.value),
     duration: Number(durationInput.value),
     name: document.querySelector("#courseNameInput").value.trim(),
-    teacher: document.querySelector("#courseTeacherInput").value.trim(),
     notes: document.querySelector("#courseNotesInput").value.trim(),
     studentIds: readSelectedStudentIds(),
   };
@@ -946,7 +1034,8 @@ function bindEvents() {
     selectedWeekStart = new Date(currentWeekStart);
     renderSchedule();
   });
-  document.querySelector("#addCourse").addEventListener("click", openNewCourse);
+  document.querySelector("#addCourse").addEventListener("click", () => openNewCourse());
+  enableTimelineCreation();
   document.querySelector("#closeDialog").addEventListener("click", () => dialog.close());
   document.querySelector("#editCourse").addEventListener("click", startEditingCourse);
   document.querySelector("#deleteCourse").addEventListener("click", () => {

@@ -468,6 +468,41 @@ h1 {
   background: #fafcf9;
 }
 
+.can-edit .grid-cell {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.course-create-preview {
+  z-index: 8;
+  display: grid;
+  min-width: 0;
+  margin: 2px 4px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--green);
+  border-radius: 6px;
+  background: rgba(220, 236, 227, 0.92);
+  color: var(--green);
+  pointer-events: none;
+  user-select: none;
+}
+
+.course-create-preview span {
+  max-width: 100%;
+  padding: 3px 5px;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.is-selecting-course {
+  cursor: ns-resize;
+  user-select: none;
+}
+
 .schedule-empty {
   z-index: 1;
   display: grid;

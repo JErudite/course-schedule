@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260731-1" />
+    <link rel="stylesheet" href="styles.css?v=20260801-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -135,7 +135,6 @@
 
       <div class="dialog-details" id="dialogDetails">
         <p><i data-lucide="clock-3"></i><span id="dialogTime"></span></p>
-        <p><i data-lucide="user-round"></i><span id="dialogTeacher"></span></p>
         <p><i data-lucide="users-round"></i><span id="dialogStudents"></span></p>
         <p><i data-lucide="repeat-2"></i><span id="dialogRepeat"></span></p>
         <div class="dialog-notes">
@@ -151,10 +150,6 @@
         <label class="form-field form-field-wide">
           <span>课程名称</span>
           <input id="courseNameInput" name="name" type="text" maxlength="60" required />
-        </label>
-        <label class="form-field form-field-wide">
-          <span>任课老师</span>
-          <input id="courseTeacherInput" name="teacher" type="text" maxlength="40" required />
         </label>
         <label class="form-field">
           <span>首次上课日期</span>
@@ -258,6 +253,6 @@
 
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260731-1"></script>
+    <script src="app.js?v=20260801-1"></script>
   </body>
 </html>
