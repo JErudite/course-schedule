@@ -38,12 +38,17 @@
         </div>
 
         <div class="topbar-actions">
+          <span class="sync-state is-connecting" id="syncState" role="status" aria-live="polite">
+            <i class="sync-dot" aria-hidden="true"></i>
+            <span id="syncStateText">正在连接</span>
+          </span>
           <button class="today-button" id="todayButton" type="button">
             <i data-lucide="calendar-days"></i>
             <span>返回本周</span>
           </button>
-          <button class="icon-button user-button" type="button" aria-label="个人中心" title="个人中心">
-            <i data-lucide="user-round"></i>
+          <button class="auth-button" id="authButton" type="button" aria-label="管理员登录">
+            <i data-lucide="lock-keyhole"></i>
+            <span id="authButtonText">管理员登录</span>
           </button>
         </div>
       </header>
@@ -68,7 +73,7 @@
 
       <footer class="page-footer">
         <p>共 <strong id="courseCount">0</strong> 门课程 · 每周 <strong id="durationCount">0</strong> 小时</p>
-        <p>点击课程卡片查看详情</p>
+        <p id="permissionHint">只读模式 · 修改会实时同步到所有设备</p>
       </footer>
     </main>
 
@@ -79,7 +84,7 @@
           <p class="eyebrow" id="dialogType">必修课程</p>
           <div class="dialog-title-row">
             <h3 id="dialogTitle">课程名称</h3>
-            <button class="icon-button edit-course-button" id="editCourse" type="button" aria-label="编辑课程信息" title="编辑课程信息">
+            <button class="icon-button edit-course-button" id="editCourse" type="button" aria-label="编辑课程信息" title="编辑课程信息" hidden>
               <i data-lucide="pencil"></i>
             </button>
           </div>
@@ -99,7 +104,7 @@
           <input id="courseNameInput" name="name" type="text" maxlength="30" required />
         </label>
         <label class="form-field">
-          <span>任课教师</span>
+          <span>任课老师</span>
           <input id="courseTeacherInput" name="teacher" type="text" maxlength="20" required />
         </label>
         <label class="form-field">
@@ -129,7 +134,7 @@
         </label>
         <div class="form-actions">
           <button class="secondary-button" id="cancelEdit" type="button">取消</button>
-          <button class="primary-button" type="submit">
+          <button class="primary-button" id="saveCourse" type="submit">
             <i data-lucide="save"></i>
             <span>保存修改</span>
           </button>
@@ -137,9 +142,33 @@
       </form>
     </dialog>
 
+    <dialog class="login-dialog" id="loginDialog">
+      <div class="login-dialog-header">
+        <div>
+          <p class="eyebrow">管理员身份验证</p>
+          <h3>登录后编辑课程</h3>
+        </div>
+        <button class="icon-button" id="closeLoginDialog" type="button" aria-label="关闭" title="关闭">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <form id="loginForm">
+        <label class="form-field">
+          <span>管理员邮箱</span>
+          <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="请输入管理员邮箱" required />
+        </label>
+        <p class="login-note">登录链接将发送到邮箱，点击邮件中的链接即可完成登录。</p>
+        <button class="primary-button login-submit" id="loginSubmit" type="submit">
+          <i data-lucide="mail"></i>
+          <span>发送登录链接</span>
+        </button>
+      </form>
+    </dialog>
+
     <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
 
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>

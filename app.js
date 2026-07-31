@@ -1,15 +1,7 @@
-const defaultSchedule = [
-  { id: "math", day: 1, startTime: 480, duration: 100, name: "高等数学", room: "博学楼 A201", teacher: "陈老师", type: "required" },
-  { id: "english", day: 1, startTime: 840, duration: 100, name: "大学英语", room: "文科楼 305", teacher: "周老师", type: "required" },
-  { id: "programming", day: 2, startTime: 600, duration: 100, name: "程序设计基础", room: "信息楼 402", teacher: "林老师", type: "practice" },
-  { id: "film", day: 2, startTime: 960, duration: 100, name: "影视鉴赏", room: "艺术楼 106", teacher: "宋老师", type: "elective" },
-  { id: "linear-algebra", day: 3, startTime: 480, duration: 100, name: "线性代数", room: "博学楼 B203", teacher: "王老师", type: "required" },
-  { id: "data-structure", day: 3, startTime: 840, duration: 170, name: "数据结构实验", room: "实验中心 512", teacher: "赵老师", type: "practice" },
-  { id: "sports", day: 4, startTime: 600, duration: 100, name: "大学体育", room: "东区体育场", teacher: "郑老师", type: "other" },
-  { id: "history", day: 4, startTime: 960, duration: 100, name: "中国近现代史纲要", room: "博学楼 C108", teacher: "许老师", type: "required" },
-  { id: "discrete-math", day: 5, startTime: 480, duration: 100, name: "离散数学", room: "博学楼 A305", teacher: "吴老师", type: "required" },
-  { id: "innovation", day: 5, startTime: 840, duration: 100, name: "创新创业基础", room: "创客空间 201", teacher: "何老师", type: "elective" },
-];
+const SUPABASE_URL = "https://dpjyjzszqmgakwtdhmwq.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PyH98bSXQ2rSCzIfmLNN5w_4rTJ6P-x";
+const ADMIN_EMAIL = "703223232@qq.com";
+const SITE_URL = "https://jerudite.github.io/course-schedule/";
 
 const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 const typeNames = {
@@ -28,14 +20,16 @@ const timelineStart = 8 * 60;
 const timelineEnd = 21 * 60;
 const snapMinutes = 10;
 const slotCount = (timelineEnd - timelineStart) / snapMinutes;
-const storageKey = "course-schedule-v2";
-
 const semesterStart = startOfWeek(new Date(2026, 1, 16));
-const demoToday = new Date(2026, 3, 13);
-const currentWeekStart = startOfWeek(demoToday);
+const scheduleToday = new Date(2026, 3, 13);
+const currentWeekStart = startOfWeek(scheduleToday);
+
 let selectedWeekStart = new Date(currentWeekStart);
 let selectedCourseId = null;
-let schedule = loadSchedule();
+let schedule = [];
+let currentSession = null;
+let canEdit = false;
+let realtimeChannel = null;
 let statusTimer = null;
 
 const grid = document.querySelector("#scheduleGrid");
@@ -45,31 +39,30 @@ const weekRange = document.querySelector("#weekRange");
 const dialog = document.querySelector("#courseDialog");
 const courseForm = document.querySelector("#courseForm");
 const dialogDetails = document.querySelector("#dialogDetails");
+const editCourseButton = document.querySelector("#editCourse");
 const dayInput = document.querySelector("#courseDayInput");
 const startTimeInput = document.querySelector("#courseStartTimeInput");
 const durationInput = document.querySelector("#courseDurationInput");
+const saveCourseButton = document.querySelector("#saveCourse");
 const statusMessage = document.querySelector("#statusMessage");
+const authButton = document.querySelector("#authButton");
+const loginDialog = document.querySelector("#loginDialog");
+const loginForm = document.querySelector("#loginForm");
+const loginSubmit = document.querySelector("#loginSubmit");
 
-function loadSchedule() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey));
-    if (!Array.isArray(saved)) return defaultSchedule.map((course) => ({ ...course }));
-    return defaultSchedule.map((course) => {
-      const editedCourse = saved.find((item) => item.id === course.id);
-      return editedCourse ? { ...course, ...editedCourse } : { ...course };
-    });
-  } catch {
-    return defaultSchedule.map((course) => ({ ...course }));
-  }
+if (!window.supabase) {
+  setSyncState("offline", "连接组件加载失败");
+  showStatus("连接组件加载失败，请刷新页面重试");
+  throw new Error("Supabase client library failed to load");
 }
 
-function saveSchedule() {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(schedule));
-  } catch {
-    // Editing and dragging still work when local storage is unavailable.
-  }
-}
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    detectSessionInUrl: true,
+    autoRefreshToken: true,
+  },
+});
 
 function startOfWeek(date) {
   const result = new Date(date);
@@ -120,7 +113,7 @@ function getWeekNumber(date) {
 function createElement(tag, className, text) {
   const element = document.createElement(tag);
   if (className) element.className = className;
-  if (text) element.textContent = text;
+  if (text !== undefined) element.textContent = text;
   return element;
 }
 
@@ -139,11 +132,67 @@ function hasConflict(candidate, ignoredId) {
     && candidate.startTime + candidate.duration > course.startTime);
 }
 
+function mapCourse(row) {
+  return {
+    id: row.id,
+    day: Number(row.day),
+    startTime: Number(row.start_time),
+    duration: Number(row.duration),
+    name: row.name,
+    room: row.room,
+    teacher: row.teacher,
+    type: row.type,
+    version: Number(row.version),
+    updatedAt: row.updated_at,
+  };
+}
+
+function toDatabaseUpdate(course) {
+  return {
+    day: course.day,
+    start_time: course.startTime,
+    duration: course.duration,
+    name: course.name,
+    room: course.room,
+    teacher: course.teacher,
+    type: course.type,
+  };
+}
+
 function showStatus(message) {
   statusMessage.textContent = message;
   statusMessage.classList.add("is-visible");
   window.clearTimeout(statusTimer);
-  statusTimer = window.setTimeout(() => statusMessage.classList.remove("is-visible"), 2200);
+  statusTimer = window.setTimeout(() => statusMessage.classList.remove("is-visible"), 3000);
+}
+
+function setSyncState(state, text) {
+  const syncState = document.querySelector("#syncState");
+  const syncStateText = document.querySelector("#syncStateText");
+  syncState.className = `sync-state is-${state}`;
+  syncStateText.textContent = text;
+}
+
+function updatePermissionUI() {
+  editCourseButton.hidden = !canEdit;
+  document.body.classList.toggle("can-edit", canEdit);
+  document.querySelector("#permissionHint").textContent = canEdit
+    ? "管理员模式 · 拖动或点击课程即可修改，变化会实时同步"
+    : "只读模式 · 管理员的修改会实时显示在这里";
+
+  if (currentSession) {
+    authButton.classList.add("is-authenticated");
+    authButton.setAttribute("aria-label", "退出管理员登录");
+    authButton.innerHTML = `<i data-lucide="log-out"></i><span id="authButtonText">退出登录</span>`;
+  } else {
+    authButton.classList.remove("is-authenticated");
+    authButton.setAttribute("aria-label", "管理员登录");
+    authButton.innerHTML = `<i data-lucide="lock-keyhole"></i><span id="authButtonText">管理员登录</span>`;
+  }
+
+  if (window.lucide) window.lucide.createIcons();
+  renderSchedule();
+  refreshOpenDialog();
 }
 
 function renderSchedule() {
@@ -156,7 +205,7 @@ function renderSchedule() {
     const header = createElement("div", "day-header");
     header.style.gridColumn = String(index + 2);
     header.style.gridRow = "1";
-    if (sameDay(date, demoToday)) header.classList.add("is-today");
+    if (sameDay(date, scheduleToday)) header.classList.add("is-today");
     header.append(createElement("strong", "", day), createElement("span", "", `${date.getMonth() + 1}/${date.getDate()}`));
     grid.append(header);
   });
@@ -174,23 +223,25 @@ function renderSchedule() {
       const cell = createElement("div", `grid-cell${slot % 6 === 0 ? " is-hour" : ""}`);
       cell.style.gridColumn = String(dayIndex + 2);
       cell.style.gridRow = String(slot + 2);
-      if (sameDay(addDays(selectedWeekStart, dayIndex), demoToday)) cell.classList.add("is-today");
+      if (sameDay(addDays(selectedWeekStart, dayIndex), scheduleToday)) cell.classList.add("is-today");
       grid.append(cell);
     });
   }
 
   schedule.forEach((course) => {
-    const card = createElement("button", `course-card ${course.type}`);
+    const card = createElement("button", `course-card ${course.type}${canEdit ? " is-editable" : " is-readonly"}`);
     card.type = "button";
+    card.dataset.courseId = course.id;
     placeCourseCard(card, course.day, course.startTime, course.duration);
     card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${course.room}，${course.teacher}`);
+    card.title = canEdit ? "拖动调整时间，点击编辑详情" : "点击查看课程详情";
     card.append(
       createElement("strong", "", course.name),
       createElement("span", "course-time", `${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`),
       createElement("span", "", course.room),
       createElement("span", "", course.teacher),
     );
-    enableCourseDragging(card, course);
+    enableCourseInteraction(card, course);
     grid.append(card);
   });
 
@@ -199,7 +250,7 @@ function renderSchedule() {
   const totalMinutes = schedule.reduce((total, course) => total + course.duration, 0);
   weekLabel.textContent = `第 ${weekNumber} 周`;
   weekRange.textContent = `${formatMonthDay(selectedWeekStart)} - ${formatMonthDay(weekEnd)}`;
-  document.querySelector("#todayText").textContent = `${days[demoToday.getDay() - 1]}，${formatMonthDay(demoToday)}`;
+  document.querySelector("#todayText").textContent = `${days[scheduleToday.getDay() - 1]}，${formatMonthDay(scheduleToday)}`;
   document.querySelector("#courseCount").textContent = String(schedule.length);
   document.querySelector("#durationCount").textContent = (totalMinutes / 60).toFixed(1).replace(".0", "");
 }
@@ -211,86 +262,91 @@ function placeCourseCard(card, day, startTime, duration) {
   card.style.gridRow = `${startSlot + 2} / span ${durationSlots}`;
 }
 
-function enableCourseDragging(card, course) {
+function enableCourseInteraction(card, course) {
   let dragState = null;
   let suppressClick = false;
 
-  card.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    const gridRect = grid.getBoundingClientRect();
-    const firstCell = grid.querySelector(".grid-cell");
-    const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 12;
-    const timeColumnWidth = parseFloat(getComputedStyle(grid).gridTemplateColumns.split(" ")[0]);
-    const dayWidth = (gridRect.width - timeColumnWidth) / 7;
-    dragState = {
-      pointerId: event.pointerId,
-      originX: event.clientX,
-      originY: event.clientY,
-      originScrollLeft: scheduleScroll.scrollLeft,
-      originScrollTop: scheduleScroll.scrollTop,
-      originalDay: course.day,
-      originalStart: course.startTime,
-      dayWidth,
-      slotHeight,
-      nextDay: course.day,
-      nextStart: course.startTime,
-      moved: false,
-    };
-    card.setPointerCapture(event.pointerId);
-  });
+  if (canEdit) {
+    card.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      const gridRect = grid.getBoundingClientRect();
+      const firstCell = grid.querySelector(".grid-cell");
+      const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 12;
+      const timeColumnWidth = parseFloat(getComputedStyle(grid).gridTemplateColumns.split(" ")[0]);
+      const dayWidth = (gridRect.width - timeColumnWidth) / 7;
+      dragState = {
+        pointerId: event.pointerId,
+        originX: event.clientX,
+        originY: event.clientY,
+        originScrollLeft: scheduleScroll.scrollLeft,
+        originScrollTop: scheduleScroll.scrollTop,
+        originalDay: course.day,
+        originalStart: course.startTime,
+        dayWidth,
+        slotHeight,
+        nextDay: course.day,
+        nextStart: course.startTime,
+        moved: false,
+      };
+      card.setPointerCapture(event.pointerId);
+    });
 
-  card.addEventListener("pointermove", (event) => {
-    if (!dragState || event.pointerId !== dragState.pointerId) return;
-    const scrollRect = scheduleScroll.getBoundingClientRect();
-    if (event.clientX < scrollRect.left + 36) scheduleScroll.scrollLeft -= 10;
-    if (event.clientX > scrollRect.right - 36) scheduleScroll.scrollLeft += 10;
-    if (event.clientY < scrollRect.top + 76) scheduleScroll.scrollTop -= 10;
-    if (event.clientY > scrollRect.bottom - 28) scheduleScroll.scrollTop += 10;
+    card.addEventListener("pointermove", (event) => {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      const scrollRect = scheduleScroll.getBoundingClientRect();
+      if (event.clientX < scrollRect.left + 36) scheduleScroll.scrollLeft -= 10;
+      if (event.clientX > scrollRect.right - 36) scheduleScroll.scrollLeft += 10;
+      if (event.clientY < scrollRect.top + 76) scheduleScroll.scrollTop -= 10;
+      if (event.clientY > scrollRect.bottom - 28) scheduleScroll.scrollTop += 10;
 
-    const deltaX = event.clientX - dragState.originX + scheduleScroll.scrollLeft - dragState.originScrollLeft;
-    const deltaY = event.clientY - dragState.originY + scheduleScroll.scrollTop - dragState.originScrollTop;
-    if (!dragState.moved && Math.hypot(deltaX, deltaY) < 5) return;
+      const deltaX = event.clientX - dragState.originX + scheduleScroll.scrollLeft - dragState.originScrollLeft;
+      const deltaY = event.clientY - dragState.originY + scheduleScroll.scrollTop - dragState.originScrollTop;
+      if (!dragState.moved && Math.hypot(deltaX, deltaY) < 5) return;
 
-    event.preventDefault();
-    dragState.moved = true;
-    card.classList.add("is-dragging");
-    card.setAttribute("aria-grabbed", "true");
-    dragState.nextDay = clamp(dragState.originalDay + Math.round(deltaX / dragState.dayWidth), 1, 7);
-    dragState.nextStart = clamp(
-      dragState.originalStart + Math.round(deltaY / dragState.slotHeight) * snapMinutes,
-      timelineStart,
-      timelineEnd - course.duration,
-    );
-    placeCourseCard(card, dragState.nextDay, dragState.nextStart, course.duration);
-    card.querySelector(".course-time").textContent = `${formatTime(dragState.nextStart)} - ${formatTime(dragState.nextStart + course.duration)}`;
-  });
+      event.preventDefault();
+      dragState.moved = true;
+      card.classList.add("is-dragging");
+      card.setAttribute("aria-grabbed", "true");
+      dragState.nextDay = clamp(dragState.originalDay + Math.round(deltaX / dragState.dayWidth), 1, 7);
+      dragState.nextStart = clamp(
+        dragState.originalStart + Math.round(deltaY / dragState.slotHeight) * snapMinutes,
+        timelineStart,
+        timelineEnd - course.duration,
+      );
+      placeCourseCard(card, dragState.nextDay, dragState.nextStart, course.duration);
+      card.querySelector(".course-time").textContent = `${formatTime(dragState.nextStart)} - ${formatTime(dragState.nextStart + course.duration)}`;
+    });
 
-  card.addEventListener("pointerup", (event) => {
-    if (!dragState || event.pointerId !== dragState.pointerId) return;
-    if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
-    if (!dragState.moved) {
+    card.addEventListener("pointerup", async (event) => {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
+      if (!dragState.moved) {
+        dragState = null;
+        return;
+      }
+
+      suppressClick = true;
+      const candidate = { ...course, day: dragState.nextDay, startTime: dragState.nextStart };
       dragState = null;
-      return;
-    }
+      card.classList.remove("is-dragging");
+      card.removeAttribute("aria-grabbed");
 
-    suppressClick = true;
-    const candidate = { ...course, day: dragState.nextDay, startTime: dragState.nextStart };
-    if (hasConflict(candidate, course.id)) {
-      showStatus("该时间段已有课程，已恢复原位置");
-    } else {
-      course.day = candidate.day;
-      course.startTime = candidate.startTime;
-      saveSchedule();
-      showStatus(`已调整至${days[course.day - 1]} ${formatTime(course.startTime)}`);
-    }
-    dragState = null;
-    window.requestAnimationFrame(renderSchedule);
-  });
+      if (hasConflict(candidate, course.id)) {
+        showStatus("该时间段已有课程，已恢复原位置");
+        renderSchedule();
+        return;
+      }
 
-  card.addEventListener("pointercancel", () => {
-    dragState = null;
-    renderSchedule();
-  });
+      card.classList.add("is-saving");
+      showStatus("正在保存课程时间…");
+      await persistCourseUpdate(course, candidate, `已调整至${days[candidate.day - 1]} ${formatTime(candidate.startTime)}`);
+    });
+
+    card.addEventListener("pointercancel", () => {
+      dragState = null;
+      renderSchedule();
+    });
+  }
 
   card.addEventListener("click", (event) => {
     if (suppressClick) {
@@ -320,103 +376,272 @@ function updateDialogDetails(course) {
   document.querySelector("#dialogAccent").style.background = typeColors[course.type];
 }
 
+function refreshOpenDialog() {
+  if (!dialog.open || !selectedCourseId) return;
+  const course = schedule.find((item) => item.id === selectedCourseId);
+  if (!course) {
+    dialog.close();
+    return;
+  }
+  updateDialogDetails(course);
+}
+
 function populateFormOptions() {
   days.forEach((day, index) => dayInput.add(new Option(day, String(index + 1))));
-  for (let duration = 10; duration <= 240; duration += 10) {
-    durationInput.add(new Option(formatDuration(duration), String(duration)));
+  for (let minutes = 30; minutes <= 240; minutes += 10) {
+    durationInput.add(new Option(formatDuration(minutes), String(minutes)));
   }
 }
 
-function updateStartTimeLimit() {
-  const duration = Number(durationInput.value) || 10;
-  const maximumStart = timelineEnd - duration;
-  startTimeInput.max = formatTime(maximumStart);
-  if (startTimeInput.value && parseTime(startTimeInput.value) > maximumStart) {
-    startTimeInput.value = formatTime(maximumStart);
-  }
-}
-
-function setEditing(isEditing) {
-  dialog.classList.toggle("is-editing", isEditing);
-  courseForm.hidden = !isEditing;
-  dialogDetails.hidden = isEditing;
-}
-
-function beginEditing() {
+function setEditing(editing) {
   const course = schedule.find((item) => item.id === selectedCourseId);
-  if (!course) return;
-  courseForm.elements.name.value = course.name;
-  courseForm.elements.teacher.value = course.teacher;
-  courseForm.elements.room.value = course.room;
-  courseForm.elements.type.value = course.type;
-  courseForm.elements.day.value = String(course.day);
-  courseForm.elements.startTime.value = formatTime(course.startTime);
-  courseForm.elements.duration.value = String(course.duration);
-  updateStartTimeLimit();
-  setEditing(true);
-  courseForm.elements.name.focus();
-  courseForm.elements.name.select();
+  const shouldEdit = Boolean(editing && canEdit && course);
+  dialog.classList.toggle("is-editing", shouldEdit);
+  courseForm.hidden = !shouldEdit;
+  dialogDetails.hidden = shouldEdit;
+  editCourseButton.hidden = !canEdit || shouldEdit;
+  if (!shouldEdit || !course) return;
+
+  document.querySelector("#courseNameInput").value = course.name;
+  document.querySelector("#courseTeacherInput").value = course.teacher;
+  document.querySelector("#courseRoomInput").value = course.room;
+  document.querySelector("#courseTypeInput").value = course.type;
+  dayInput.value = String(course.day);
+  startTimeInput.value = formatTime(course.startTime);
+  durationInput.value = String(course.duration);
+  document.querySelector("#courseNameInput").focus();
 }
 
-function closeCourseDialog() {
-  setEditing(false);
-  dialog.close();
-}
+async function persistCourseUpdate(original, candidate, successMessage) {
+  if (!canEdit) {
+    showStatus("当前为只读模式，请先以管理员身份登录");
+    renderSchedule();
+    return false;
+  }
 
-function changeWeek(offset) {
-  selectedWeekStart = addDays(selectedWeekStart, offset * 7);
+  const { data, error } = await supabaseClient
+    .from("courses")
+    .update(toDatabaseUpdate(candidate))
+    .eq("id", original.id)
+    .eq("version", original.version)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    const isConflict = error.code === "23P01" || error.message.toLowerCase().includes("conflict");
+    showStatus(isConflict ? "该时间段已有课程，修改未保存" : "保存失败，请检查连接后重试");
+    await loadSchedule({ quiet: true });
+    return false;
+  }
+
+  if (!data) {
+    showStatus("这门课程刚被其他设备修改，请确认最新内容后重试");
+    await loadSchedule({ quiet: true });
+    return false;
+  }
+
+  const savedCourse = mapCourse(data);
+  schedule = schedule.map((course) => course.id === savedCourse.id ? savedCourse : course);
+  sortSchedule();
   renderSchedule();
+  refreshOpenDialog();
+  showStatus(successMessage);
+  return true;
 }
 
-durationInput.addEventListener("change", updateStartTimeLimit);
+function sortSchedule() {
+  schedule.sort((first, second) => first.day - second.day || first.startTime - second.startTime);
+}
 
-courseForm.addEventListener("submit", (event) => {
+async function loadSchedule({ quiet = false } = {}) {
+  if (!quiet) setSyncState("connecting", "正在读取课程");
+  const { data, error } = await supabaseClient
+    .from("courses")
+    .select("*")
+    .order("day", { ascending: true })
+    .order("start_time", { ascending: true });
+
+  if (error) {
+    setSyncState("offline", "连接中断");
+    showStatus("无法读取云端课程，请稍后刷新页面");
+    return false;
+  }
+
+  schedule = data.map(mapCourse);
+  renderSchedule();
+  refreshOpenDialog();
+  if (!quiet) setSyncState("connecting", "正在建立实时同步");
+  return true;
+}
+
+function applyRealtimeChange(payload) {
+  if (payload.eventType === "DELETE") {
+    schedule = schedule.filter((course) => course.id !== payload.old.id);
+  } else {
+    const incoming = mapCourse(payload.new);
+    const existingIndex = schedule.findIndex((course) => course.id === incoming.id);
+    if (existingIndex === -1) schedule.push(incoming);
+    else schedule[existingIndex] = incoming;
+  }
+  sortSchedule();
+  renderSchedule();
+  refreshOpenDialog();
+  setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
+}
+
+function subscribeToCourses() {
+  if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+  realtimeChannel = supabaseClient
+    .channel("course-schedule-live")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "courses" },
+      applyRealtimeChange,
+    )
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
+      } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+        setSyncState("offline", "实时连接中断");
+      }
+    });
+}
+
+async function applySession(session) {
+  currentSession = session;
+  canEdit = false;
+
+  if (session) {
+    const { data, error } = await supabaseClient.rpc("can_edit_courses");
+    canEdit = !error && data === true;
+    if (!canEdit) showStatus("当前账号没有课程编辑权限");
+  }
+
+  updatePermissionUI();
+  setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
+}
+
+async function handleCourseSubmit(event) {
   event.preventDefault();
   const course = schedule.find((item) => item.id === selectedCourseId);
-  if (!course) return;
+  if (!course || !canEdit) {
+    setEditing(false);
+    showStatus("当前账号没有编辑权限");
+    return;
+  }
 
   const candidate = {
     ...course,
-    name: courseForm.elements.name.value.trim(),
-    teacher: courseForm.elements.teacher.value.trim(),
-    room: courseForm.elements.room.value.trim(),
-    type: courseForm.elements.type.value,
-    day: Number(courseForm.elements.day.value),
-    startTime: parseTime(courseForm.elements.startTime.value),
-    duration: Number(courseForm.elements.duration.value),
+    name: document.querySelector("#courseNameInput").value.trim(),
+    teacher: document.querySelector("#courseTeacherInput").value.trim(),
+    room: document.querySelector("#courseRoomInput").value.trim(),
+    type: document.querySelector("#courseTypeInput").value,
+    day: Number(dayInput.value),
+    startTime: parseTime(startTimeInput.value),
+    duration: Number(durationInput.value),
   };
 
+  if (candidate.startTime % snapMinutes !== 0 || candidate.startTime < timelineStart || getCourseEnd(candidate) > timelineEnd) {
+    showStatus("课程时间需在 08:00 - 21:00 内，并按 10 分钟设置");
+    return;
+  }
   if (hasConflict(candidate, course.id)) {
     showStatus("该时间段已有课程，请选择其他时间");
     return;
   }
 
-  Object.assign(course, candidate);
-  saveSchedule();
-  renderSchedule();
-  updateDialogDetails(course);
-  setEditing(false);
-  showStatus("课程信息已保存");
-});
+  saveCourseButton.disabled = true;
+  const saved = await persistCourseUpdate(course, candidate, "课程信息已保存并同步");
+  saveCourseButton.disabled = false;
+  if (saved) setEditing(false);
+}
 
-document.querySelector("#previousWeek").addEventListener("click", () => changeWeek(-1));
-document.querySelector("#nextWeek").addEventListener("click", () => changeWeek(1));
-document.querySelector("#todayButton").addEventListener("click", () => {
-  selectedWeekStart = new Date(currentWeekStart);
-  renderSchedule();
-});
-document.querySelector("#currentWeek").addEventListener("click", () => {
-  selectedWeekStart = new Date(currentWeekStart);
-  renderSchedule();
-});
-document.querySelector("#editCourse").addEventListener("click", beginEditing);
-document.querySelector("#cancelEdit").addEventListener("click", () => setEditing(false));
-document.querySelector("#closeDialog").addEventListener("click", closeCourseDialog);
-dialog.addEventListener("click", (event) => {
-  if (event.target === dialog && !dialog.classList.contains("is-editing")) closeCourseDialog();
-});
-dialog.addEventListener("cancel", () => setEditing(false));
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  const email = document.querySelector("#loginEmail").value.trim().toLowerCase();
+  if (email !== ADMIN_EMAIL) {
+    showStatus("此邮箱没有课程编辑权限");
+    return;
+  }
 
-populateFormOptions();
-renderSchedule();
-if (window.lucide) window.lucide.createIcons();
+  loginSubmit.disabled = true;
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: SITE_URL,
+      shouldCreateUser: true,
+    },
+  });
+  loginSubmit.disabled = false;
+
+  if (error) {
+    showStatus("登录邮件发送失败，请稍后重试");
+    return;
+  }
+
+  loginDialog.close();
+  loginForm.reset();
+  showStatus("登录链接已发送，请前往邮箱查收");
+}
+
+function bindEvents() {
+  document.querySelector("#previousWeek").addEventListener("click", () => {
+    selectedWeekStart = addDays(selectedWeekStart, -7);
+    renderSchedule();
+  });
+  document.querySelector("#nextWeek").addEventListener("click", () => {
+    selectedWeekStart = addDays(selectedWeekStart, 7);
+    renderSchedule();
+  });
+  document.querySelector("#currentWeek").addEventListener("click", () => {
+    selectedWeekStart = new Date(currentWeekStart);
+    renderSchedule();
+  });
+  document.querySelector("#todayButton").addEventListener("click", () => {
+    selectedWeekStart = new Date(currentWeekStart);
+    renderSchedule();
+  });
+  document.querySelector("#closeDialog").addEventListener("click", () => dialog.close());
+  editCourseButton.addEventListener("click", () => setEditing(true));
+  document.querySelector("#cancelEdit").addEventListener("click", () => setEditing(false));
+  courseForm.addEventListener("submit", handleCourseSubmit);
+  dialog.addEventListener("close", () => {
+    selectedCourseId = null;
+    setEditing(false);
+  });
+
+  authButton.addEventListener("click", async () => {
+    if (currentSession) {
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) showStatus("退出失败，请稍后重试");
+      else showStatus("已退出管理员模式");
+      return;
+    }
+    loginDialog.showModal();
+    document.querySelector("#loginEmail").focus();
+  });
+  document.querySelector("#closeLoginDialog").addEventListener("click", () => loginDialog.close());
+  loginForm.addEventListener("submit", handleLoginSubmit);
+}
+
+async function initializeApp() {
+  populateFormOptions();
+  bindEvents();
+  renderSchedule();
+  if (window.lucide) window.lucide.createIcons();
+
+  const { data: { session }, error } = await supabaseClient.auth.getSession();
+  if (error) showStatus("登录状态读取失败，当前以只读模式打开");
+  await applySession(session);
+  await loadSchedule();
+  subscribeToCourses();
+
+  supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
+    window.setTimeout(() => applySession(nextSession), 0);
+  });
+}
+
+initializeApp().catch(() => {
+  setSyncState("offline", "初始化失败");
+  showStatus("页面初始化失败，请刷新后重试");
+});
