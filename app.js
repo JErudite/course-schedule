@@ -8,10 +8,10 @@ const timelineEnd = 21 * 60;
 const snapMinutes = 10;
 const slotCount = (timelineEnd - timelineStart) / snapMinutes;
 const repeatPresets = new Set([1, 2, 3, 7]);
+const scheduleTimeZone = "Asia/Shanghai";
 
-let scheduleToday = startOfDay(new Date());
+let scheduleToday = getScheduleToday();
 let currentWeekStart = startOfWeek(scheduleToday);
-let semesterStart = getAcademicPeriod(scheduleToday).semesterStart;
 let selectedWeekStart = new Date(currentWeekStart);
 let selectedCourseId = null;
 let selectedOccurrenceDate = null;
@@ -112,41 +112,43 @@ function startOfDay(date) {
   return result;
 }
 
+function getScheduleToday() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: scheduleTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return new Date(Number(values.year), Number(values.month) - 1, Number(values.day));
+}
+
 function getAcademicPeriod(date) {
   const year = date.getFullYear();
   const month = date.getMonth();
   let academicStartYear;
   let semesterName;
-  let semesterStartDate;
 
   if (month === 0) {
     academicStartYear = year - 1;
     semesterName = "秋季学期";
-    semesterStartDate = new Date(academicStartYear, 7, 1);
   } else if (month >= 7) {
     academicStartYear = year;
     semesterName = "秋季学期";
-    semesterStartDate = new Date(year, 7, 1);
   } else {
     academicStartYear = year - 1;
     semesterName = "春季学期";
-    semesterStartDate = new Date(year, 1, 1);
   }
 
-  return {
-    label: `${academicStartYear} - ${academicStartYear + 1} 学年 · ${semesterName}`,
-    semesterStart: startOfWeek(semesterStartDate),
-  };
+  return `${academicStartYear} - ${academicStartYear + 1} 学年 · ${semesterName}`;
 }
 
 function updateAcademicPeriod() {
-  const period = getAcademicPeriod(scheduleToday);
-  semesterStart = period.semesterStart;
-  document.querySelector("#termLabel").textContent = period.label;
+  document.querySelector("#termLabel").textContent = getAcademicPeriod(scheduleToday);
 }
 
 function refreshCurrentDate() {
-  const nextToday = startOfDay(new Date());
+  const nextToday = getScheduleToday();
   if (sameDay(nextToday, scheduleToday)) return;
 
   const wasShowingCurrentWeek = sameDay(selectedWeekStart, currentWeekStart);
@@ -200,7 +202,11 @@ function getRepeatDescription(interval) {
 }
 
 function getWeekNumber(date) {
-  return Math.floor(daysBetween(semesterStart, date) / 7) + 1;
+  const isoDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const weekday = isoDate.getUTCDay() || 7;
+  isoDate.setUTCDate(isoDate.getUTCDate() + 4 - weekday);
+  const isoYearStart = new Date(Date.UTC(isoDate.getUTCFullYear(), 0, 1));
+  return Math.ceil(((isoDate - isoYearStart) / (24 * 60 * 60 * 1000) + 1) / 7);
 }
 
 function createElement(tag, className, text) {
