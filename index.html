@@ -4,14 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f8f5" />
-    <title>我的课程表</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'none'"
     />
-    <link rel="stylesheet" href="styles.css?v=20260801-1" />
+    <title>我的课程表</title>
+    <link rel="stylesheet" href="styles.css?v=20260801-2" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -46,7 +45,7 @@
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">课</span>
           <div>
-            <p class="eyebrow">2025 - 2026 学年 · 春季学期</p>
+            <p class="eyebrow" id="termLabel">正在读取当前学期</p>
             <h1>我的课程表</h1>
           </div>
         </div>
@@ -56,8 +55,8 @@
             <i data-lucide="chevron-left"></i>
           </button>
           <button class="week-picker" id="currentWeek" type="button" aria-label="返回本周">
-            <span id="weekLabel">第 9 周</span>
-            <small id="weekRange">4月13日 - 4月19日</small>
+            <span id="weekLabel">本周</span>
+            <small id="weekRange">正在读取日期</small>
           </button>
           <button class="icon-button" id="nextWeek" type="button" aria-label="下一周" title="下一周">
             <i data-lucide="chevron-right"></i>
@@ -251,8 +250,8 @@
 
     <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
 
-    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260801-1"></script>
+    <script src="vendor/lucide-0.468.0.min.js"></script>
+    <script src="vendor/supabase-2.111.0.min.js"></script>
+    <script src="app.js?v=20260801-2"></script>
   </body>
 </html>

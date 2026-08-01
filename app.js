@@ -7,11 +7,11 @@ const timelineStart = 8 * 60;
 const timelineEnd = 21 * 60;
 const snapMinutes = 10;
 const slotCount = (timelineEnd - timelineStart) / snapMinutes;
-const semesterStart = startOfWeek(new Date(2026, 1, 16));
-const scheduleToday = new Date(2026, 3, 13);
-const currentWeekStart = startOfWeek(scheduleToday);
 const repeatPresets = new Set([1, 2, 3, 7]);
 
+let scheduleToday = startOfDay(new Date());
+let currentWeekStart = startOfWeek(scheduleToday);
+let semesterStart = getAcademicPeriod(scheduleToday).semesterStart;
 let selectedWeekStart = new Date(currentWeekStart);
 let selectedCourseId = null;
 let selectedOccurrenceDate = null;
@@ -112,6 +112,60 @@ function startOfDay(date) {
   return result;
 }
 
+function getAcademicPeriod(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  let academicStartYear;
+  let semesterName;
+  let semesterStartDate;
+
+  if (month === 0) {
+    academicStartYear = year - 1;
+    semesterName = "秋季学期";
+    semesterStartDate = new Date(academicStartYear, 7, 1);
+  } else if (month >= 7) {
+    academicStartYear = year;
+    semesterName = "秋季学期";
+    semesterStartDate = new Date(year, 7, 1);
+  } else {
+    academicStartYear = year - 1;
+    semesterName = "春季学期";
+    semesterStartDate = new Date(year, 1, 1);
+  }
+
+  return {
+    label: `${academicStartYear} - ${academicStartYear + 1} 学年 · ${semesterName}`,
+    semesterStart: startOfWeek(semesterStartDate),
+  };
+}
+
+function updateAcademicPeriod() {
+  const period = getAcademicPeriod(scheduleToday);
+  semesterStart = period.semesterStart;
+  document.querySelector("#termLabel").textContent = period.label;
+}
+
+function refreshCurrentDate() {
+  const nextToday = startOfDay(new Date());
+  if (sameDay(nextToday, scheduleToday)) return;
+
+  const wasShowingCurrentWeek = sameDay(selectedWeekStart, currentWeekStart);
+  scheduleToday = nextToday;
+  currentWeekStart = startOfWeek(scheduleToday);
+  if (wasShowingCurrentWeek) selectedWeekStart = new Date(currentWeekStart);
+  updateAcademicPeriod();
+  renderSchedule();
+}
+
+function startDateAutoRefresh() {
+  updateAcademicPeriod();
+  window.setInterval(refreshCurrentDate, 60 * 1000);
+  window.addEventListener("focus", refreshCurrentDate);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshCurrentDate();
+  });
+}
+
 function formatMonthDay(date) {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
@@ -146,7 +200,7 @@ function getRepeatDescription(interval) {
 }
 
 function getWeekNumber(date) {
-  return Math.floor((date - semesterStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return Math.floor(daysBetween(semesterStart, date) / 7) + 1;
 }
 
 function createElement(tag, className, text) {
@@ -333,7 +387,7 @@ function renderSchedule() {
   const totalMinutes = occurrences.reduce((total, occurrence) => total + occurrence.course.duration, 0);
   weekLabel.textContent = `第 ${weekNumber} 周`;
   weekRange.textContent = `${formatMonthDay(selectedWeekStart)} - ${formatMonthDay(weekEnd)}`;
-  document.querySelector("#todayText").textContent = `${days[scheduleToday.getDay() - 1]}，${formatMonthDay(scheduleToday)}`;
+  document.querySelector("#todayText").textContent = `${days[(scheduleToday.getDay() + 6) % 7]}，${formatMonthDay(scheduleToday)}`;
   document.querySelector("#courseCount").textContent = String(schedule.length);
   document.querySelector("#occurrenceCount").textContent = String(occurrences.length);
   document.querySelector("#durationCount").textContent = (totalMinutes / 60).toFixed(1).replace(".0", "");
@@ -755,20 +809,17 @@ async function deleteSelectedCourse() {
   const course = schedule.find((item) => item.id === selectedCourseId);
   if (!course || !canEdit) return;
   confirmDeleteButton.disabled = true;
-  const { data, error } = await supabaseClient
-    .from("courses")
-    .delete()
-    .eq("id", course.id)
-    .eq("version", course.version)
-    .select()
-    .maybeSingle();
+  const { data: deleted, error } = await supabaseClient.rpc("delete_course", {
+    p_course_id: course.id,
+    p_expected_version: course.version,
+  });
   confirmDeleteButton.disabled = false;
 
   if (error) {
     showStatus("删除失败，请检查连接后重试");
     return;
   }
-  if (!data) {
+  if (!deleted) {
     showStatus("课程已在其他设备变更，请刷新后重试");
     await loadSchedule({ quiet: true });
     deleteDialog.close();
@@ -1085,6 +1136,7 @@ function bindEvents() {
 
 async function initializeApp() {
   populateDurationOptions();
+  startDateAutoRefresh();
   bindEvents();
   renderSchedule();
   if (window.lucide) window.lucide.createIcons();
