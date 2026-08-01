@@ -19,6 +19,16 @@ const colorPalette = [
   { value: "#795548", label: "棕色", color: "#795548" },
   { value: "#607d8b", label: "灰蓝", color: "#607d8b" },
 ];
+const petCatalog = [
+  { id: "cat", name: "猫咪", mood: "开心", image: "assets/pets/cat.png", animation: "pet-bounce" },
+  { id: "dog", name: "小狗", mood: "兴奋", image: "assets/pets/dog.png", animation: "pet-wag" },
+  { id: "rabbit", name: "兔子", mood: "活泼", image: "assets/pets/rabbit.png", animation: "pet-hop" },
+  { id: "hamster", name: "仓鼠", mood: "满足", image: "assets/pets/hamster.png", animation: "pet-nibble" },
+  { id: "fox", name: "狐狸", mood: "害羞", image: "assets/pets/fox.png", animation: "pet-sway" },
+  { id: "panda", name: "熊猫", mood: "困困", image: "assets/pets/panda.png", animation: "pet-doze" },
+  { id: "bear", name: "小熊", mood: "友好", image: "assets/pets/bear.png", animation: "pet-wave" },
+  { id: "frog", name: "青蛙", mood: "惊喜", image: "assets/pets/frog.png", animation: "pet-pop" },
+];
 const timelineStart = 8 * 60;
 const timelineEnd = 21 * 60;
 const snapMinutes = 10;
@@ -82,9 +92,12 @@ const deleteStudentDialog = document.querySelector("#deleteStudentDialog");
 const confirmDeleteStudentButton = document.querySelector("#confirmDeleteStudent");
 const lessonSummary = document.querySelector("#lessonSummary");
 const scheduleSection = document.querySelector("#scheduleSection");
-const adminPage = document.querySelector("#adminPage");
+const adminHub = document.querySelector("#adminHub");
+const studentManagementPage = document.querySelector("#studentManagementPage");
+const petManagementPage = document.querySelector("#petManagementPage");
 const pageFooter = document.querySelector("#pageFooter");
 const copyModeBar = document.querySelector("#copyModeBar");
+const visitorPet = document.querySelector("#visitorPet");
 
 if (!window.supabase) {
   setSyncState("offline", "连接组件加载失败");
@@ -442,22 +455,62 @@ function updateLessonSummary() {
   document.querySelector("#lifetimeLessonCount").textContent = String(Number(currentUser?.lesson_count) || 0);
 }
 
+function updateVisitorPet() {
+  const pet = petCatalog.find((item) => item.id === currentUser?.pet);
+  visitorPet.hidden = canEdit || !currentUser || !pet;
+  if (!pet) return;
+  const image = document.querySelector("#visitorPetImage");
+  image.src = pet.image;
+  image.alt = `${pet.name}，${pet.mood}表情`;
+  image.className = `pet-image ${pet.animation}`;
+  document.querySelector("#visitorPetMood").textContent = `${pet.mood}表情`;
+  document.querySelector("#visitorPetName").textContent = pet.name;
+}
+
+function hideAdminPages() {
+  adminHub.hidden = true;
+  studentManagementPage.hidden = true;
+  petManagementPage.hidden = true;
+}
+
 function showScheduleView() {
   scheduleSection.hidden = false;
   pageFooter.hidden = false;
-  adminPage.hidden = true;
+  hideAdminPages();
   document.body.classList.remove("is-admin-view");
   renderSchedule();
 }
 
-async function showAdminView() {
+function renderAdminHubCounts() {
+  document.querySelector("#adminStudentCount").textContent = `${students.length} 人`;
+  document.querySelector("#assignedPetCount").textContent = `${students.filter((student) => student.pet).length} 人已分配`;
+}
+
+async function showAdminHub() {
   if (!canEdit) return;
   await loadStudents();
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
-  adminPage.hidden = false;
+  hideAdminPages();
+  adminHub.hidden = false;
   document.body.classList.add("is-admin-view");
+  document.querySelector("#openStudentManagement").focus();
+}
+
+async function showStudentManagement() {
+  if (!canEdit) return;
+  await loadStudents();
+  hideAdminPages();
+  studentManagementPage.hidden = false;
   document.querySelector("#studentUsernameInput").focus();
+}
+
+async function showPetManagement() {
+  if (!canEdit) return;
+  await loadStudents();
+  hideAdminPages();
+  petManagementPage.hidden = false;
+  document.querySelector("#petStudentList")?.querySelector("button")?.focus();
 }
 
 function updateCopyModeUI() {
@@ -481,6 +534,7 @@ function updatePermissionUI() {
     ? `${currentUser?.username || "管理员"} · 可管理课程、学生账号和课次进度`
     : `${currentUser?.username || "访客"} · 只显示分配给你的课程`;
   updateLessonSummary();
+  updateVisitorPet();
 
   authButton.setAttribute("aria-label", "退出登录");
   authButton.innerHTML = `<i data-lucide="log-out"></i><span>退出登录</span>`;
@@ -494,6 +548,13 @@ function updatePermissionUI() {
   if (window.lucide) window.lucide.createIcons();
   renderSchedule();
   refreshOpenDialog();
+}
+
+function getCourseStudentNames(course) {
+  if (!canEdit) return [currentUser?.username].filter(Boolean);
+  return students
+    .filter((student) => course.studentIds.includes(student.id))
+    .map((student) => student.username);
 }
 
 function renderSchedule() {
@@ -533,18 +594,20 @@ function renderSchedule() {
 
   const occurrences = getVisibleOccurrences();
   occurrences.forEach(({ course, date, dayIndex }) => {
+    const studentNames = getCourseStudentNames(course);
+    const studentText = studentNames.length ? studentNames.join("、") : "未分配学生";
     const card = createElement("button", `course-card${canEdit ? " is-editable" : " is-readonly"}`);
     card.type = "button";
     card.dataset.courseId = course.id;
     card.dataset.occurrenceDate = toISODate(date);
     placeCourseCard(card, dayIndex, course.startTime, course.duration);
     applyCourseColor(card, getEffectiveCourseColor(course));
-    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${getRepeatDescription(course.repeatIntervalDays, course.repeatCount)}`);
+    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，上课学生：${studentText}`);
     card.title = canEdit ? "拖动将移动整个课程系列，点击可编辑详情" : "点击查看课程详情";
     card.append(
       createElement("strong", "", course.name),
       createElement("span", "course-time", `${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`),
-      createElement("span", "course-repeat", getRepeatDescription(course.repeatIntervalDays, course.repeatCount)),
+      createElement("span", "course-students", studentText),
     );
     enableCourseInteraction(card, course, { date, dayIndex });
     grid.append(card);
@@ -1138,7 +1201,7 @@ async function applyStudentRealtimeChange() {
 
   const { data, error } = await supabaseClient
     .from("students")
-    .select("lesson_count, current_lesson_count, required_lesson_count, color")
+    .select("lesson_count, current_lesson_count, required_lesson_count, color, pet")
     .eq("id", currentUser.id)
     .single();
   if (!error && data) {
@@ -1146,7 +1209,9 @@ async function applyStudentRealtimeChange() {
     currentUser.current_lesson_count = Number(data.current_lesson_count) || 0;
     currentUser.required_lesson_count = Number(data.required_lesson_count) || 0;
     currentUser.color = data.color || "";
+    currentUser.pet = data.pet || "";
     updateLessonSummary();
+    updateVisitorPet();
     renderSchedule();
   }
 }
@@ -1182,7 +1247,7 @@ async function loadStudents() {
   }
   const { data, error } = await supabaseClient
     .from("students")
-    .select("id, username, lesson_count, current_lesson_count, required_lesson_count, color, created_at")
+    .select("id, username, lesson_count, current_lesson_count, required_lesson_count, color, pet, created_at")
     .eq("is_admin", false)
     .order("created_at", { ascending: true });
   if (error) {
@@ -1195,8 +1260,11 @@ async function loadStudents() {
     current_lesson_count: Number(student.current_lesson_count) || 0,
     required_lesson_count: Number(student.required_lesson_count) || 0,
     color: student.color || "",
+    pet: student.pet || "",
   }));
   renderStudentList();
+  renderPetStudentList();
+  renderAdminHubCounts();
   renderSchedule();
   return true;
 }
@@ -1307,6 +1375,96 @@ function renderStudentList() {
   if (window.lucide) window.lucide.createIcons();
 }
 
+function createPetVisual(pet, className = "") {
+  const visual = createElement("div", `pet-visual${className ? ` ${className}` : ""}`);
+  const image = createElement("img", `pet-image ${pet.animation}`);
+  const copy = createElement("div", "pet-visual-copy");
+  image.src = pet.image;
+  image.alt = `${pet.name}，${pet.mood}表情`;
+  image.loading = "lazy";
+  copy.append(createElement("strong", "", pet.name), createElement("small", "", `${pet.mood}表情`));
+  visual.append(image, copy);
+  return visual;
+}
+
+function renderPetStudentList() {
+  const list = document.querySelector("#petStudentList");
+  list.replaceChildren();
+  students.forEach((student) => {
+    const row = createElement("section", "pet-student-row");
+    const header = createElement("div", "pet-student-header");
+    const identity = createElement("div", "pet-student-identity");
+    const color = createElement("i", "student-color-indicator");
+    const current = createElement("div", "pet-current");
+    const chooseButton = createElement("button", "secondary-button pet-choose-button");
+    const chooser = createElement("div", "pet-choice-grid");
+    const assignedPet = petCatalog.find((pet) => pet.id === student.pet);
+    color.style.setProperty("--student-color", student.color || defaultCourseColor);
+    color.setAttribute("aria-hidden", "true");
+    identity.append(color, createElement("strong", "", student.username));
+
+    if (assignedPet) current.append(createPetVisual(assignedPet, "is-current"));
+    else {
+      const empty = createElement("div", "pet-empty-preview");
+      empty.innerHTML = '<i data-lucide="paw-print"></i><span>暂未分配</span>';
+      current.append(empty);
+    }
+
+    chooseButton.type = "button";
+    chooseButton.innerHTML = '<i data-lucide="paw-print"></i><span>选择宠物</span>';
+    chooseButton.setAttribute("aria-expanded", "false");
+    chooseButton.addEventListener("click", () => {
+      const willOpen = chooser.hidden;
+      chooser.hidden = !willOpen;
+      chooseButton.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) chooser.querySelector("button")?.focus();
+    });
+    header.append(identity, current, chooseButton);
+
+    const noneButton = createElement("button", `pet-choice${student.pet ? "" : " is-selected"}`);
+    noneButton.type = "button";
+    noneButton.innerHTML = '<span class="pet-none-icon"><i data-lucide="circle-slash-2"></i></span><strong>暂不分配</strong><small>无宠物</small>';
+    noneButton.addEventListener("click", () => saveStudentPet(student.id, "", chooser));
+    chooser.append(noneButton);
+
+    petCatalog.forEach((pet) => {
+      const option = createElement("button", `pet-choice${student.pet === pet.id ? " is-selected" : ""}`);
+      option.type = "button";
+      option.setAttribute("aria-label", `分配${pet.name}给${student.username}，${pet.mood}表情`);
+      option.append(createPetVisual(pet, "is-choice"));
+      option.addEventListener("click", () => saveStudentPet(student.id, pet.id, chooser));
+      chooser.append(option);
+    });
+    chooser.hidden = true;
+    row.append(header, chooser);
+    list.append(row);
+  });
+  document.querySelector("#petStudentCount").textContent = `${students.length} 人`;
+  document.querySelector("#petStudentListEmpty").hidden = students.length > 0;
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function saveStudentPet(studentId, petId, chooser) {
+  if (!canEdit) return;
+  chooser.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+  const { error } = await supabaseClient.rpc("set_student_pet", {
+    p_student_id: studentId,
+    p_pet: petId || null,
+  });
+  if (error) {
+    showStatus("宠物分配失败，请稍后重试");
+    await loadStudents();
+    return;
+  }
+
+  const student = students.find((item) => item.id === studentId);
+  if (student) student.pet = petId;
+  renderPetStudentList();
+  renderAdminHubCounts();
+  const pet = petCatalog.find((item) => item.id === petId);
+  showStatus(pet ? `已把${pet.name}分配给${student?.username || "该学生"}` : `已取消${student?.username || "该学生"}的宠物`);
+}
+
 async function saveStudentLearningProfile(studentId, fields, button) {
   if (!canEdit) return;
   const currentCount = Number(fields.currentInput.value);
@@ -1393,7 +1551,7 @@ async function applySession(session) {
     students = [];
     appShell.hidden = true;
     loginScreen.hidden = false;
-    adminPage.hidden = true;
+    hideAdminPages();
     scheduleSection.hidden = false;
     pageFooter.hidden = false;
     clearCopyMode();
@@ -1410,7 +1568,7 @@ async function applySession(session) {
 
   const { data: profile, error } = await supabaseClient
     .from("students")
-    .select("id, username, is_admin, lesson_count, current_lesson_count, required_lesson_count, color")
+    .select("id, username, is_admin, lesson_count, current_lesson_count, required_lesson_count, color, pet")
     .eq("id", session.user.id)
     .single();
 
@@ -1426,6 +1584,7 @@ async function applySession(session) {
     current_lesson_count: Number(profile.current_lesson_count) || 0,
     required_lesson_count: Number(profile.required_lesson_count) || 0,
     color: profile.color || "",
+    pet: profile.pet || "",
   };
   canEdit = profile.is_admin === true;
   if (canEdit) await loadStudents();
@@ -1577,8 +1736,12 @@ function bindEvents() {
     if (error) showStatus("退出失败，请稍后重试");
   });
 
-  document.querySelector("#studentManagerButton").addEventListener("click", showAdminView);
-  document.querySelector("#closeAdminPage").addEventListener("click", showScheduleView);
+  document.querySelector("#studentManagerButton").addEventListener("click", showAdminHub);
+  document.querySelector("#closeAdminHub").addEventListener("click", showScheduleView);
+  document.querySelector("#openStudentManagement").addEventListener("click", showStudentManagement);
+  document.querySelector("#openPetManagement").addEventListener("click", showPetManagement);
+  document.querySelector("#closeStudentManagement").addEventListener("click", showAdminHub);
+  document.querySelector("#closePetManagement").addEventListener("click", showAdminHub);
   studentForm.addEventListener("submit", handleStudentSubmit);
   document.querySelector("#cancelDeleteStudent").addEventListener("click", () => deleteStudentDialog.close());
   confirmDeleteStudentButton.addEventListener("click", deleteSelectedStudent);

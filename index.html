@@ -10,7 +10,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'none'"
     />
     <title>我的课程表</title>
-    <link rel="stylesheet" href="styles.css?v=20260801-7" />
+    <link rel="stylesheet" href="styles.css?v=20260801-8" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -90,6 +90,13 @@
             <h2 id="scheduleTitle">本周安排</h2>
           </div>
           <div class="section-actions">
+            <div class="visitor-pet" id="visitorPet" hidden>
+              <img id="visitorPetImage" src="" alt="" />
+              <div>
+                <small id="visitorPetMood"></small>
+                <strong id="visitorPetName"></strong>
+              </div>
+            </div>
             <div class="lesson-summary" id="lessonSummary" hidden>
               <div class="lesson-stat">
                 <small>当前已上</small>
@@ -131,15 +138,42 @@
         </div>
       </section>
 
-      <section class="admin-page" id="adminPage" aria-labelledby="adminPageTitle" hidden>
+      <section class="admin-page admin-hub" id="adminHub" aria-labelledby="adminHubTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">功能管理</p>
+            <h2 id="adminHubTitle">管理后台</h2>
+          </div>
+          <button class="secondary-button" id="closeAdminHub" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回课程表</span>
+          </button>
+        </div>
+        <div class="admin-feature-grid">
+          <button class="admin-feature-button" id="openStudentManagement" type="button">
+            <span class="admin-feature-icon is-student"><i data-lucide="users-round"></i></span>
+            <strong>学生管理</strong>
+            <span id="adminStudentCount">0 人</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openPetManagement" type="button">
+            <span class="admin-feature-icon is-pet"><i data-lucide="paw-print"></i></span>
+            <strong>宠物分配</strong>
+            <span id="assignedPetCount">0 人已分配</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="admin-page" id="studentManagementPage" aria-labelledby="studentManagementTitle" hidden>
         <div class="admin-page-header">
           <div>
             <p class="eyebrow">学生与访问权限</p>
-            <h2 id="adminPageTitle">管理后台</h2>
+            <h2 id="studentManagementTitle">学生管理</h2>
           </div>
-          <button class="secondary-button" id="closeAdminPage" type="button">
+          <button class="secondary-button" id="closeStudentManagement" type="button">
             <i data-lucide="arrow-left"></i>
-            <span>返回课程表</span>
+            <span>返回管理后台</span>
           </button>
         </div>
 
@@ -174,6 +208,25 @@
         </div>
         <div class="student-list" id="studentList"></div>
         <p class="empty-list-hint" id="studentListEmpty">暂无访客账号</p>
+      </section>
+
+      <section class="admin-page pet-management-page" id="petManagementPage" aria-labelledby="petManagementTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学生个性化</p>
+            <h2 id="petManagementTitle">宠物分配</h2>
+          </div>
+          <button class="secondary-button" id="closePetManagement" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+        <div class="pet-list-heading">
+          <strong>学生与专属宠物</strong>
+          <span id="petStudentCount">0 人</span>
+        </div>
+        <div class="pet-student-list" id="petStudentList"></div>
+        <p class="empty-list-hint" id="petStudentListEmpty">暂无学生账号</p>
       </section>
 
       <footer class="page-footer" id="pageFooter">
@@ -343,6 +396,6 @@
 
     <script src="vendor/lucide-0.468.0.min.js"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20260801-7"></script>
+    <script src="app.js?v=20260801-8"></script>
   </body>
 </html>
