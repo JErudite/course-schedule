@@ -330,6 +330,202 @@ def milk_dragon(frame: int) -> Image.Image:
     return image
 
 
+def zoo_pet(frame: int, spec: dict) -> Image.Image:
+    image = Image.new("RGBA", (CANVAS, CANVAS))
+    draw = ImageDraw.Draw(image)
+    body = spec["body"]
+    light = spec.get("light", (247, 214, 169, 255))
+    dark = spec.get("dark", tuple(max(channel - 38, 0) for channel in body[:3]) + (255,))
+    kind = spec["kind"]
+
+    shadow(image, (99, 321, 285, 350))
+    if kind == "peacock":
+        for bounds, color in [
+            ((93, 133, 291, 310), (69, 157, 129, 255)),
+            ((112, 150, 272, 303), (80, 181, 145, 255)),
+        ]:
+            ellipse(draw, bounds, color)
+        for x, y in [(128, 176), (192, 151), (256, 176), (145, 234), (239, 234)]:
+            ellipse(draw, (x - 12, y - 12, x + 12, y + 12), (61, 94, 143, 255))
+            ellipse(draw, (x - 6, y - 6, x + 6, y + 6), (246, 197, 68, 255))
+    elif kind == "flamingo":
+        line(draw, [(166, 257), (160, 336)], dark, 8)
+        line(draw, [(218, 257), (224, 336)], dark, 8)
+    elif kind == "snake":
+        ellipse(draw, (118, 243, 266, 330), dark)
+        ellipse(draw, (136, 258, 248, 309), (0, 0, 0, 0))
+
+    if kind == "lion":
+        ellipse(draw, (91, 65, 293, 246), dark)
+    elif kind == "peacock":
+        pass
+    elif kind not in ("seal", "dolphin", "snake", "flamingo"):
+        ellipse(draw, (148, 231, 179, 335), dark)
+        ellipse(draw, (205, 231, 236, 335), dark)
+
+    if kind == "giraffe":
+        rounded(draw, (165, 153, 219, 274), 24, body)
+        gradient_ellipse(image, (139, 211, 245, 315), body, dark)
+    elif kind == "gorilla":
+        gradient_ellipse(image, (113, 184, 271, 316), body, dark)
+        capsule(image, (112, 252), (86, 32), 72, dark)
+        capsule(image, (272, 252), (86, 32), -72, dark)
+    elif kind == "kangaroo":
+        gradient_ellipse(image, (132, 188, 252, 317), body, dark)
+        ellipse(draw, (157, 230, 227, 297), light)
+        line(draw, [(246, 270), (305, 311)], dark, 19)
+    elif kind == "flamingo":
+        gradient_ellipse(image, (131, 190, 253, 285), body, dark)
+    elif kind == "seal":
+        gradient_ellipse(image, (120, 190, 264, 326), body, dark)
+        capsule(image, (119, 260), (65, 27), 48, dark)
+        capsule(image, (265, 260), (65, 27), -48, dark)
+    elif kind == "dolphin":
+        gradient_ellipse(image, (130, 183, 254, 322), body, dark)
+        polygon(draw, [(192, 303), (165, 339), (192, 329), (219, 339)], dark)
+        capsule(image, (125, 247), (65, 24), 38, dark)
+        capsule(image, (259, 247), (65, 24), -38, dark)
+    elif kind == "snake":
+        rounded(draw, (165, 177, 219, 286), 27, body)
+    else:
+        gradient_ellipse(image, (128, 188, 256, 313), body, dark)
+        ellipse(draw, (156, 218, 228, 302), light)
+
+    draw = ImageDraw.Draw(image)
+    if kind in ("lion", "tiger", "leopard", "red_panda", "raccoon", "wolf"):
+        polygon(draw, [(122, 121), (143, 72), (176, 123)], dark)
+        polygon(draw, [(208, 123), (241, 72), (262, 121)], dark)
+        polygon(draw, [(137, 114), (146, 89), (166, 119)], light)
+        polygon(draw, [(218, 119), (238, 89), (247, 114)], light)
+    elif kind in ("elephant", "koala"):
+        ellipse(draw, (78, 102, 150, 208), dark)
+        ellipse(draw, (234, 102, 306, 208), dark)
+        ellipse(draw, (92, 118, 143, 190), light)
+        ellipse(draw, (241, 118, 292, 190), light)
+    elif kind in ("monkey", "gorilla"):
+        ellipse(draw, (87, 117, 145, 187), dark)
+        ellipse(draw, (239, 117, 297, 187), dark)
+    elif kind in ("giant_panda", "polar_bear", "hippo"):
+        ellipse(draw, (105, 91, 155, 141), dark)
+        ellipse(draw, (229, 91, 279, 141), dark)
+    elif kind in ("giraffe", "deer", "alpaca"):
+        ellipse(draw, (122, 91, 158, 133), dark)
+        ellipse(draw, (226, 91, 262, 133), dark)
+    elif kind == "rhino":
+        ellipse(draw, (111, 96, 153, 140), dark)
+        ellipse(draw, (231, 96, 273, 140), dark)
+    elif kind == "kangaroo":
+        ellipse(draw, (127, 47, 163, 134), dark)
+        ellipse(draw, (221, 47, 257, 134), dark)
+        ellipse(draw, (139, 60, 153, 119), light)
+        ellipse(draw, (231, 60, 245, 119), light)
+    elif kind in ("owl", "parrot", "peacock"):
+        polygon(draw, [(123, 123), (143, 83), (174, 126)], body)
+        polygon(draw, [(210, 126), (241, 83), (261, 123)], body)
+
+    head_bounds = (108, 88, 276, 231) if kind not in ("giraffe", "kangaroo") else (116, 83, 268, 218)
+    gradient_ellipse(image, head_bounds, spec.get("head", body), dark)
+    draw = ImageDraw.Draw(image)
+
+    if kind == "alpaca":
+        for x, y in [(134, 101), (151, 90), (171, 87), (192, 85), (213, 87), (233, 91), (250, 103)]:
+            ellipse(draw, (x - 18, y - 15, x + 18, y + 16), light)
+    if kind == "giraffe":
+        line(draw, [(144, 101), (137, 64)], dark, 8)
+        line(draw, [(240, 101), (247, 64)], dark, 8)
+        ellipse(draw, (128, 54, 146, 72), dark)
+        ellipse(draw, (238, 54, 256, 72), dark)
+    if kind == "deer":
+        for side in (-1, 1):
+            x = 192 + side * 48
+            line(draw, [(x, 104), (x + side * 8, 67), (x + side * 23, 52)], dark, 5)
+            line(draw, [(x + side * 6, 74), (x - side * 6, 58)], dark, 4)
+    if kind == "lion":
+        ellipse(draw, (150, 160, 234, 219), light)
+    if kind == "giant_panda":
+        ellipse(draw, (132, 124, 174, 179), (65, 57, 72, 255))
+        ellipse(draw, (210, 124, 252, 179), (65, 57, 72, 255))
+    if kind in ("red_panda", "raccoon"):
+        polygon(draw, [(119, 135), (174, 119), (176, 171), (128, 176)], dark)
+        polygon(draw, [(265, 135), (210, 119), (208, 171), (256, 176)], dark)
+    if kind == "tiger":
+        for x in (144, 192, 240):
+            polygon(draw, [(x - 8, 101), (x, 127), (x + 8, 101)], dark)
+    if kind == "zebra":
+        for x in (139, 172, 212, 245):
+            polygon(draw, [(x - 10, 96), (x + 5, 139), (x + 13, 96)], dark)
+        for y in (221, 251, 281):
+            line(draw, [(143, y), (166, y + 9)], dark, 6)
+            line(draw, [(241, y), (218, y + 9)], dark, 6)
+    if kind == "leopard":
+        for x, y in [(137, 118), (192, 108), (246, 119), (151, 199), (233, 198), (165, 249), (222, 268)]:
+            ellipse(draw, (x - 5, y - 5, x + 5, y + 5), dark)
+    if kind == "elephant":
+        polygon(draw, [(183, 168), (201, 168), (207, 240), (192, 259), (177, 240)], dark)
+        polygon(draw, [(167, 190), (176, 213), (160, 207)], (255, 244, 218, 255))
+        polygon(draw, [(217, 190), (208, 213), (224, 207)], (255, 244, 218, 255))
+    if kind == "rhino":
+        polygon(draw, [(179, 174), (192, 139), (205, 174)], (242, 232, 207, 255))
+    if kind == "crocodile":
+        rounded(draw, (131, 169, 253, 215), 23, light)
+        for x in range(151, 240, 22):
+            polygon(draw, [(x, 205), (x + 7, 216), (x + 14, 205)], (255, 255, 241, 255))
+    if kind in ("parrot", "peacock"):
+        polygon(draw, [(179, 168), (205, 168), (192, 191)], (247, 166, 55, 255))
+        if kind == "peacock":
+            for x in (177, 192, 207):
+                line(draw, [(x, 91), (x + (x - 192) // 2, 61)], dark, 3)
+                ellipse(draw, (x - 5, 51, x + 5, 62), (64, 141, 190, 255))
+    if kind == "flamingo":
+        polygon(draw, [(174, 164), (211, 164), (225, 181), (199, 190), (177, 182)], (64, 58, 70, 255))
+    if kind == "owl":
+        ellipse(draw, (126, 114, 187, 181), light)
+        ellipse(draw, (197, 114, 258, 181), light)
+        polygon(draw, [(183, 168), (201, 168), (192, 186)], (242, 165, 55, 255))
+    if kind == "hippo":
+        rounded(draw, (151, 167, 233, 215), 22, light)
+        ellipse(draw, (169, 180, 177, 188), dark)
+        ellipse(draw, (207, 180, 215, 188), dark)
+    if kind == "dolphin":
+        polygon(draw, [(192, 88), (174, 62), (207, 83)], dark)
+
+    face(draw, frame, 146, 33, "tongue" if kind in ("dog", "monkey", "seal") else "cute", spec.get("iris", (116, 73, 116, 255)))
+    shine(image, (137, 101, 181, 135))
+    return image
+
+
+ZOO_PETS = {
+    "lion": {"kind": "lion", "body": (229, 151, 63, 255), "dark": (164, 95, 48, 255), "light": (255, 211, 135, 255)},
+    "tiger": {"kind": "tiger", "body": (242, 151, 51, 255), "dark": (78, 62, 60, 255), "light": (255, 223, 174, 255)},
+    "leopard": {"kind": "leopard", "body": (232, 177, 76, 255), "dark": (91, 70, 58, 255), "light": (255, 226, 164, 255)},
+    "elephant": {"kind": "elephant", "body": (156, 164, 187, 255), "dark": (112, 120, 148, 255), "light": (197, 204, 221, 255), "iris": (74, 111, 156, 255)},
+    "giraffe": {"kind": "giraffe", "body": (244, 194, 85, 255), "dark": (151, 96, 58, 255), "light": (255, 227, 154, 255)},
+    "zebra": {"kind": "zebra", "body": (245, 244, 239, 255), "dark": (69, 68, 78, 255), "light": (255, 255, 255, 255)},
+    "monkey": {"kind": "monkey", "body": (170, 104, 66, 255), "dark": (112, 71, 57, 255), "light": (239, 182, 127, 255)},
+    "gorilla": {"kind": "gorilla", "body": (89, 91, 106, 255), "dark": (57, 59, 71, 255), "light": (151, 145, 148, 255), "iris": (77, 99, 139, 255)},
+    "giant-panda": {"kind": "giant_panda", "body": (244, 242, 238, 255), "dark": (54, 54, 65, 255), "light": (255, 255, 255, 255)},
+    "red-panda": {"kind": "red_panda", "body": (202, 91, 54, 255), "dark": (89, 53, 59, 255), "light": (250, 205, 160, 255)},
+    "koala": {"kind": "koala", "body": (163, 169, 179, 255), "dark": (111, 116, 129, 255), "light": (212, 215, 221, 255)},
+    "kangaroo": {"kind": "kangaroo", "body": (197, 130, 77, 255), "dark": (145, 91, 60, 255), "light": (245, 194, 139, 255)},
+    "alpaca": {"kind": "alpaca", "body": (228, 210, 191, 255), "dark": (173, 142, 125, 255), "light": (255, 242, 221, 255)},
+    "deer": {"kind": "deer", "body": (188, 119, 69, 255), "dark": (107, 69, 57, 255), "light": (242, 190, 133, 255)},
+    "hippo": {"kind": "hippo", "body": (157, 133, 165, 255), "dark": (112, 93, 127, 255), "light": (216, 178, 190, 255)},
+    "rhino": {"kind": "rhino", "body": (147, 155, 164, 255), "dark": (101, 111, 120, 255), "light": (201, 207, 209, 255)},
+    "crocodile": {"kind": "crocodile", "body": (90, 166, 91, 255), "dark": (51, 113, 74, 255), "light": (164, 210, 111, 255), "iris": (76, 139, 80, 255)},
+    "polar-bear": {"kind": "polar_bear", "body": (239, 244, 246, 255), "dark": (178, 192, 202, 255), "light": (255, 255, 255, 255), "iris": (91, 132, 162, 255)},
+    "seal": {"kind": "seal", "body": (137, 158, 177, 255), "dark": (89, 111, 139, 255), "light": (198, 213, 224, 255), "iris": (72, 112, 158, 255)},
+    "dolphin": {"kind": "dolphin", "body": (92, 170, 205, 255), "dark": (52, 117, 164, 255), "light": (181, 226, 236, 255), "iris": (48, 111, 166, 255)},
+    "flamingo": {"kind": "flamingo", "body": (244, 136, 157, 255), "dark": (202, 87, 128, 255), "light": (255, 200, 208, 255)},
+    "peacock": {"kind": "peacock", "body": (55, 136, 174, 255), "dark": (45, 87, 133, 255), "light": (95, 205, 173, 255), "iris": (52, 119, 161, 255)},
+    "parrot": {"kind": "parrot", "body": (224, 73, 74, 255), "dark": (145, 54, 87, 255), "light": (255, 191, 75, 255)},
+    "owl": {"kind": "owl", "body": (159, 113, 77, 255), "dark": (94, 70, 67, 255), "light": (232, 190, 128, 255)},
+    "raccoon": {"kind": "raccoon", "body": (146, 153, 163, 255), "dark": (71, 75, 89, 255), "light": (207, 210, 211, 255)},
+    "camel": {"kind": "alpaca", "body": (205, 151, 91, 255), "dark": (146, 98, 62, 255), "light": (244, 199, 135, 255)},
+    "wolf": {"kind": "wolf", "body": (133, 147, 162, 255), "dark": (72, 82, 102, 255), "light": (208, 215, 219, 255), "iris": (72, 118, 167, 255)},
+    "snake": {"kind": "snake", "body": (98, 178, 104, 255), "dark": (49, 117, 80, 255), "light": (176, 222, 126, 255), "iris": (75, 142, 77, 255)},
+}
+
+
 PETS: dict[str, Callable[[int], Image.Image]] = {
     "cat": cat,
     "dog": dog,
@@ -341,6 +537,9 @@ PETS: dict[str, Callable[[int], Image.Image]] = {
     "frog": turtle,
     "milk-dragon": milk_dragon,
 }
+
+for zoo_pet_name, zoo_pet_spec in ZOO_PETS.items():
+    PETS[zoo_pet_name] = lambda frame, spec=zoo_pet_spec: zoo_pet(frame, spec)
 
 
 def save_gif(name: str, renderer: Callable[[int], Image.Image]) -> None:

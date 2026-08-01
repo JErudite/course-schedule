@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "我的课程表",
+    "navigationBarBackgroundColor": "#2f7659",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f6f7f4",
+    "backgroundTextStyle": "light"
+  },
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}
