@@ -13,6 +13,7 @@ const scheduleTimeZone = "Asia/Shanghai";
 let scheduleToday = getScheduleToday();
 let currentWeekStart = startOfWeek(scheduleToday);
 let selectedWeekStart = new Date(currentWeekStart);
+let weekOverviewYear = getISOWeekYear(selectedWeekStart);
 let selectedCourseId = null;
 let selectedOccurrenceDate = null;
 let formMode = "view";
@@ -22,6 +23,7 @@ let currentUser = null;
 let canEdit = false;
 let realtimeChannel = null;
 let realtimeAssignmentChannel = null;
+let realtimeStudentChannel = null;
 let selectedStudentId = null;
 let statusTimer = null;
 
@@ -29,6 +31,8 @@ const grid = document.querySelector("#scheduleGrid");
 const scheduleScroll = document.querySelector("#scheduleScroll");
 const weekLabel = document.querySelector("#weekLabel");
 const weekRange = document.querySelector("#weekRange");
+const weekOverviewDialog = document.querySelector("#weekOverviewDialog");
+const weekThumbnailGrid = document.querySelector("#weekThumbnailGrid");
 const dialog = document.querySelector("#courseDialog");
 const courseForm = document.querySelector("#courseForm");
 const dialogDetails = document.querySelector("#dialogDetails");
@@ -54,6 +58,7 @@ const studentForm = document.querySelector("#studentForm");
 const addStudentButton = document.querySelector("#addStudentButton");
 const deleteStudentDialog = document.querySelector("#deleteStudentDialog");
 const confirmDeleteStudentButton = document.querySelector("#confirmDeleteStudent");
+const lessonSummary = document.querySelector("#lessonSummary");
 
 if (!window.supabase) {
   setSyncState("offline", "连接组件加载失败");
@@ -157,6 +162,7 @@ function refreshCurrentDate() {
   if (wasShowingCurrentWeek) selectedWeekStart = new Date(currentWeekStart);
   updateAcademicPeriod();
   renderSchedule();
+  if (weekOverviewDialog.open) renderWeekOverview();
 }
 
 function startDateAutoRefresh() {
@@ -207,6 +213,64 @@ function getWeekNumber(date) {
   isoDate.setUTCDate(isoDate.getUTCDate() + 4 - weekday);
   const isoYearStart = new Date(Date.UTC(isoDate.getUTCFullYear(), 0, 1));
   return Math.ceil(((isoDate - isoYearStart) / (24 * 60 * 60 * 1000) + 1) / 7);
+}
+
+function getISOWeekYear(date) {
+  const isoDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const weekday = isoDate.getUTCDay() || 7;
+  isoDate.setUTCDate(isoDate.getUTCDate() + 4 - weekday);
+  return isoDate.getUTCFullYear();
+}
+
+function getISOWeeksInYear(year) {
+  return getWeekNumber(new Date(year, 11, 28));
+}
+
+function getISOWeekStart(year, weekNumber) {
+  const firstWeekStart = startOfWeek(new Date(year, 0, 4));
+  return addDays(firstWeekStart, (weekNumber - 1) * 7);
+}
+
+function renderWeekOverview() {
+  const totalWeeks = getISOWeeksInYear(weekOverviewYear);
+  document.querySelector("#weekOverviewTitle").textContent = `${weekOverviewYear} 年周次总览`;
+  document.querySelector("#weekOverviewYear").textContent = `${weekOverviewYear} 年`;
+  weekThumbnailGrid.replaceChildren();
+
+  for (let number = 1; number <= totalWeeks; number += 1) {
+    const start = getISOWeekStart(weekOverviewYear, number);
+    const end = addDays(start, 6);
+    const button = createElement("button", "week-thumbnail");
+    button.type = "button";
+    button.dataset.week = String(number);
+    button.classList.toggle("is-current", sameDay(start, currentWeekStart));
+    button.classList.toggle("is-selected", sameDay(start, selectedWeekStart));
+    button.setAttribute("aria-label", `选择第 ${number} 周，${formatMonthDay(start)}至${formatMonthDay(end)}`);
+
+    const miniature = createElement("span", "week-miniature");
+    miniature.setAttribute("aria-hidden", "true");
+    for (let day = 0; day < 7; day += 1) miniature.append(createElement("i"));
+    button.append(
+      createElement("strong", "", `第 ${number} 周`),
+      createElement("small", "", `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`),
+      miniature,
+    );
+    button.addEventListener("click", () => {
+      selectedWeekStart = start;
+      renderSchedule();
+      weekOverviewDialog.close();
+    });
+    weekThumbnailGrid.append(button);
+  }
+}
+
+function openWeekOverview() {
+  weekOverviewYear = getISOWeekYear(selectedWeekStart);
+  renderWeekOverview();
+  weekOverviewDialog.showModal();
+  window.requestAnimationFrame(() => {
+    weekThumbnailGrid.querySelector(".week-thumbnail.is-selected")?.scrollIntoView({ block: "center" });
+  });
 }
 
 function createElement(tag, className, text) {
@@ -308,14 +372,20 @@ function setSyncState(state, text) {
   document.querySelector("#syncStateText").textContent = text;
 }
 
+function updateLessonSummary() {
+  lessonSummary.hidden = canEdit || !currentUser;
+  document.querySelector("#lessonCount").textContent = String(Number(currentUser?.lesson_count) || 0);
+}
+
 function updatePermissionUI() {
   document.body.classList.toggle("can-edit", canEdit);
   document.querySelector("#addCourse").hidden = !canEdit;
   document.querySelector("#studentManagerButton").hidden = !canEdit;
   dialogCourseActions.hidden = !canEdit || formMode !== "view" || !selectedCourseId;
   document.querySelector("#permissionHint").textContent = canEdit
-    ? `${currentUser?.username || "管理员"} · 可管理课程和访客账号`
+    ? `${currentUser?.username || "管理员"} · 可管理课程、学生账号和累计课次`
     : `${currentUser?.username || "访客"} · 只显示分配给你的课程`;
+  updateLessonSummary();
 
   authButton.setAttribute("aria-label", "退出登录");
   authButton.innerHTML = `<i data-lucide="log-out"></i><span>退出登录</span>`;
@@ -865,9 +935,28 @@ async function applyRealtimeChange() {
   setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
 }
 
+async function applyStudentRealtimeChange() {
+  if (!currentUser) return;
+  if (canEdit) {
+    await loadStudents();
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("students")
+    .select("lesson_count")
+    .eq("id", currentUser.id)
+    .single();
+  if (!error && data) {
+    currentUser.lesson_count = Number(data.lesson_count) || 0;
+    updateLessonSummary();
+  }
+}
+
 function subscribeToCourses() {
   if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
   if (realtimeAssignmentChannel) supabaseClient.removeChannel(realtimeAssignmentChannel);
+  if (realtimeStudentChannel) supabaseClient.removeChannel(realtimeStudentChannel);
   realtimeChannel = supabaseClient
     .channel("course-schedule-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "courses" }, applyRealtimeChange)
@@ -882,6 +971,10 @@ function subscribeToCourses() {
     .channel("course-assignment-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "course_students" }, applyRealtimeChange)
     .subscribe();
+  realtimeStudentChannel = supabaseClient
+    .channel("student-stats-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "students" }, applyStudentRealtimeChange)
+    .subscribe();
 }
 
 async function loadStudents() {
@@ -891,7 +984,7 @@ async function loadStudents() {
   }
   const { data, error } = await supabaseClient
     .from("students")
-    .select("id, username, created_at")
+    .select("id, username, lesson_count, created_at")
     .eq("is_admin", false)
     .order("created_at", { ascending: true });
   if (error) {
@@ -908,7 +1001,28 @@ function renderStudentList() {
   list.replaceChildren();
   students.forEach((student) => {
     const row = createElement("div", "student-row");
-    const removeButton = createElement("button", "icon-button");
+    const countEditor = createElement("label", "lesson-count-editor");
+    const countInput = createElement("input");
+    countInput.type = "number";
+    countInput.min = "0";
+    countInput.max = "100000";
+    countInput.step = "1";
+    countInput.value = String(Number(student.lesson_count) || 0);
+    countInput.setAttribute("aria-label", `${student.username}累计已上课次数`);
+
+    const saveButton = createElement("button", "icon-button save-lesson-count");
+    saveButton.type = "button";
+    saveButton.title = `保存${student.username}的课次数`;
+    saveButton.setAttribute("aria-label", `保存${student.username}的课次数`);
+    saveButton.innerHTML = '<i data-lucide="save"></i>';
+    saveButton.addEventListener("click", () => saveStudentLessonCount(student.id, countInput, saveButton));
+    countInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      saveButton.click();
+    });
+
+    const removeButton = createElement("button", "icon-button delete-student");
     removeButton.type = "button";
     removeButton.title = `删除${student.username}`;
     removeButton.setAttribute("aria-label", `删除${student.username}`);
@@ -918,12 +1032,41 @@ function renderStudentList() {
       document.querySelector("#deleteStudentName").textContent = student.username;
       deleteStudentDialog.showModal();
     });
-    row.append(createElement("strong", "", student.username), removeButton);
+    countEditor.append(createElement("span", "", "累计已上"), countInput, createElement("span", "", "次"));
+    const actions = createElement("div", "student-row-actions");
+    actions.append(saveButton, removeButton);
+    row.append(createElement("strong", "", student.username), countEditor, actions);
     list.append(row);
   });
   document.querySelector("#studentCount").textContent = `${students.length} 人`;
   document.querySelector("#studentListEmpty").hidden = students.length > 0;
   if (window.lucide) window.lucide.createIcons();
+}
+
+async function saveStudentLessonCount(studentId, input, button) {
+  if (!canEdit) return;
+  const lessonCount = Number(input.value);
+  if (!Number.isInteger(lessonCount) || lessonCount < 0 || lessonCount > 100000) {
+    showStatus("累计课次数需为 0 - 100000 的整数");
+    return;
+  }
+
+  button.disabled = true;
+  const { error } = await supabaseClient.rpc("set_student_lesson_count", {
+    p_student_id: studentId,
+    p_lesson_count: lessonCount,
+  });
+  button.disabled = false;
+  if (error) {
+    showStatus("课次数保存失败，请稍后重试");
+    await loadStudents();
+    return;
+  }
+
+  const student = students.find((item) => item.id === studentId);
+  if (student) student.lesson_count = lessonCount;
+  input.value = String(lessonCount);
+  showStatus(`已保存${student?.username || "该学生"}的累计课次数`);
 }
 
 async function handleStudentSubmit(event) {
@@ -974,8 +1117,10 @@ async function applySession(session) {
     loginScreen.hidden = false;
     if (realtimeChannel) await supabaseClient.removeChannel(realtimeChannel);
     if (realtimeAssignmentChannel) await supabaseClient.removeChannel(realtimeAssignmentChannel);
+    if (realtimeStudentChannel) await supabaseClient.removeChannel(realtimeStudentChannel);
     realtimeChannel = null;
     realtimeAssignmentChannel = null;
+    realtimeStudentChannel = null;
     renderSchedule();
     if (window.lucide) window.lucide.createIcons();
     return;
@@ -983,7 +1128,7 @@ async function applySession(session) {
 
   const { data: profile, error } = await supabaseClient
     .from("students")
-    .select("id, username, is_admin")
+    .select("id, username, is_admin, lesson_count")
     .eq("id", session.user.id)
     .single();
 
@@ -993,7 +1138,7 @@ async function applySession(session) {
     return;
   }
 
-  currentUser = profile;
+  currentUser = { ...profile, lesson_count: Number(profile.lesson_count) || 0 };
   canEdit = profile.is_admin === true;
   if (canEdit) await loadStudents();
   appShell.hidden = false;
@@ -1083,9 +1228,15 @@ function bindEvents() {
     selectedWeekStart = addDays(selectedWeekStart, 7);
     renderSchedule();
   });
-  document.querySelector("#currentWeek").addEventListener("click", () => {
-    selectedWeekStart = new Date(currentWeekStart);
-    renderSchedule();
+  document.querySelector("#currentWeek").addEventListener("click", openWeekOverview);
+  document.querySelector("#closeWeekOverview").addEventListener("click", () => weekOverviewDialog.close());
+  document.querySelector("#previousWeekYear").addEventListener("click", () => {
+    weekOverviewYear -= 1;
+    renderWeekOverview();
+  });
+  document.querySelector("#nextWeekYear").addEventListener("click", () => {
+    weekOverviewYear += 1;
+    renderWeekOverview();
   });
   document.querySelector("#todayButton").addEventListener("click", () => {
     selectedWeekStart = new Date(currentWeekStart);

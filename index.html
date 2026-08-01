@@ -10,7 +10,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'none'"
     />
     <title>我的课程表</title>
-    <link rel="stylesheet" href="styles.css?v=20260801-3" />
+    <link rel="stylesheet" href="styles.css?v=20260801-4" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -54,7 +54,7 @@
           <button class="icon-button" id="previousWeek" type="button" aria-label="上一周" title="上一周">
             <i data-lucide="chevron-left"></i>
           </button>
-          <button class="week-picker" id="currentWeek" type="button" aria-label="返回本周">
+          <button class="week-picker" id="currentWeek" type="button" aria-label="选择周次">
             <span id="weekLabel">本周</span>
             <small id="weekRange">正在读取日期</small>
           </button>
@@ -73,8 +73,8 @@
             <span>返回本周</span>
           </button>
           <button class="today-button student-manager-button" id="studentManagerButton" type="button" hidden>
-            <i data-lucide="users"></i>
-            <span>账号管理</span>
+            <i data-lucide="settings-2"></i>
+            <span>管理后台</span>
           </button>
           <button class="auth-button is-authenticated" id="authButton" type="button" aria-label="退出登录">
             <i data-lucide="log-out"></i>
@@ -89,10 +89,19 @@
             <p class="eyebrow" id="todayText">周一，4月13日</p>
             <h2 id="scheduleTitle">本周安排</h2>
           </div>
-          <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
-            <i data-lucide="plus"></i>
-            <span>新增课程</span>
-          </button>
+          <div class="section-actions">
+            <div class="lesson-summary" id="lessonSummary" hidden>
+              <span class="lesson-summary-icon" aria-hidden="true"><i data-lucide="graduation-cap"></i></span>
+              <div>
+                <small>累计已上课</small>
+                <strong><span id="lessonCount">0</span> 次</strong>
+              </div>
+            </div>
+            <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
+              <i data-lucide="plus"></i>
+              <span>新增课程</span>
+            </button>
+          </div>
         </div>
 
         <div class="schedule-scroll" id="scheduleScroll">
@@ -109,6 +118,28 @@
         <p id="permissionHint">只读模式 · 管理员的修改会实时显示在这里</p>
       </footer>
     </main>
+
+    <dialog class="week-overview-dialog" id="weekOverviewDialog">
+      <div class="week-overview-header">
+        <div>
+          <p class="eyebrow">全年周次</p>
+          <h3 id="weekOverviewTitle">2026 年周次总览</h3>
+        </div>
+        <button class="icon-button" id="closeWeekOverview" type="button" aria-label="关闭" title="关闭">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="week-year-controls" aria-label="切换年份">
+        <button class="icon-button" id="previousWeekYear" type="button" aria-label="上一年" title="上一年">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <strong id="weekOverviewYear">2026 年</strong>
+        <button class="icon-button" id="nextWeekYear" type="button" aria-label="下一年" title="下一年">
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+      <div class="week-thumbnail-grid" id="weekThumbnailGrid" aria-label="全年周次列表"></div>
+    </dialog>
 
     <dialog class="course-dialog" id="courseDialog">
       <div class="dialog-accent" id="dialogAccent"></div>
@@ -212,8 +243,8 @@
     <dialog class="student-dialog" id="studentDialog">
       <div class="login-dialog-header">
         <div>
-          <p class="eyebrow">后台管理</p>
-          <h3>访客账号授权</h3>
+          <p class="eyebrow">学生与访问权限</p>
+          <h3>管理后台</h3>
         </div>
         <button class="icon-button" id="closeStudentDialog" type="button" aria-label="关闭" title="关闭">
           <i data-lucide="x"></i>
@@ -231,7 +262,7 @@
       </form>
       <p class="shared-password-note"><i data-lucide="key-round"></i><span>所有访客账号统一使用密码 <strong>88888888</strong></span></p>
       <div class="student-list-heading">
-        <strong>已授权访客</strong>
+        <strong>学生账号与累计课次</strong>
         <span id="studentCount">0 人</span>
       </div>
       <div class="student-list" id="studentList"></div>
@@ -252,6 +283,6 @@
 
     <script src="vendor/lucide-0.468.0.min.js"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20260801-3"></script>
+    <script src="app.js?v=20260801-4"></script>
   </body>
 </html>
