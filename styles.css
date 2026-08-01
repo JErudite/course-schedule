@@ -472,7 +472,15 @@ h1 {
   align-items: center;
   gap: 7px;
   padding-right: 12px;
+  border: 0;
   border-right: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.visitor-pet:hover strong {
+  color: var(--green);
 }
 
 .visitor-pet img {
@@ -493,7 +501,19 @@ h1 {
 }
 
 .visitor-pet strong {
+  display: block;
+  max-width: 110px;
+  overflow: hidden;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visitor-pet > svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: var(--muted);
 }
 
 .lesson-summary {
@@ -1477,6 +1497,45 @@ body.is-selecting-course {
   padding: 14px 0;
 }
 
+.student-sort-toolbar {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.student-sort-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.student-sort-toolbar svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.student-sort-toolbar select {
+  height: 34px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+}
+
+.student-sort-toolbar > span {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .admin-page .student-list-heading > div {
   display: grid;
   gap: 4px;
@@ -1520,6 +1579,42 @@ body.is-selecting-course {
   min-width: 0;
   align-items: center;
   gap: 10px;
+}
+
+.student-drag-handle {
+  display: grid;
+  width: 20px;
+  height: 32px;
+  flex: 0 0 20px;
+  place-items: center;
+  color: #a7afa9;
+  cursor: grab;
+}
+
+.student-drag-handle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.student-row:not(.is-draggable) .student-drag-handle {
+  visibility: hidden;
+}
+
+.student-row.is-draggable {
+  transition: background-color 140ms ease, opacity 140ms ease;
+}
+
+.student-row.is-draggable:hover {
+  background: #fafbf9;
+}
+
+.student-row.is-dragging {
+  opacity: 0.42;
+}
+
+.student-row.is-drop-target {
+  background: var(--green-soft);
+  box-shadow: inset 0 2px 0 var(--green);
 }
 
 .student-color-picker {
@@ -1700,6 +1795,16 @@ body.is-admin-view .topbar-actions {
   font-size: 11px;
 }
 
+.pet-list-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.pet-list-heading small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .pet-student-list {
   display: grid;
 }
@@ -1707,6 +1812,11 @@ body.is-admin-view .topbar-actions {
 .pet-student-row {
   padding: 18px 0;
   border-bottom: 1px solid var(--line-soft);
+}
+
+.pet-student-row.is-admin-pet {
+  border-bottom-color: #ead9a4;
+  background: linear-gradient(90deg, rgba(242, 233, 201, 0.42), transparent 72%);
 }
 
 .pet-student-header {
@@ -1730,6 +1840,22 @@ body.is-admin-view .topbar-actions {
   gap: 10px;
 }
 
+.pet-student-identity strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-admin-label {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--yellow-soft);
+  color: #665522;
+  font-size: 9px;
+  font-weight: 700;
+}
+
 .pet-current {
   min-width: 0;
 }
@@ -1744,6 +1870,30 @@ body.is-admin-view .topbar-actions {
   height: 56px;
   flex: 0 0 56px;
   object-fit: contain;
+}
+
+.pet-assignment-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pet-exclusive-label {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid #ded09b;
+  border-radius: 6px;
+  background: var(--yellow-soft);
+  color: #665522;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pet-exclusive-label svg {
+  width: 15px;
+  height: 15px;
 }
 
 .pet-visual-copy {
@@ -1822,6 +1972,15 @@ body.is-admin-view .topbar-actions {
   height: 58px;
 }
 
+.pet-choice .pet-visual {
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pet-choice .pet-visual-copy {
+  align-items: center;
+}
+
 .pet-choice strong {
   font-size: 11px;
 }
@@ -1843,6 +2002,352 @@ body.is-admin-view .topbar-actions {
   width: 30px;
   height: 30px;
 }
+
+.pet-resource-editor {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) repeat(2, minmax(150px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: #fafbf9;
+}
+
+.pet-resource-level {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 3px 9px;
+}
+
+.pet-resource-level small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pet-resource-level strong {
+  color: var(--green);
+  font-size: 18px;
+}
+
+.pet-resource-level span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-resource-field {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pet-resource-input {
+  display: grid;
+  height: 38px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.pet-resource-input:focus-within {
+  border-color: #7eaa91;
+  box-shadow: 0 0 0 3px rgba(47, 107, 79, 0.12);
+}
+
+.pet-resource-input input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 9px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.pet-resource-input small {
+  padding-right: 9px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pet-resource-input:has(input:disabled) {
+  background: #f1f3ef;
+  opacity: 0.7;
+}
+
+.pet-resource-save {
+  height: 38px;
+  white-space: nowrap;
+}
+
+.pet-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
+  column-gap: 34px;
+  border-top: 1px solid var(--line);
+}
+
+.pet-profile-panel {
+  display: grid;
+  grid-row: span 2;
+  align-content: start;
+  gap: 22px;
+  padding: 30px 34px 30px 0;
+  border-right: 1px solid var(--line);
+}
+
+.pet-portrait-stage {
+  position: relative;
+  display: grid;
+  min-height: 340px;
+  place-items: center;
+  border: 1px solid #dedfd8;
+  border-radius: 8px;
+  background: #f4eee8;
+  overflow: hidden;
+}
+
+.pet-detail-image {
+  width: min(280px, 80%);
+  height: 300px;
+  object-fit: contain;
+}
+
+.pet-level-badge {
+  position: absolute;
+  z-index: 2;
+  top: 16px;
+  left: 16px;
+  min-width: 58px;
+  padding: 7px 10px;
+  border: 1px solid rgba(29, 36, 32, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pet-profile-copy > small,
+.pet-panel-heading small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pet-profile-copy h3 {
+  margin: 4px 0 18px;
+  font-size: 24px;
+}
+
+.pet-name-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.pet-name-save {
+  color: var(--green);
+}
+
+.pet-progress-panel,
+.pet-checkin-panel {
+  padding: 28px 0 26px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pet-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pet-panel-heading h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+.pet-coin-balance,
+.pet-streak,
+.pet-total-experience,
+.pet-food-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pet-coin-balance,
+.pet-streak {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #ded09b;
+  border-radius: 6px;
+  background: var(--yellow-soft);
+  color: #665522;
+}
+
+.pet-coin-balance svg,
+.pet-streak svg,
+.pet-total-experience svg,
+.pet-food-cost svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pet-coin-balance span,
+.pet-streak span {
+  font-size: 10px;
+}
+
+.pet-level-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.pet-level-row strong {
+  color: var(--green);
+  font-size: 26px;
+}
+
+.pet-level-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pet-progress-track {
+  height: 12px;
+  margin-top: 10px;
+  border: 1px solid #d9dfda;
+  border-radius: 6px;
+  background: #edf0eb;
+  overflow: hidden;
+}
+
+.pet-progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 320ms ease;
+}
+
+.pet-total-experience {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pet-total-experience strong {
+  color: var(--ink);
+}
+
+.pet-checkin-button {
+  width: 100%;
+  height: 44px;
+  margin-top: 22px;
+}
+
+.pet-shop-panel {
+  grid-column: 1 / -1;
+  padding: 28px 0 8px;
+}
+
+.pet-shop-panel .pet-panel-heading > svg {
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+}
+
+.pet-food-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pet-food-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.pet-food-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+
+.pet-food-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.pet-food-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.pet-food-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-food-copy small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pet-food-cost {
+  color: #665522;
+  font-size: 11px;
+}
+
+.pet-feed-button {
+  height: 34px;
+  grid-column: 1 / -1;
+}
+
+@keyframes pet-milk-dragon {
+  0%, 100% { transform: translateY(1px) rotate(-1deg); }
+  45% { transform: translateY(-5px) rotate(1deg); }
+  70% { transform: translateY(-2px) rotate(0); }
+}
+
+.pet-milk-dragon { animation: pet-milk-dragon 2.6s ease-in-out infinite; }
 
 @keyframes pet-bounce {
   0%, 100% { transform: translateY(1px) rotate(-1deg); }
@@ -1945,6 +2450,49 @@ body.is-admin-view .topbar-actions {
   gap: 9px;
 }
 
+.delete-series-options {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.delete-series-button {
+  display: grid;
+  width: 100%;
+  min-height: 62px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 10px 13px;
+  border-radius: 7px;
+  text-align: left;
+}
+
+.delete-series-button > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.delete-series-button > span {
+  display: grid;
+  gap: 3px;
+}
+
+.delete-series-button strong {
+  font-size: 12px;
+}
+
+.delete-series-button small {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.78;
+}
+
+.delete-series-cancel {
+  width: 100%;
+  height: 38px;
+}
+
 .danger-button {
   height: 40px;
   border: 1px solid #a33e35;
@@ -2014,6 +2562,39 @@ body.is-admin-view .topbar-actions {
 
   .pet-choice-grid {
     grid-template-columns: repeat(4, minmax(96px, 1fr));
+  }
+
+  .pet-resource-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pet-resource-level {
+    align-self: center;
+  }
+
+  .pet-resource-save {
+    width: 100%;
+  }
+
+  .pet-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pet-profile-panel {
+    grid-row: auto;
+    grid-template-columns: minmax(260px, 0.8fr) minmax(230px, 1fr);
+    align-items: center;
+    padding-right: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .pet-portrait-stage {
+    min-height: 300px;
+  }
+
+  .pet-detail-image {
+    height: 260px;
   }
 
   .student-table-head {
@@ -2247,12 +2828,55 @@ body.is-admin-view .topbar-actions {
     padding: 10px;
   }
 
+  .pet-resource-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pet-profile-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 22px 0;
+  }
+
+  .pet-portrait-stage {
+    min-height: 280px;
+  }
+
+  .pet-detail-image {
+    height: 240px;
+  }
+
+  .pet-profile-copy h3 {
+    font-size: 21px;
+  }
+
+  .pet-food-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pet-progress-panel,
+  .pet-checkin-panel,
+  .pet-shop-panel {
+    padding-top: 22px;
+  }
+
   .pet-choice {
     min-height: 102px;
   }
 
   .admin-page .student-list-heading > div span {
     display: none;
+  }
+
+  .student-sort-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .student-sort-toolbar > span {
+    width: 100%;
+    margin-left: 0;
   }
 
   .student-color-palette {

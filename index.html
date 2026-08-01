@@ -10,7 +10,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'none'"
     />
     <title>我的课程表</title>
-    <link rel="stylesheet" href="styles.css?v=20260801-8" />
+    <link rel="stylesheet" href="styles.css?v=20260802-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -90,13 +90,14 @@
             <h2 id="scheduleTitle">本周安排</h2>
           </div>
           <div class="section-actions">
-            <div class="visitor-pet" id="visitorPet" hidden>
+            <button class="visitor-pet" id="visitorPet" type="button" aria-label="查看我的宠物" hidden>
               <img id="visitorPetImage" src="" alt="" />
               <div>
                 <small id="visitorPetMood"></small>
                 <strong id="visitorPetName"></strong>
               </div>
-            </div>
+              <i data-lucide="chevron-right"></i>
+            </button>
             <div class="lesson-summary" id="lessonSummary" hidden>
               <div class="lesson-stat">
                 <small>当前已上</small>
@@ -191,6 +192,18 @@
           <p class="shared-password-note"><i data-lucide="key-round"></i><span>所有访客账号统一使用密码 <strong>88888888</strong></span></p>
         </div>
 
+        <div class="student-sort-toolbar">
+          <div>
+            <i data-lucide="arrow-up-down"></i>
+            <label for="studentSortMode">学生排序</label>
+          </div>
+          <select id="studentSortMode">
+            <option value="manual">手动排序</option>
+            <option value="surname">姓氏 A-Z</option>
+          </select>
+          <span id="studentDragHint">拖动学生行可调整顺序</span>
+        </div>
+
         <div class="student-list-heading">
           <div>
             <strong>学生账号、课程进度与访问权限</strong>
@@ -222,11 +235,93 @@
           </button>
         </div>
         <div class="pet-list-heading">
-          <strong>学生与专属宠物</strong>
+          <div>
+            <strong>宠物分配与资源</strong>
+            <small>管理员可设置宠物经验与金币余额</small>
+          </div>
           <span id="petStudentCount">0 人</span>
         </div>
         <div class="pet-student-list" id="petStudentList"></div>
         <p class="empty-list-hint" id="petStudentListEmpty">暂无学生账号</p>
+      </section>
+
+      <section class="admin-page pet-detail-page" id="petDetailPage" aria-labelledby="petDetailTitle" hidden>
+        <div class="admin-page-header pet-detail-header">
+          <div>
+            <p class="eyebrow">宠物空间</p>
+            <h2 id="petDetailTitle">我的宠物</h2>
+          </div>
+          <button class="secondary-button" id="closePetDetail" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回</span>
+          </button>
+        </div>
+
+        <div class="pet-detail-layout">
+          <section class="pet-profile-panel" aria-labelledby="petProfileName">
+            <div class="pet-portrait-stage">
+              <span class="pet-level-badge" id="petLevelBadge">Lv.1</span>
+              <img class="pet-detail-image" id="petDetailImage" src="" alt="" />
+            </div>
+            <div class="pet-profile-copy">
+              <small id="petSpeciesName">专属宠物</small>
+              <h3 id="petProfileName">宠物名字</h3>
+              <form class="pet-name-form" id="petNameForm">
+                <label class="form-field">
+                  <span>自定义名字</span>
+                  <input id="petNameInput" name="petName" type="text" maxlength="20" autocomplete="off" required />
+                </label>
+                <button class="icon-button pet-name-save" id="savePetName" type="submit" aria-label="保存宠物名字" title="保存宠物名字">
+                  <i data-lucide="save"></i>
+                </button>
+              </form>
+            </div>
+          </section>
+
+          <section class="pet-progress-panel" aria-labelledby="petProgressTitle">
+            <div class="pet-panel-heading">
+              <div>
+                <small>成长记录</small>
+                <h3 id="petProgressTitle">等级与经验</h3>
+              </div>
+              <div class="pet-coin-balance"><i data-lucide="coins"></i><strong id="petCoinBalance">0</strong><span>金币</span></div>
+            </div>
+            <div class="pet-level-row">
+              <strong id="petLevelText">Lv.1</strong>
+              <span id="petExperienceText">0 / 10 经验</span>
+            </div>
+            <div class="pet-progress-track" role="progressbar" aria-label="宠物升级进度" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
+              <span id="petProgressFill"></span>
+            </div>
+            <div class="pet-total-experience"><i data-lucide="sparkles"></i><span>累计经验</span><strong id="petTotalExperience">0</strong></div>
+          </section>
+
+          <section class="pet-checkin-panel" aria-labelledby="petCheckinTitle">
+            <div class="pet-panel-heading">
+              <div>
+                <small>每日成长</small>
+                <h3 id="petCheckinTitle">每日签到</h3>
+              </div>
+              <div class="pet-streak"><i data-lucide="flame"></i><strong id="petCheckinStreak">0</strong><span>天连续</span></div>
+            </div>
+            <button class="primary-button pet-checkin-button" id="petCheckinButton" type="button">
+              <i data-lucide="calendar-check-2"></i>
+              <span id="petCheckinButtonText">签到领取 2 经验</span>
+            </button>
+          </section>
+
+          <section class="pet-shop-panel" aria-labelledby="petShopTitle">
+            <div class="pet-panel-heading">
+              <div>
+                <small>宠物商城</small>
+                <h3 id="petShopTitle">食物补给</h3>
+              </div>
+              <i data-lucide="shopping-bag"></i>
+            </div>
+            <div class="pet-food-grid" id="petFoodGrid"></div>
+            <p class="empty-list-hint" id="petFoodEmpty" hidden>当前宠物暂无可用食物</p>
+          </section>
+        </div>
       </section>
 
       <footer class="page-footer" id="pageFooter">
@@ -375,11 +470,22 @@
     <dialog class="confirm-dialog" id="deleteDialog">
       <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="trash-2"></i></div>
       <h3>删除课程</h3>
-      <p>“<strong id="deleteCourseName"></strong>”及其全部重复安排都将被删除。</p>
-      <div class="confirm-actions">
+      <p id="deleteDialogText">确认删除“<strong id="deleteCourseName"></strong>”吗？</p>
+      <div class="delete-series-options" id="deleteSeriesOptions" hidden>
+        <button class="secondary-button delete-series-button" id="deleteOccurrenceOnly" type="button">
+          <i data-lucide="calendar-x-2"></i>
+          <span><strong>仅删除当天</strong><small id="deleteOccurrenceDate"></small></span>
+        </button>
+        <button class="danger-button delete-series-button" id="deleteOccurrenceFuture" type="button">
+          <i data-lucide="calendar-minus-2"></i>
+          <span><strong>删除当天及后续</strong><small>此前已重复课程不受影响</small></span>
+        </button>
+      </div>
+      <div class="confirm-actions" id="deleteSingleActions">
         <button class="secondary-button" id="cancelDelete" type="button">取消</button>
         <button class="danger-button" id="confirmDelete" type="button">确认删除</button>
       </div>
+      <button class="secondary-button delete-series-cancel" id="cancelSeriesDelete" type="button" hidden>取消</button>
     </dialog>
 
     <dialog class="confirm-dialog" id="deleteStudentDialog">
@@ -396,6 +502,6 @@
 
     <script src="vendor/lucide-0.468.0.min.js"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20260801-8"></script>
+    <script src="app.js?v=20260802-1"></script>
   </body>
 </html>

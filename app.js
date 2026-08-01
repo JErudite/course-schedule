@@ -23,11 +23,12 @@ const petCatalog = [
   { id: "cat", name: "猫咪", mood: "开心", image: "assets/pets/cat.png", animation: "pet-bounce" },
   { id: "dog", name: "小狗", mood: "兴奋", image: "assets/pets/dog.png", animation: "pet-wag" },
   { id: "rabbit", name: "兔子", mood: "活泼", image: "assets/pets/rabbit.png", animation: "pet-hop" },
-  { id: "hamster", name: "仓鼠", mood: "满足", image: "assets/pets/hamster.png", animation: "pet-nibble" },
-  { id: "fox", name: "狐狸", mood: "害羞", image: "assets/pets/fox.png", animation: "pet-sway" },
-  { id: "panda", name: "熊猫", mood: "困困", image: "assets/pets/panda.png", animation: "pet-doze" },
+  { id: "hamster", name: "小鼠", mood: "满足", image: "assets/pets/hamster.png", animation: "pet-nibble" },
+  { id: "fox", name: "花栗鼠", mood: "害羞", image: "assets/pets/fox.png", animation: "pet-sway" },
+  { id: "panda", name: "企鹅", mood: "元气", image: "assets/pets/panda.png", animation: "pet-doze" },
   { id: "bear", name: "小熊", mood: "友好", image: "assets/pets/bear.png", animation: "pet-wave" },
-  { id: "frog", name: "青蛙", mood: "惊喜", image: "assets/pets/frog.png", animation: "pet-pop" },
+  { id: "frog", name: "小龟", mood: "惊喜", image: "assets/pets/frog.png", animation: "pet-pop" },
+  { id: "milk_dragon", name: "奶龙", mood: "软萌", image: "assets/pets/milk-dragon.png", animation: "pet-milk-dragon", adminOnly: true },
 ];
 const timelineStart = 8 * 60;
 const timelineEnd = 21 * 60;
@@ -54,6 +55,10 @@ let selectedStudentId = null;
 let statusTimer = null;
 let copiedCourse = null;
 let isPastingCourse = false;
+let petFoods = [];
+let petDetailReturnView = "schedule";
+let studentSortMode = "manual";
+let draggedStudentId = null;
 
 const grid = document.querySelector("#scheduleGrid");
 const scheduleScroll = document.querySelector("#scheduleScroll");
@@ -95,6 +100,7 @@ const scheduleSection = document.querySelector("#scheduleSection");
 const adminHub = document.querySelector("#adminHub");
 const studentManagementPage = document.querySelector("#studentManagementPage");
 const petManagementPage = document.querySelector("#petManagementPage");
+const petDetailPage = document.querySelector("#petDetailPage");
 const pageFooter = document.querySelector("#pageFooter");
 const copyModeBar = document.querySelector("#copyModeBar");
 const visitorPet = document.querySelector("#visitorPet");
@@ -455,22 +461,192 @@ function updateLessonSummary() {
   document.querySelector("#lifetimeLessonCount").textContent = String(Number(currentUser?.lesson_count) || 0);
 }
 
+function normalizePetFields(profile) {
+  return {
+    ...profile,
+    pet: profile.pet || "",
+    pet_name: profile.pet_name || "",
+    pet_experience: Math.max(Number(profile.pet_experience) || 0, 0),
+    pet_coins: Math.max(Number(profile.pet_coins) || 0, 0),
+    pet_checkin_date: profile.pet_checkin_date || "",
+    pet_checkin_streak: Math.max(Number(profile.pet_checkin_streak) || 0, 0),
+  };
+}
+
+function getPetLevel(experienceValue) {
+  const experience = Math.max(Number(experienceValue) || 0, 0);
+  let completedLevels = Math.floor((-1 + Math.sqrt(1 + (0.8 * experience))) / 2);
+  const threshold = (level) => 5 * level * (level + 1);
+  while (threshold(completedLevels + 1) <= experience) completedLevels += 1;
+  while (completedLevels > 0 && threshold(completedLevels) > experience) completedLevels -= 1;
+  const level = completedLevels + 1;
+  const levelStart = threshold(completedLevels);
+  const levelEnd = threshold(completedLevels + 1);
+  return {
+    level,
+    levelStart,
+    levelEnd,
+    progress: experience - levelStart,
+    required: levelEnd - levelStart,
+  };
+}
+
+function getPetDisplayName(owner, pet) {
+  return owner?.pet_name || pet?.name || "我的宠物";
+}
+
+function isPetCheckedInToday(owner) {
+  return owner?.pet_checkin_date === toISODate(getScheduleToday());
+}
+
+function getNextCheckinExperience(owner) {
+  const today = getScheduleToday();
+  const yesterday = toISODate(addDays(today, -1));
+  const nextStreak = owner?.pet_checkin_date === yesterday
+    ? (Number(owner.pet_checkin_streak) || 0) + 1
+    : 1;
+  return nextStreak + 1;
+}
+
 function updateVisitorPet() {
   const pet = petCatalog.find((item) => item.id === currentUser?.pet);
-  visitorPet.hidden = canEdit || !currentUser || !pet;
+  visitorPet.hidden = !currentUser || !pet;
   if (!pet) return;
+  const level = getPetLevel(currentUser.pet_experience).level;
   const image = document.querySelector("#visitorPetImage");
   image.src = pet.image;
-  image.alt = `${pet.name}，${pet.mood}表情`;
+  image.alt = `${pet.name}全身画像`;
   image.className = `pet-image ${pet.animation}`;
-  document.querySelector("#visitorPetMood").textContent = `${pet.mood}表情`;
-  document.querySelector("#visitorPetName").textContent = pet.name;
+  document.querySelector("#visitorPetMood").textContent = `Lv.${level} · ${currentUser.pet_coins} 金币`;
+  document.querySelector("#visitorPetName").textContent = getPetDisplayName(currentUser, pet);
+}
+
+function getFoodIcon(foodName) {
+  if (/鱼|虾/.test(foodName)) return "fish";
+  if (/骨|磨牙/.test(foodName)) return "bone";
+  if (/胡萝卜|生菜|海藻|草/.test(foodName)) return "carrot";
+  if (/奶|奶酪/.test(foodName)) return "milk";
+  if (/糖|饼干/.test(foodName)) return "cookie";
+  if (/蛋糕|甜点/.test(foodName)) return "cake-slice";
+  return "apple";
+}
+
+function renderPetDetail() {
+  const pet = petCatalog.find((item) => item.id === currentUser?.pet);
+  if (!pet || !currentUser) return;
+  const levelInfo = getPetLevel(currentUser.pet_experience);
+  const displayName = getPetDisplayName(currentUser, pet);
+  const progressPercent = Math.min((levelInfo.progress / levelInfo.required) * 100, 100);
+  const detailImage = document.querySelector("#petDetailImage");
+  detailImage.src = pet.image;
+  detailImage.alt = `${pet.name}全身画像`;
+  detailImage.className = `pet-detail-image ${pet.animation}`;
+  document.querySelector("#petSpeciesName").textContent = `${pet.name} · ${pet.mood}`;
+  document.querySelector("#petProfileName").textContent = displayName;
+  document.querySelector("#petNameInput").value = displayName;
+  document.querySelector("#petLevelBadge").textContent = `Lv.${levelInfo.level}`;
+  document.querySelector("#petLevelText").textContent = `Lv.${levelInfo.level}`;
+  document.querySelector("#petExperienceText").textContent = `${levelInfo.progress.toLocaleString("zh-CN")} / ${levelInfo.required.toLocaleString("zh-CN")} 经验`;
+  document.querySelector("#petTotalExperience").textContent = currentUser.pet_experience.toLocaleString("zh-CN");
+  document.querySelector("#petCoinBalance").textContent = currentUser.pet_coins.toLocaleString("zh-CN");
+  document.querySelector("#petCheckinStreak").textContent = currentUser.pet_checkin_streak.toLocaleString("zh-CN");
+  const progressTrack = document.querySelector(".pet-progress-track");
+  progressTrack.setAttribute("aria-valuemax", String(levelInfo.required));
+  progressTrack.setAttribute("aria-valuenow", String(levelInfo.progress));
+  document.querySelector("#petProgressFill").style.width = `${progressPercent}%`;
+
+  const checkedIn = isPetCheckedInToday(currentUser);
+  const checkinButton = document.querySelector("#petCheckinButton");
+  checkinButton.disabled = checkedIn;
+  document.querySelector("#petCheckinButtonText").textContent = checkedIn
+    ? "今日已签到"
+    : `签到领取 ${getNextCheckinExperience(currentUser)} 经验`;
+
+  const foodGrid = document.querySelector("#petFoodGrid");
+  const foods = petFoods.filter((food) => food.pet_type === pet.id);
+  foodGrid.replaceChildren();
+  foods.forEach((food) => {
+    const card = createElement("article", "pet-food-card");
+    const icon = createElement("span", "pet-food-icon");
+    icon.innerHTML = `<i data-lucide="${getFoodIcon(food.name)}"></i>`;
+    const copy = createElement("div", "pet-food-copy");
+    copy.append(
+      createElement("strong", "", food.name),
+      createElement("small", "", `+${food.experience} 经验`),
+    );
+    const cost = createElement("span", "pet-food-cost");
+    cost.innerHTML = `<i data-lucide="coins"></i><strong>${food.coin_cost}</strong>`;
+    const feedButton = createElement("button", "secondary-button pet-feed-button");
+    feedButton.type = "button";
+    feedButton.disabled = currentUser.pet_coins < food.coin_cost;
+    feedButton.innerHTML = '<i data-lucide="utensils"></i><span>喂食</span>';
+    feedButton.addEventListener("click", () => feedCurrentPet(food, feedButton));
+    card.append(icon, copy, cost, feedButton);
+    foodGrid.append(card);
+  });
+  document.querySelector("#petFoodEmpty").hidden = foods.length > 0;
+  updateVisitorPet();
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function saveCurrentPetName(event) {
+  event.preventDefault();
+  const input = document.querySelector("#petNameInput");
+  const name = input.value.trim();
+  if (!name || name.length > 20) {
+    showStatus("宠物名字需为 1 - 20 个字符");
+    return;
+  }
+  const button = document.querySelector("#savePetName");
+  button.disabled = true;
+  const { error } = await supabaseClient.rpc("rename_my_pet", { p_name: name });
+  button.disabled = false;
+  if (error) {
+    showStatus("宠物名字保存失败，请稍后重试");
+    return;
+  }
+  currentUser.pet_name = name;
+  renderPetDetail();
+  showStatus(`宠物名字已改为“${name}”`);
+}
+
+async function checkInCurrentPet() {
+  const button = document.querySelector("#petCheckinButton");
+  button.disabled = true;
+  const { data, error } = await supabaseClient.rpc("check_in_pet");
+  if (error) {
+    showStatus(error.message?.includes("already checked") ? "今天已经签到过了" : "签到失败，请稍后重试");
+    await refreshCurrentUserPet();
+    return;
+  }
+  const result = Array.isArray(data) ? data[0] : data;
+  currentUser.pet_experience = Number(result.experience) || currentUser.pet_experience;
+  currentUser.pet_checkin_streak = Number(result.streak) || 0;
+  currentUser.pet_checkin_date = result.checkin_date || toISODate(getScheduleToday());
+  renderPetDetail();
+  showStatus(`签到成功，获得 ${result.gained_experience} 经验`);
+}
+
+async function feedCurrentPet(food, button) {
+  button.disabled = true;
+  const { data, error } = await supabaseClient.rpc("feed_my_pet", { p_food_id: food.id });
+  if (error) {
+    showStatus(error.message?.includes("not enough coins") ? "金币不足" : "喂食失败，请稍后重试");
+    await refreshCurrentUserPet();
+    return;
+  }
+  const result = Array.isArray(data) ? data[0] : data;
+  currentUser.pet_experience = Number(result.experience) || currentUser.pet_experience;
+  currentUser.pet_coins = Number(result.coins) || 0;
+  renderPetDetail();
+  showStatus(`${getPetDisplayName(currentUser)}吃下${food.name}，获得 ${result.gained_experience} 经验`);
 }
 
 function hideAdminPages() {
   adminHub.hidden = true;
   studentManagementPage.hidden = true;
   petManagementPage.hidden = true;
+  petDetailPage.hidden = true;
 }
 
 function showScheduleView() {
@@ -511,6 +687,19 @@ async function showPetManagement() {
   hideAdminPages();
   petManagementPage.hidden = false;
   document.querySelector("#petStudentList")?.querySelector("button")?.focus();
+}
+
+function showPetDetail() {
+  const pet = petCatalog.find((item) => item.id === currentUser?.pet);
+  if (!currentUser || !pet) return;
+  petDetailReturnView = "schedule";
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
+  hideAdminPages();
+  petDetailPage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  renderPetDetail();
+  document.querySelector("#petNameInput").focus();
 }
 
 function updateCopyModeUI() {
@@ -983,12 +1172,13 @@ function setCourseColor(value = "") {
 }
 
 function fillCourseForm(course) {
+  const repeatInterval = course?.repeatIntervalDays ?? null;
   document.querySelector("#courseNameInput").value = course?.name || "";
   dayStartInput.value = course?.startDate || toISODate(selectedWeekStart);
   startTimeInput.value = formatTime(course?.startTime ?? timelineStart);
   setDurationValue(course?.duration ?? 100);
   document.querySelector("#courseNotesInput").value = course?.notes || "";
-  setRepeatControls(course ? course.repeatIntervalDays : 7, course ? course.repeatCount : null);
+  setRepeatControls(repeatInterval, repeatInterval === null ? 1 : (course?.repeatCount ?? null));
   setCourseColor(course?.color || "");
   renderStudentChecklist(course?.studentIds || []);
 }
@@ -1138,18 +1328,36 @@ async function persistCourseUpdate(original, candidate, successMessage) {
   return true;
 }
 
-async function deleteSelectedCourse() {
+function setCourseDeleteButtonsDisabled(disabled) {
+  [
+    confirmDeleteButton,
+    document.querySelector("#deleteOccurrenceOnly"),
+    document.querySelector("#deleteOccurrenceFuture"),
+  ].forEach((button) => { button.disabled = disabled; });
+}
+
+async function deleteSelectedCourse(mode = "all") {
   const course = schedule.find((item) => item.id === selectedCourseId);
   if (!course || !canEdit) return;
-  confirmDeleteButton.disabled = true;
-  const { data: deleted, error } = await supabaseClient.rpc("delete_course", {
-    p_course_id: course.id,
-    p_expected_version: course.version,
-  });
-  confirmDeleteButton.disabled = false;
+  setCourseDeleteButtonsDisabled(true);
+  const response = mode === "all"
+    ? await supabaseClient.rpc("delete_course", {
+      p_course_id: course.id,
+      p_expected_version: course.version,
+    })
+    : await supabaseClient.rpc("delete_course_occurrence", {
+      p_course_id: course.id,
+      p_occurrence_date: selectedOccurrenceDate || course.startDate,
+      p_mode: mode,
+      p_expected_version: course.version,
+    });
+  setCourseDeleteButtonsDisabled(false);
+  const { data: deleted, error } = response;
 
   if (error) {
-    showStatus("删除失败，请检查连接后重试");
+    const stale = error.message?.toLowerCase().includes("stale course");
+    showStatus(stale ? "课程刚被其他设备修改，请确认后重试" : "删除失败，请检查连接后重试");
+    if (stale) await loadSchedule({ quiet: true });
     return;
   }
   if (!deleted) {
@@ -1159,11 +1367,12 @@ async function deleteSelectedCourse() {
     return;
   }
 
-  schedule = schedule.filter((item) => item.id !== course.id);
   deleteDialog.close();
   dialog.close();
-  renderSchedule();
-  showStatus("课程及其全部重复安排已删除");
+  await loadSchedule({ quiet: true });
+  if (mode === "single") showStatus("仅当天课程已删除，其他重复课程保持不变");
+  else if (mode === "future") showStatus("当天及后续课程已删除，此前课程保持不变");
+  else showStatus("课程已删除");
 }
 
 async function loadSchedule({ quiet = false } = {}) {
@@ -1196,22 +1405,32 @@ async function applyStudentRealtimeChange() {
   if (!currentUser) return;
   if (canEdit) {
     await loadStudents();
+    await refreshCurrentUserPet();
     return;
   }
 
+  await refreshCurrentUserPet();
+}
+
+async function refreshCurrentUserPet() {
+  if (!currentUser) return;
   const { data, error } = await supabaseClient
     .from("students")
-    .select("lesson_count, current_lesson_count, required_lesson_count, color, pet")
+    .select("lesson_count, current_lesson_count, required_lesson_count, color, pet, pet_name, pet_experience, pet_coins, pet_checkin_date, pet_checkin_streak")
     .eq("id", currentUser.id)
     .single();
   if (!error && data) {
-    currentUser.lesson_count = Number(data.lesson_count) || 0;
-    currentUser.current_lesson_count = Number(data.current_lesson_count) || 0;
-    currentUser.required_lesson_count = Number(data.required_lesson_count) || 0;
-    currentUser.color = data.color || "";
-    currentUser.pet = data.pet || "";
+    currentUser = normalizePetFields({
+      ...currentUser,
+      ...data,
+      lesson_count: Number(data.lesson_count) || 0,
+      current_lesson_count: Number(data.current_lesson_count) || 0,
+      required_lesson_count: Number(data.required_lesson_count) || 0,
+      color: data.color || "",
+    });
     updateLessonSummary();
     updateVisitorPet();
+    if (!petDetailPage.hidden) renderPetDetail();
     renderSchedule();
   }
 }
@@ -1247,25 +1466,44 @@ async function loadStudents() {
   }
   const { data, error } = await supabaseClient
     .from("students")
-    .select("id, username, lesson_count, current_lesson_count, required_lesson_count, color, pet, created_at")
+    .select("id, username, is_admin, lesson_count, current_lesson_count, required_lesson_count, color, pet, pet_name, pet_experience, pet_coins, pet_checkin_date, pet_checkin_streak, sort_order, created_at")
     .eq("is_admin", false)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   if (error) {
     showStatus("无法读取访客账号，请稍后重试");
     return false;
   }
-  students = data.map((student) => ({
+  students = data.map((student) => normalizePetFields({
     ...student,
     lesson_count: Number(student.lesson_count) || 0,
     current_lesson_count: Number(student.current_lesson_count) || 0,
     required_lesson_count: Number(student.required_lesson_count) || 0,
     color: student.color || "",
-    pet: student.pet || "",
+    sort_order: Number(student.sort_order) || 0,
   }));
   renderStudentList();
   renderPetStudentList();
   renderAdminHubCounts();
   renderSchedule();
+  return true;
+}
+
+async function loadPetFoods() {
+  const { data, error } = await supabaseClient
+    .from("pet_foods")
+    .select("id, pet_type, name, experience, coin_cost, sort_order")
+    .order("pet_type", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (error) {
+    petFoods = [];
+    return false;
+  }
+  petFoods = data.map((food) => ({
+    ...food,
+    experience: Number(food.experience) || 0,
+    coin_cost: Number(food.coin_cost) || 0,
+  }));
   return true;
 }
 
@@ -1286,11 +1524,20 @@ function createStudentCountField(labelText, value) {
 function renderStudentList() {
   const list = document.querySelector("#studentList");
   list.replaceChildren();
-  students.forEach((student) => {
-    const row = createElement("div", "student-row");
+  const orderedStudents = studentSortMode === "surname"
+    ? [...students].sort((first, second) => first.username.localeCompare(second.username, "zh-CN-u-co-pinyin", { sensitivity: "base" }))
+    : students;
+  orderedStudents.forEach((student) => {
+    const row = createElement("div", `student-row${studentSortMode === "manual" ? " is-draggable" : ""}`);
+    row.dataset.studentId = student.id;
+    row.draggable = studentSortMode === "manual";
     let selectedColor = student.color || "";
 
     const identity = createElement("div", "student-identity");
+    const dragHandle = createElement("span", "student-drag-handle");
+    dragHandle.innerHTML = '<i data-lucide="grip-vertical"></i>';
+    dragHandle.title = "拖动调整顺序";
+    dragHandle.setAttribute("aria-hidden", "true");
     const colorPicker = createElement("div", "student-color-picker");
     const colorButton = createElement("button", "student-color-button");
     const studentName = createElement("strong", "", student.username);
@@ -1310,7 +1557,7 @@ function renderStudentList() {
       palette.hidden = !palette.hidden;
     });
     colorPicker.append(colorButton, palette);
-    identity.append(colorPicker, studentName);
+    identity.append(dragHandle, colorPicker, studentName);
 
     const currentField = createStudentCountField(`${student.username}当前已上`, student.current_lesson_count);
     const requiredField = createStudentCountField(`${student.username}当前应上`, student.required_lesson_count);
@@ -1368,6 +1615,7 @@ function renderStudentList() {
     const actions = createElement("div", "student-row-actions");
     actions.append(saveButton, removeButton);
     row.append(identity, currentField.label, requiredField.label, remaining, lifetimeField.label, actions);
+    if (studentSortMode === "manual") bindStudentRowDrag(row, student.id);
     list.append(row);
   });
   document.querySelector("#studentCount").textContent = `${students.length} 人`;
@@ -1375,71 +1623,182 @@ function renderStudentList() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-function createPetVisual(pet, className = "") {
+function bindStudentRowDrag(row, studentId) {
+  row.addEventListener("dragstart", (event) => {
+    draggedStudentId = studentId;
+    row.classList.add("is-dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", studentId);
+  });
+  row.addEventListener("dragover", (event) => {
+    if (!draggedStudentId || draggedStudentId === studentId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".student-row.is-drop-target").forEach((item) => item.classList.remove("is-drop-target"));
+    row.classList.add("is-drop-target");
+  });
+  row.addEventListener("dragleave", () => row.classList.remove("is-drop-target"));
+  row.addEventListener("drop", async (event) => {
+    event.preventDefault();
+    row.classList.remove("is-drop-target");
+    if (!draggedStudentId || draggedStudentId === studentId) return;
+    const sourceIndex = students.findIndex((item) => item.id === draggedStudentId);
+    const targetIndex = students.findIndex((item) => item.id === studentId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const nextOrder = [...students];
+    const [moved] = nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(targetIndex, 0, moved);
+    students = nextOrder;
+    renderStudentList();
+    await saveStudentOrder();
+  });
+  row.addEventListener("dragend", () => {
+    draggedStudentId = null;
+    document.querySelectorAll(".student-row.is-dragging, .student-row.is-drop-target").forEach((item) => {
+      item.classList.remove("is-dragging", "is-drop-target");
+    });
+  });
+}
+
+async function saveStudentOrder() {
+  const { error } = await supabaseClient.rpc("reorder_students", {
+    p_student_ids: students.map((student) => student.id),
+  });
+  if (error) {
+    showStatus("学生顺序保存失败，请稍后重试");
+    await loadStudents();
+    return;
+  }
+  students.forEach((student, index) => { student.sort_order = index + 1; });
+  renderPetStudentList();
+  renderStudentChecklist(readSelectedStudentIds());
+  showStatus("学生顺序已保存");
+}
+
+function setStudentSortMode(value) {
+  studentSortMode = value === "surname" ? "surname" : "manual";
+  document.querySelector("#studentDragHint").hidden = studentSortMode !== "manual";
+  renderStudentList();
+}
+
+function createPetVisual(pet, className = "", owner = null) {
   const visual = createElement("div", `pet-visual${className ? ` ${className}` : ""}`);
   const image = createElement("img", `pet-image ${pet.animation}`);
   const copy = createElement("div", "pet-visual-copy");
   image.src = pet.image;
-  image.alt = `${pet.name}，${pet.mood}表情`;
+  image.alt = `${pet.name}全身画像`;
   image.loading = "lazy";
-  copy.append(createElement("strong", "", pet.name), createElement("small", "", `${pet.mood}表情`));
+  copy.append(
+    createElement("strong", "", getPetDisplayName(owner, pet)),
+    createElement("small", "", `${pet.name} · ${pet.mood}`),
+  );
   visual.append(image, copy);
   return visual;
+}
+
+function createPetResourceField(labelText, value, suffix) {
+  const label = createElement("label", "pet-resource-field");
+  const caption = createElement("span", "", labelText);
+  const inputWrap = createElement("div", "pet-resource-input");
+  const input = createElement("input");
+  input.type = "number";
+  input.min = "0";
+  input.step = "1";
+  input.value = String(value);
+  input.setAttribute("aria-label", labelText);
+  inputWrap.append(input, createElement("small", "", suffix));
+  label.append(caption, inputWrap);
+  return { label, input };
 }
 
 function renderPetStudentList() {
   const list = document.querySelector("#petStudentList");
   list.replaceChildren();
-  students.forEach((student) => {
-    const row = createElement("section", "pet-student-row");
+  const owners = [currentUser, ...students].filter(Boolean);
+  owners.forEach((student) => {
+    const isAdminOwner = student.is_admin === true;
+    const row = createElement("section", `pet-student-row${isAdminOwner ? " is-admin-pet" : ""}`);
     const header = createElement("div", "pet-student-header");
     const identity = createElement("div", "pet-student-identity");
     const color = createElement("i", "student-color-indicator");
     const current = createElement("div", "pet-current");
-    const chooseButton = createElement("button", "secondary-button pet-choose-button");
+    const actions = createElement("div", "pet-assignment-actions");
     const chooser = createElement("div", "pet-choice-grid");
     const assignedPet = petCatalog.find((pet) => pet.id === student.pet);
     color.style.setProperty("--student-color", student.color || defaultCourseColor);
     color.setAttribute("aria-hidden", "true");
     identity.append(color, createElement("strong", "", student.username));
+    if (isAdminOwner) identity.append(createElement("small", "pet-admin-label", "管理员"));
 
-    if (assignedPet) current.append(createPetVisual(assignedPet, "is-current"));
+    if (assignedPet) current.append(createPetVisual(assignedPet, "is-current", student));
     else {
       const empty = createElement("div", "pet-empty-preview");
       empty.innerHTML = '<i data-lucide="paw-print"></i><span>暂未分配</span>';
       current.append(empty);
     }
 
-    chooseButton.type = "button";
-    chooseButton.innerHTML = '<i data-lucide="paw-print"></i><span>选择宠物</span>';
-    chooseButton.setAttribute("aria-expanded", "false");
-    chooseButton.addEventListener("click", () => {
-      const willOpen = chooser.hidden;
-      chooser.hidden = !willOpen;
-      chooseButton.setAttribute("aria-expanded", String(willOpen));
-      if (willOpen) chooser.querySelector("button")?.focus();
-    });
-    header.append(identity, current, chooseButton);
+    if (isAdminOwner) {
+      const exclusive = createElement("span", "pet-exclusive-label");
+      exclusive.innerHTML = '<i data-lucide="shield-check"></i><span>管理员专属</span>';
+      actions.append(exclusive);
+    } else {
+      const chooseButton = createElement("button", "secondary-button pet-choose-button");
+      chooseButton.type = "button";
+      chooseButton.innerHTML = '<i data-lucide="paw-print"></i><span>选择宠物</span>';
+      chooseButton.setAttribute("aria-expanded", "false");
+      chooseButton.addEventListener("click", () => {
+        const willOpen = chooser.hidden;
+        chooser.hidden = !willOpen;
+        chooseButton.setAttribute("aria-expanded", String(willOpen));
+        if (willOpen) chooser.querySelector("button")?.focus();
+      });
+      actions.append(chooseButton);
+    }
+    header.append(identity, current, actions);
 
-    const noneButton = createElement("button", `pet-choice${student.pet ? "" : " is-selected"}`);
-    noneButton.type = "button";
-    noneButton.innerHTML = '<span class="pet-none-icon"><i data-lucide="circle-slash-2"></i></span><strong>暂不分配</strong><small>无宠物</small>';
-    noneButton.addEventListener("click", () => saveStudentPet(student.id, "", chooser));
-    chooser.append(noneButton);
+    if (!isAdminOwner) {
+      const noneButton = createElement("button", `pet-choice${student.pet ? "" : " is-selected"}`);
+      noneButton.type = "button";
+      noneButton.innerHTML = '<span class="pet-none-icon"><i data-lucide="circle-slash-2"></i></span><strong>暂不分配</strong><small>无宠物</small>';
+      noneButton.addEventListener("click", () => saveStudentPet(student.id, "", chooser));
+      chooser.append(noneButton);
 
-    petCatalog.forEach((pet) => {
-      const option = createElement("button", `pet-choice${student.pet === pet.id ? " is-selected" : ""}`);
-      option.type = "button";
-      option.setAttribute("aria-label", `分配${pet.name}给${student.username}，${pet.mood}表情`);
-      option.append(createPetVisual(pet, "is-choice"));
-      option.addEventListener("click", () => saveStudentPet(student.id, pet.id, chooser));
-      chooser.append(option);
-    });
+      petCatalog.filter((pet) => !pet.adminOnly).forEach((pet) => {
+        const option = createElement("button", `pet-choice${student.pet === pet.id ? " is-selected" : ""}`);
+        option.type = "button";
+        option.setAttribute("aria-label", `分配${pet.name}给${student.username}`);
+        option.append(createPetVisual(pet, "is-choice"));
+        option.addEventListener("click", () => saveStudentPet(student.id, pet.id, chooser));
+        chooser.append(option);
+      });
+    }
     chooser.hidden = true;
-    row.append(header, chooser);
+
+    const levelInfo = getPetLevel(student.pet_experience);
+    const resourceEditor = createElement("div", "pet-resource-editor");
+    const levelPreview = createElement("div", "pet-resource-level");
+    levelPreview.innerHTML = `<small>当前等级</small><strong>Lv.${levelInfo.level}</strong><span>${levelInfo.progress.toLocaleString("zh-CN")} / ${levelInfo.required.toLocaleString("zh-CN")} 经验</span>`;
+    const experienceField = createPetResourceField(`${student.username}的累计经验`, student.pet_experience, "经验");
+    const coinsField = createPetResourceField(`${student.username}的金币余额`, student.pet_coins, "金币");
+    const saveButton = createElement("button", "primary-button pet-resource-save");
+    saveButton.type = "button";
+    saveButton.innerHTML = '<i data-lucide="save"></i><span>保存资源</span>';
+    saveButton.disabled = !assignedPet;
+    experienceField.input.disabled = !assignedPet;
+    coinsField.input.disabled = !assignedPet;
+    saveButton.addEventListener("click", () => saveStudentPetResources(
+      student.id,
+      experienceField.input,
+      coinsField.input,
+      saveButton,
+    ));
+    resourceEditor.append(levelPreview, experienceField.label, coinsField.label, saveButton);
+
+    row.append(header, resourceEditor);
+    if (!isAdminOwner) row.append(chooser);
     list.append(row);
   });
-  document.querySelector("#petStudentCount").textContent = `${students.length} 人`;
+  document.querySelector("#petStudentCount").textContent = `${owners.length} 人（含管理员）`;
   document.querySelector("#petStudentListEmpty").hidden = students.length > 0;
   if (window.lucide) window.lucide.createIcons();
 }
@@ -1458,11 +1817,52 @@ async function saveStudentPet(studentId, petId, chooser) {
   }
 
   const student = students.find((item) => item.id === studentId);
-  if (student) student.pet = petId;
+  if (student) {
+    student.pet = petId;
+    student.pet_name = "";
+  }
   renderPetStudentList();
   renderAdminHubCounts();
   const pet = petCatalog.find((item) => item.id === petId);
   showStatus(pet ? `已把${pet.name}分配给${student?.username || "该学生"}` : `已取消${student?.username || "该学生"}的宠物`);
+}
+
+async function saveStudentPetResources(studentId, experienceInput, coinsInput, button) {
+  if (!canEdit) return;
+  const experience = Number(experienceInput.value);
+  const coins = Number(coinsInput.value);
+  if (![experience, coins].every((value) => Number.isSafeInteger(value) && value >= 0)) {
+    showStatus("经验与金币需为不小于 0 的整数");
+    return;
+  }
+
+  button.disabled = true;
+  const { error } = await supabaseClient.rpc("set_student_pet_resources", {
+    p_student_id: studentId,
+    p_experience: experience,
+    p_coins: coins,
+  });
+  button.disabled = false;
+  if (error) {
+    showStatus("宠物资源保存失败，请稍后重试");
+    await loadStudents();
+    return;
+  }
+
+  if (currentUser?.id === studentId) {
+    currentUser.pet_experience = experience;
+    currentUser.pet_coins = coins;
+  } else {
+    const student = students.find((item) => item.id === studentId);
+    if (student) {
+      student.pet_experience = experience;
+      student.pet_coins = coins;
+    }
+  }
+  renderPetStudentList();
+  updateVisitorPet();
+  if (!petDetailPage.hidden) renderPetDetail();
+  showStatus("宠物经验与金币已保存");
 }
 
 async function saveStudentLearningProfile(studentId, fields, button) {
@@ -1568,7 +1968,7 @@ async function applySession(session) {
 
   const { data: profile, error } = await supabaseClient
     .from("students")
-    .select("id, username, is_admin, lesson_count, current_lesson_count, required_lesson_count, color, pet")
+    .select("id, username, is_admin, lesson_count, current_lesson_count, required_lesson_count, color, pet, pet_name, pet_experience, pet_coins, pet_checkin_date, pet_checkin_streak")
     .eq("id", session.user.id)
     .single();
 
@@ -1578,16 +1978,16 @@ async function applySession(session) {
     return;
   }
 
-  currentUser = {
+  currentUser = normalizePetFields({
     ...profile,
     lesson_count: Number(profile.lesson_count) || 0,
     current_lesson_count: Number(profile.current_lesson_count) || 0,
     required_lesson_count: Number(profile.required_lesson_count) || 0,
     color: profile.color || "",
-    pet: profile.pet || "",
-  };
+  });
   canEdit = profile.is_admin === true;
   if (canEdit) await loadStudents();
+  await loadPetFoods();
   appShell.hidden = false;
   loginScreen.hidden = true;
   loginError.textContent = "";
@@ -1657,8 +2057,14 @@ async function handleLoginSubmit(event) {
   loginError.textContent = "";
 
   loginSubmit.disabled = true;
-  const { data: loginEmail, error: lookupError } = await supabaseClient
-    .rpc("resolve_login_email", { p_username: username });
+  let loginEmail = null;
+  let lookupError = null;
+  if (username === "管理员") loginEmail = "703223232@qq.com";
+  else {
+    const lookup = await supabaseClient.rpc("resolve_login_email", { p_username: username });
+    loginEmail = lookup.data;
+    lookupError = lookup.error;
+  }
   if (lookupError || !loginEmail) {
     loginSubmit.disabled = false;
     loginError.textContent = "用户名或密码错误";
@@ -1705,7 +2111,19 @@ function bindEvents() {
   document.querySelector("#deleteCourse").addEventListener("click", () => {
     const course = schedule.find((item) => item.id === selectedCourseId);
     if (!course || !canEdit) return;
-    document.querySelector("#deleteCourseName").textContent = course.name;
+    const isRepeating = course.repeatIntervalDays !== null;
+    const deleteText = document.querySelector("#deleteDialogText");
+    const deleteName = createElement("strong", "", course.name);
+    deleteName.id = "deleteCourseName";
+    deleteText.replaceChildren(
+      document.createTextNode(isRepeating ? "请选择如何删除“" : "确认删除“"),
+      deleteName,
+      document.createTextNode(isRepeating ? "”" : "”吗？"),
+    );
+    document.querySelector("#deleteSeriesOptions").hidden = !isRepeating;
+    document.querySelector("#deleteSingleActions").hidden = isRepeating;
+    document.querySelector("#cancelSeriesDelete").hidden = !isRepeating;
+    document.querySelector("#deleteOccurrenceDate").textContent = formatFullDate(parseISODate(selectedOccurrenceDate || course.startDate));
     deleteDialog.showModal();
   });
   document.querySelector("#cancelEdit").addEventListener("click", cancelCourseForm);
@@ -1728,7 +2146,10 @@ function bindEvents() {
   });
 
   document.querySelector("#cancelDelete").addEventListener("click", () => deleteDialog.close());
-  confirmDeleteButton.addEventListener("click", deleteSelectedCourse);
+  document.querySelector("#cancelSeriesDelete").addEventListener("click", () => deleteDialog.close());
+  confirmDeleteButton.addEventListener("click", () => deleteSelectedCourse("all"));
+  document.querySelector("#deleteOccurrenceOnly").addEventListener("click", () => deleteSelectedCourse("single"));
+  document.querySelector("#deleteOccurrenceFuture").addEventListener("click", () => deleteSelectedCourse("future"));
   document.querySelector("#cancelCopyMode").addEventListener("click", clearCopyMode);
 
   authButton.addEventListener("click", async () => {
@@ -1742,6 +2163,17 @@ function bindEvents() {
   document.querySelector("#openPetManagement").addEventListener("click", showPetManagement);
   document.querySelector("#closeStudentManagement").addEventListener("click", showAdminHub);
   document.querySelector("#closePetManagement").addEventListener("click", showAdminHub);
+  visitorPet.addEventListener("click", showPetDetail);
+  document.querySelector("#closePetDetail").addEventListener("click", () => {
+    if (petDetailReturnView === "admin") showAdminHub();
+    else showScheduleView();
+  });
+  document.querySelector("#petNameForm").addEventListener("submit", saveCurrentPetName);
+  document.querySelector("#petCheckinButton").addEventListener("click", checkInCurrentPet);
+  document.querySelector("#studentSortMode").addEventListener("change", (event) => {
+    setStudentSortMode(event.target.value);
+    window.localStorage.setItem("student-sort-mode", studentSortMode);
+  });
   studentForm.addEventListener("submit", handleStudentSubmit);
   document.querySelector("#cancelDeleteStudent").addEventListener("click", () => deleteStudentDialog.close());
   confirmDeleteStudentButton.addEventListener("click", deleteSelectedStudent);
@@ -1753,6 +2185,9 @@ function bindEvents() {
 
 async function initializeApp() {
   populateDurationOptions();
+  studentSortMode = window.localStorage.getItem("student-sort-mode") === "surname" ? "surname" : "manual";
+  document.querySelector("#studentSortMode").value = studentSortMode;
+  document.querySelector("#studentDragHint").hidden = studentSortMode !== "manual";
   startDateAutoRefresh();
   bindEvents();
   renderSchedule();
