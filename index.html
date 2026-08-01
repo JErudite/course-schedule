@@ -10,7 +10,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'none'"
     />
     <title>我的课程表</title>
-    <link rel="stylesheet" href="styles.css?v=20260802-1" />
+    <link rel="stylesheet" href="styles.css?v=20260802-2" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -90,7 +90,7 @@
             <h2 id="scheduleTitle">本周安排</h2>
           </div>
           <div class="section-actions">
-            <button class="visitor-pet" id="visitorPet" type="button" aria-label="查看我的宠物" hidden>
+            <button class="visitor-pet" id="visitorPet" type="button" aria-label="查看我的宠物中心" hidden>
               <img id="visitorPetImage" src="" alt="" />
               <div>
                 <small id="visitorPetMood"></small>
@@ -310,6 +310,37 @@
             </button>
           </section>
 
+          <section class="pet-battle-panel" id="petBattlePanel" aria-labelledby="petBattleTitle" hidden>
+            <div class="pet-panel-heading">
+              <div>
+                <small>随机匹配</small>
+                <h3 id="petBattleTitle">宠物对战</h3>
+              </div>
+              <button class="primary-button pet-battle-button" id="matchPetBattle" type="button">
+                <i data-lucide="swords"></i>
+                <span id="matchPetBattleText">匹配对手</span>
+              </button>
+            </div>
+            <div class="pet-battle-result" id="petBattleResult" hidden>
+              <div class="pet-battle-players">
+                <article class="pet-battle-player">
+                  <img id="battleMyPetImage" src="" alt="" />
+                  <div><strong id="battleMyPetName"></strong><small id="battleMyPetLevel"></small></div>
+                </article>
+                <span class="pet-battle-versus" aria-hidden="true"><i data-lucide="swords"></i></span>
+                <article class="pet-battle-player is-opponent">
+                  <img id="battleOpponentPetImage" src="" alt="" />
+                  <div><strong id="battleOpponentPetName"></strong><small id="battleOpponentPetLevel"></small></div>
+                </article>
+              </div>
+              <div class="pet-battle-outcome" id="petBattleOutcome">
+                <strong id="petBattleOutcomeTitle"></strong>
+                <span id="petBattleOutcomeText"></span>
+                <small id="petBattleReward"></small>
+              </div>
+            </div>
+          </section>
+
           <section class="pet-shop-panel" aria-labelledby="petShopTitle">
             <div class="pet-panel-heading">
               <div>
@@ -502,6 +533,6 @@
 
     <script src="vendor/lucide-0.468.0.min.js"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20260802-1"></script>
+    <script src="app.js?v=20260802-2"></script>
   </body>
 </html>

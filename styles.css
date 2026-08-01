@@ -483,6 +483,24 @@ h1 {
   color: var(--green);
 }
 
+.visitor-pet.is-unassigned {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.visitor-pet.is-unassigned img {
+  display: block;
+  width: 42px;
+  height: 42px;
+  border: 1px dashed #cbd2cc;
+  border-radius: 7px;
+  background: #f1f3f0;
+}
+
+.visitor-pet.is-unassigned:hover strong {
+  color: var(--ink);
+}
+
 .visitor-pet img {
   width: 44px;
   height: 44px;
@@ -2341,62 +2359,117 @@ body.is-admin-view .topbar-actions {
   grid-column: 1 / -1;
 }
 
-@keyframes pet-milk-dragon {
-  0%, 100% { transform: translateY(1px) rotate(-1deg); }
-  45% { transform: translateY(-5px) rotate(1deg); }
-  70% { transform: translateY(-2px) rotate(0); }
+.pet-battle-panel {
+  grid-column: 1 / -1;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
-.pet-milk-dragon { animation: pet-milk-dragon 2.6s ease-in-out infinite; }
-
-@keyframes pet-bounce {
-  0%, 100% { transform: translateY(1px) rotate(-1deg); }
-  50% { transform: translateY(-4px) rotate(1deg); }
+.pet-battle-button {
+  min-width: 128px;
 }
 
-@keyframes pet-wag {
-  0%, 100% { transform: rotate(-2deg); }
-  50% { transform: rotate(2deg) translateY(-2px); }
+.pet-battle-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(230px, 0.8fr);
+  gap: 18px;
+  margin-top: 18px;
 }
 
-@keyframes pet-hop {
-  0%, 100% { transform: translateY(1px); }
-  45% { transform: translateY(-5px) scale(1.02); }
+.pet-battle-players {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
 }
 
-@keyframes pet-nibble {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.04) rotate(-1deg); }
+.pet-battle-player {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
 }
 
-@keyframes pet-sway {
-  0%, 100% { transform: rotate(-2deg); }
-  50% { transform: rotate(2deg); }
+.pet-battle-player img {
+  width: 74px;
+  height: 74px;
+  object-fit: contain;
 }
 
-@keyframes pet-doze {
-  0%, 100% { transform: translateY(1px); }
-  50% { transform: translateY(3px) rotate(-1deg); }
+.pet-battle-player div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
 }
 
-@keyframes pet-wave {
-  0%, 100% { transform: translateX(-1px); }
-  50% { transform: translateX(2px) rotate(1deg); }
+.pet-battle-player strong,
+.pet-battle-player small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-@keyframes pet-pop {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05) translateY(-2px); }
+.pet-battle-player strong {
+  font-size: 13px;
 }
 
-.pet-bounce { animation: pet-bounce 2.4s ease-in-out infinite; }
-.pet-wag { animation: pet-wag 2.2s ease-in-out infinite; }
-.pet-hop { animation: pet-hop 2.1s ease-in-out infinite; }
-.pet-nibble { animation: pet-nibble 2.6s ease-in-out infinite; }
-.pet-sway { animation: pet-sway 2.7s ease-in-out infinite; }
-.pet-doze { animation: pet-doze 3.2s ease-in-out infinite; }
-.pet-wave { animation: pet-wave 2.5s ease-in-out infinite; }
-.pet-pop { animation: pet-pop 1.9s ease-in-out infinite; }
+.pet-battle-player small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pet-battle-versus {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid #e6d4c7;
+  border-radius: 50%;
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+
+.pet-battle-versus svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pet-battle-outcome {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid #d6ded7;
+  border-left: 4px solid var(--green);
+  border-radius: 7px;
+  background: var(--green-soft);
+}
+
+.pet-battle-outcome.is-loss {
+  border-color: #ead7cc;
+  border-left-color: var(--coral);
+  background: var(--coral-soft);
+}
+
+.pet-battle-outcome strong {
+  font-size: 18px;
+}
+
+.pet-battle-outcome span {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.pet-battle-outcome small {
+  color: var(--muted);
+  font-size: 10px;
+}
 
 .confirm-dialog {
   width: min(390px, calc(100% - 32px));
@@ -2595,6 +2668,10 @@ body.is-admin-view .topbar-actions {
 
   .pet-detail-image {
     height: 260px;
+  }
+
+  .pet-battle-result {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .student-table-head {
@@ -2856,8 +2933,26 @@ body.is-admin-view .topbar-actions {
 
   .pet-progress-panel,
   .pet-checkin-panel,
+  .pet-battle-panel,
   .pet-shop-panel {
     padding-top: 22px;
+  }
+
+  .pet-battle-panel .pet-panel-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pet-battle-button {
+    width: 100%;
+  }
+
+  .pet-battle-players {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pet-battle-versus {
+    margin: -4px auto;
   }
 
   .pet-choice {

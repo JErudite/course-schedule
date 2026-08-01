@@ -20,15 +20,15 @@ const colorPalette = [
   { value: "#607d8b", label: "灰蓝", color: "#607d8b" },
 ];
 const petCatalog = [
-  { id: "cat", name: "猫咪", mood: "开心", image: "assets/pets/cat.png", animation: "pet-bounce" },
-  { id: "dog", name: "小狗", mood: "兴奋", image: "assets/pets/dog.png", animation: "pet-wag" },
-  { id: "rabbit", name: "兔子", mood: "活泼", image: "assets/pets/rabbit.png", animation: "pet-hop" },
-  { id: "hamster", name: "小鼠", mood: "满足", image: "assets/pets/hamster.png", animation: "pet-nibble" },
-  { id: "fox", name: "花栗鼠", mood: "害羞", image: "assets/pets/fox.png", animation: "pet-sway" },
-  { id: "panda", name: "企鹅", mood: "元气", image: "assets/pets/panda.png", animation: "pet-doze" },
-  { id: "bear", name: "小熊", mood: "友好", image: "assets/pets/bear.png", animation: "pet-wave" },
-  { id: "frog", name: "小龟", mood: "惊喜", image: "assets/pets/frog.png", animation: "pet-pop" },
-  { id: "milk_dragon", name: "奶龙", mood: "软萌", image: "assets/pets/milk-dragon.png", animation: "pet-milk-dragon", adminOnly: true },
+  { id: "cat", name: "猫咪", mood: "开心", image: "assets/pets/cat.gif" },
+  { id: "dog", name: "小狗", mood: "兴奋", image: "assets/pets/dog.gif" },
+  { id: "rabbit", name: "兔子", mood: "活泼", image: "assets/pets/rabbit.gif" },
+  { id: "hamster", name: "小鼠", mood: "满足", image: "assets/pets/hamster.gif" },
+  { id: "fox", name: "花栗鼠", mood: "害羞", image: "assets/pets/fox.gif" },
+  { id: "panda", name: "企鹅", mood: "元气", image: "assets/pets/panda.gif" },
+  { id: "bear", name: "小熊", mood: "友好", image: "assets/pets/bear.gif" },
+  { id: "frog", name: "小龟", mood: "惊喜", image: "assets/pets/frog.gif" },
+  { id: "milk_dragon", name: "奶龙", mood: "软萌", image: "assets/pets/milk-dragon.gif", adminOnly: true },
 ];
 const timelineStart = 8 * 60;
 const timelineEnd = 21 * 60;
@@ -510,14 +510,25 @@ function getNextCheckinExperience(owner) {
 
 function updateVisitorPet() {
   const pet = petCatalog.find((item) => item.id === currentUser?.pet);
-  visitorPet.hidden = !currentUser || !pet;
-  if (!pet) return;
+  visitorPet.hidden = !currentUser;
+  visitorPet.disabled = !pet;
+  visitorPet.classList.toggle("is-unassigned", !pet);
+  visitorPet.setAttribute("aria-label", pet ? "查看我的宠物中心" : "宠物等待管理员分配");
+  if (!pet) {
+    const image = document.querySelector("#visitorPetImage");
+    image.removeAttribute("src");
+    image.alt = "";
+    image.className = "pet-image";
+    document.querySelector("#visitorPetMood").textContent = "宠物中心";
+    document.querySelector("#visitorPetName").textContent = "等待管理员分配";
+    return;
+  }
   const level = getPetLevel(currentUser.pet_experience).level;
   const image = document.querySelector("#visitorPetImage");
   image.src = pet.image;
   image.alt = `${pet.name}全身画像`;
-  image.className = `pet-image ${pet.animation}`;
-  document.querySelector("#visitorPetMood").textContent = `Lv.${level} · ${currentUser.pet_coins} 金币`;
+  image.className = "pet-image";
+  document.querySelector("#visitorPetMood").textContent = `宠物中心 · Lv.${level} · ${currentUser.pet_coins} 金币`;
   document.querySelector("#visitorPetName").textContent = getPetDisplayName(currentUser, pet);
 }
 
@@ -540,7 +551,7 @@ function renderPetDetail() {
   const detailImage = document.querySelector("#petDetailImage");
   detailImage.src = pet.image;
   detailImage.alt = `${pet.name}全身画像`;
-  detailImage.className = `pet-detail-image ${pet.animation}`;
+  detailImage.className = "pet-detail-image";
   document.querySelector("#petSpeciesName").textContent = `${pet.name} · ${pet.mood}`;
   document.querySelector("#petProfileName").textContent = displayName;
   document.querySelector("#petNameInput").value = displayName;
@@ -585,6 +596,7 @@ function renderPetDetail() {
     foodGrid.append(card);
   });
   document.querySelector("#petFoodEmpty").hidden = foods.length > 0;
+  document.querySelector("#petBattlePanel").hidden = canEdit;
   updateVisitorPet();
   if (window.lucide) window.lucide.createIcons();
 }
@@ -640,6 +652,56 @@ async function feedCurrentPet(food, button) {
   currentUser.pet_coins = Number(result.coins) || 0;
   renderPetDetail();
   showStatus(`${getPetDisplayName(currentUser)}吃下${food.name}，获得 ${result.gained_experience} 经验`);
+}
+
+function getBattleMoveLabel(move) {
+  return { rock: "石头", paper: "布", scissors: "剪刀" }[move] || "";
+}
+
+function renderPetBattleResult(result) {
+  const opponentPet = petCatalog.find((pet) => pet.id === result.opponent_pet);
+  if (!opponentPet) return;
+  const challengerWon = result.winner === "challenger";
+  const myPet = petCatalog.find((pet) => pet.id === currentUser.pet);
+  const myImage = document.querySelector("#battleMyPetImage");
+  const opponentImage = document.querySelector("#battleOpponentPetImage");
+  myImage.src = myPet.image;
+  myImage.alt = `${getPetDisplayName(currentUser, myPet)}的正面全身画像`;
+  opponentImage.src = opponentPet.image;
+  opponentImage.alt = `${result.opponent_pet_name || opponentPet.name}的正面全身画像`;
+  document.querySelector("#battleMyPetName").textContent = getPetDisplayName(currentUser, myPet);
+  document.querySelector("#battleMyPetLevel").textContent = `Lv.${result.challenger_level} · ${currentUser.username}`;
+  document.querySelector("#battleOpponentPetName").textContent = result.opponent_pet_name || opponentPet.name;
+  document.querySelector("#battleOpponentPetLevel").textContent = `Lv.${result.opponent_level} · ${result.opponent_username}`;
+  document.querySelector("#petBattleOutcome").className = `pet-battle-outcome ${challengerWon ? "is-win" : "is-loss"}`;
+  document.querySelector("#petBattleOutcomeTitle").textContent = challengerWon ? "匹配获胜" : "匹配惜败";
+  document.querySelector("#petBattleOutcomeText").textContent = result.battle_method === "level"
+    ? `双方等级对比：Lv.${result.challenger_level} 对 Lv.${result.opponent_level}`
+    : `同等级石头剪刀布：你出${getBattleMoveLabel(result.challenger_move)}，对方出${getBattleMoveLabel(result.opponent_move)}`;
+  document.querySelector("#petBattleReward").textContent = `你的宠物获得 ${result.challenger_reward} 经验，对方获得 ${result.opponent_reward} 经验`;
+  document.querySelector("#petBattleResult").hidden = false;
+}
+
+async function matchCurrentPetBattle() {
+  if (!currentUser?.pet || canEdit) return;
+  const button = document.querySelector("#matchPetBattle");
+  const label = document.querySelector("#matchPetBattleText");
+  button.disabled = true;
+  label.textContent = "正在匹配";
+  const { data, error } = await supabaseClient.rpc("match_pet_battle");
+  button.disabled = false;
+  label.textContent = "再次匹配";
+  if (error) {
+    const noOpponent = error.message?.includes("no battle opponent");
+    showStatus(noOpponent ? "暂时没有其他已分配宠物的学生" : "匹配失败，请稍后重试");
+    return;
+  }
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result) return;
+  currentUser.pet_experience = Number(result.challenger_experience) || currentUser.pet_experience;
+  renderPetDetail();
+  renderPetBattleResult(result);
+  showStatus(`匹配完成，获得 ${result.challenger_reward} 经验`);
 }
 
 function hideAdminPages() {
@@ -1683,7 +1745,7 @@ function setStudentSortMode(value) {
 
 function createPetVisual(pet, className = "", owner = null) {
   const visual = createElement("div", `pet-visual${className ? ` ${className}` : ""}`);
-  const image = createElement("img", `pet-image ${pet.animation}`);
+  const image = createElement("img", "pet-image");
   const copy = createElement("div", "pet-visual-copy");
   image.src = pet.image;
   image.alt = `${pet.name}全身画像`;
@@ -2170,6 +2232,7 @@ function bindEvents() {
   });
   document.querySelector("#petNameForm").addEventListener("submit", saveCurrentPetName);
   document.querySelector("#petCheckinButton").addEventListener("click", checkInCurrentPet);
+  document.querySelector("#matchPetBattle").addEventListener("click", matchCurrentPetBattle);
   document.querySelector("#studentSortMode").addEventListener("change", (event) => {
     setStudentSortMode(event.target.value);
     window.localStorage.setItem("student-sort-mode", studentSortMode);
