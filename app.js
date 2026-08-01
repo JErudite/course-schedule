@@ -2,7 +2,23 @@ const SUPABASE_URL = "https://dpjyjzszqmgakwtdhmwq.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PyH98bSXQ2rSCzIfmLNN5w_4rTJ6P-x";
 
 const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
-const toneColors = ["#2f6b4f", "#326a88", "#9a533e", "#826b28"];
+const defaultCourseColor = "#ffffff";
+const colorPalette = [
+  { value: "", label: "自动 / 白色", color: "#ffffff" },
+  { value: "#f44336", label: "红色", color: "#f44336" },
+  { value: "#e91e63", label: "玫红", color: "#e91e63" },
+  { value: "#9c27b0", label: "紫色", color: "#9c27b0" },
+  { value: "#673ab7", label: "深紫", color: "#673ab7" },
+  { value: "#3f51b5", label: "靛蓝", color: "#3f51b5" },
+  { value: "#2196f3", label: "蓝色", color: "#2196f3" },
+  { value: "#00a6a6", label: "青色", color: "#00a6a6" },
+  { value: "#4caf50", label: "绿色", color: "#4caf50" },
+  { value: "#8bc34a", label: "浅绿", color: "#8bc34a" },
+  { value: "#ffc107", label: "黄色", color: "#ffc107" },
+  { value: "#ff9800", label: "橙色", color: "#ff9800" },
+  { value: "#795548", label: "棕色", color: "#795548" },
+  { value: "#607d8b", label: "灰蓝", color: "#607d8b" },
+];
 const timelineStart = 8 * 60;
 const timelineEnd = 21 * 60;
 const snapMinutes = 10;
@@ -26,6 +42,8 @@ let realtimeAssignmentChannel = null;
 let realtimeStudentChannel = null;
 let selectedStudentId = null;
 let statusTimer = null;
+let copiedCourse = null;
+let isPastingCourse = false;
 
 const grid = document.querySelector("#scheduleGrid");
 const scheduleScroll = document.querySelector("#scheduleScroll");
@@ -43,6 +61,11 @@ const durationInput = document.querySelector("#courseDurationInput");
 const repeatInput = document.querySelector("#courseRepeatInput");
 const repeatDaysInput = document.querySelector("#courseRepeatDaysInput");
 const customRepeatField = document.querySelector("#customRepeatField");
+const repeatStopInput = document.querySelector("#courseRepeatStopInput");
+const repeatStopField = document.querySelector("#repeatStopField");
+const repeatCountInput = document.querySelector("#courseRepeatCountInput");
+const repeatCountField = document.querySelector("#repeatCountField");
+const courseColorInput = document.querySelector("#courseColorInput");
 const saveCourseButton = document.querySelector("#saveCourse");
 const statusMessage = document.querySelector("#statusMessage");
 const authButton = document.querySelector("#authButton");
@@ -53,12 +76,15 @@ const loginSubmit = document.querySelector("#loginSubmit");
 const loginError = document.querySelector("#loginError");
 const deleteDialog = document.querySelector("#deleteDialog");
 const confirmDeleteButton = document.querySelector("#confirmDelete");
-const studentDialog = document.querySelector("#studentDialog");
 const studentForm = document.querySelector("#studentForm");
 const addStudentButton = document.querySelector("#addStudentButton");
 const deleteStudentDialog = document.querySelector("#deleteStudentDialog");
 const confirmDeleteStudentButton = document.querySelector("#confirmDeleteStudent");
 const lessonSummary = document.querySelector("#lessonSummary");
+const scheduleSection = document.querySelector("#scheduleSection");
+const adminPage = document.querySelector("#adminPage");
+const pageFooter = document.querySelector("#pageFooter");
+const copyModeBar = document.querySelector("#copyModeBar");
 
 if (!window.supabase) {
   setSyncState("offline", "连接组件加载失败");
@@ -200,11 +226,13 @@ function formatDuration(minutes) {
   return remainder ? `${hours} 小时 ${remainder} 分钟` : `${hours} 小时`;
 }
 
-function getRepeatDescription(interval) {
+function getRepeatDescription(interval, count = null) {
   if (interval === null) return "不重复";
-  if (interval === 1) return "每天重复";
-  if (interval === 7) return "每周重复";
-  return `每 ${interval} 天重复`;
+  let description;
+  if (interval === 1) description = "每天重复";
+  else if (interval === 7) description = "每周重复";
+  else description = `每 ${interval} 天重复`;
+  return count === null ? `${description} · 持续` : `${description} · 共 ${count} 次`;
 }
 
 function getWeekNumber(date) {
@@ -295,21 +323,35 @@ function gcd(first, second) {
   return a;
 }
 
-function seriesShareADate(first, second) {
-  const firstStart = parseISODate(first.startDate);
-  const secondStart = parseISODate(second.startDate);
-  const difference = daysBetween(secondStart, firstStart);
+function occurrenceIndexForDate(course, date) {
+  const difference = daysBetween(parseISODate(course.startDate), date);
+  if (difference < 0) return -1;
+  if (course.repeatIntervalDays === null) return difference === 0 ? 0 : -1;
+  if (difference % course.repeatIntervalDays !== 0) return -1;
+  const index = difference / course.repeatIntervalDays;
+  return course.repeatCount === null || index < course.repeatCount ? index : -1;
+}
 
-  if (first.repeatIntervalDays === null && second.repeatIntervalDays === null) {
-    return difference === 0;
-  }
+function seriesShareADate(first, second) {
   if (first.repeatIntervalDays === null) {
-    return difference >= 0 && difference % second.repeatIntervalDays === 0;
+    return occurrenceIndexForDate(second, parseISODate(first.startDate)) >= 0;
   }
   if (second.repeatIntervalDays === null) {
-    return difference <= 0 && Math.abs(difference) % first.repeatIntervalDays === 0;
+    return occurrenceIndexForDate(first, parseISODate(second.startDate)) >= 0;
   }
-  return difference % gcd(first.repeatIntervalDays, second.repeatIntervalDays) === 0;
+  if (first.repeatCount === null && second.repeatCount === null) {
+    const difference = daysBetween(parseISODate(second.startDate), parseISODate(first.startDate));
+    return difference % gcd(first.repeatIntervalDays, second.repeatIntervalDays) === 0;
+  }
+
+  const finite = first.repeatCount !== null
+    && (second.repeatCount === null || first.repeatCount <= second.repeatCount) ? first : second;
+  const other = finite === first ? second : first;
+  for (let index = 0; index < finite.repeatCount; index += 1) {
+    const date = addDays(parseISODate(finite.startDate), index * finite.repeatIntervalDays);
+    if (occurrenceIndexForDate(other, date) >= 0) return true;
+  }
+  return false;
 }
 
 function hasSeriesConflict(candidate, ignoredId) {
@@ -321,10 +363,7 @@ function hasSeriesConflict(candidate, ignoredId) {
 }
 
 function courseOccursOnDate(course, date) {
-  const difference = daysBetween(parseISODate(course.startDate), date);
-  if (difference < 0) return false;
-  if (course.repeatIntervalDays === null) return difference === 0;
-  return difference % course.repeatIntervalDays === 0;
+  return occurrenceIndexForDate(course, date) >= 0;
 }
 
 function getVisibleOccurrences() {
@@ -339,24 +378,45 @@ function getVisibleOccurrences() {
 }
 
 function mapCourse(row) {
+  const repeatIntervalDays = row.repeat_interval_days === null ? null : Number(row.repeat_interval_days);
   return {
     id: row.id,
     startDate: row.start_date,
-    repeatIntervalDays: row.repeat_interval_days === null ? null : Number(row.repeat_interval_days),
+    repeatIntervalDays,
+    repeatCount: repeatIntervalDays === null ? 1 : row.repeat_count == null ? null : Number(row.repeat_count),
     startTime: Number(row.start_time),
     duration: Number(row.duration),
     name: row.name,
     notes: row.notes || "",
+    color: row.color || "",
     studentIds: (row.course_students || []).map((assignment) => assignment.student_id),
     version: Number(row.version),
     updatedAt: row.updated_at,
   };
 }
 
-function getCourseTone(courseId) {
-  let hash = 0;
-  for (const character of courseId) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
-  return Math.abs(hash) % toneColors.length;
+function getEffectiveCourseColor(course) {
+  if (course.color) return course.color;
+  const assignedStudent = students.find((student) => course.studentIds.includes(student.id) && student.color);
+  if (assignedStudent?.color) return assignedStudent.color;
+  if (!canEdit && currentUser?.color) return currentUser.color;
+  return defaultCourseColor;
+}
+
+function colorWithAlpha(color, alpha) {
+  const value = color.replace("#", "");
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function applyCourseColor(element, color) {
+  const effective = color || defaultCourseColor;
+  const isWhite = effective.toLowerCase() === defaultCourseColor;
+  element.style.setProperty("--course-color", isWhite ? "#aeb7b0" : effective);
+  element.style.setProperty("--course-background", isWhite ? "#ffffff" : colorWithAlpha(effective, 0.14));
+  element.style.setProperty("--course-border", isWhite ? "#d7ddd8" : colorWithAlpha(effective, 0.42));
 }
 
 function showStatus(message) {
@@ -374,7 +434,42 @@ function setSyncState(state, text) {
 
 function updateLessonSummary() {
   lessonSummary.hidden = canEdit || !currentUser;
-  document.querySelector("#lessonCount").textContent = String(Number(currentUser?.lesson_count) || 0);
+  const current = Number(currentUser?.current_lesson_count) || 0;
+  const required = Number(currentUser?.required_lesson_count) || 0;
+  document.querySelector("#currentLessonCount").textContent = String(current);
+  document.querySelector("#requiredLessonCount").textContent = String(required);
+  document.querySelector("#remainingLessonCount").textContent = String(Math.max(required - current, 0));
+  document.querySelector("#lifetimeLessonCount").textContent = String(Number(currentUser?.lesson_count) || 0);
+}
+
+function showScheduleView() {
+  scheduleSection.hidden = false;
+  pageFooter.hidden = false;
+  adminPage.hidden = true;
+  document.body.classList.remove("is-admin-view");
+  renderSchedule();
+}
+
+async function showAdminView() {
+  if (!canEdit) return;
+  await loadStudents();
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
+  adminPage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  document.querySelector("#studentUsernameInput").focus();
+}
+
+function updateCopyModeUI() {
+  copyModeBar.hidden = !copiedCourse || !canEdit;
+  document.body.classList.toggle("is-copying-course", Boolean(copiedCourse && canEdit));
+  document.querySelector("#copiedCourseName").textContent = copiedCourse?.name || "";
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function clearCopyMode() {
+  copiedCourse = null;
+  updateCopyModeUI();
 }
 
 function updatePermissionUI() {
@@ -383,7 +478,7 @@ function updatePermissionUI() {
   document.querySelector("#studentManagerButton").hidden = !canEdit;
   dialogCourseActions.hidden = !canEdit || formMode !== "view" || !selectedCourseId;
   document.querySelector("#permissionHint").textContent = canEdit
-    ? `${currentUser?.username || "管理员"} · 可管理课程、学生账号和累计课次`
+    ? `${currentUser?.username || "管理员"} · 可管理课程、学生账号和课次进度`
     : `${currentUser?.username || "访客"} · 只显示分配给你的课程`;
   updateLessonSummary();
 
@@ -391,7 +486,11 @@ function updatePermissionUI() {
   authButton.innerHTML = `<i data-lucide="log-out"></i><span>退出登录</span>`;
 
   if (!canEdit && formMode !== "view" && dialog.open) dialog.close();
-  if (!canEdit && studentDialog.open) studentDialog.close();
+  if (!canEdit) {
+    clearCopyMode();
+    showScheduleView();
+  }
+  updateCopyModeUI();
   if (window.lucide) window.lucide.createIcons();
   renderSchedule();
   refreshOpenDialog();
@@ -434,18 +533,18 @@ function renderSchedule() {
 
   const occurrences = getVisibleOccurrences();
   occurrences.forEach(({ course, date, dayIndex }) => {
-    const tone = getCourseTone(course.id);
-    const card = createElement("button", `course-card tone-${tone}${canEdit ? " is-editable" : " is-readonly"}`);
+    const card = createElement("button", `course-card${canEdit ? " is-editable" : " is-readonly"}`);
     card.type = "button";
     card.dataset.courseId = course.id;
     card.dataset.occurrenceDate = toISODate(date);
     placeCourseCard(card, dayIndex, course.startTime, course.duration);
-    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${getRepeatDescription(course.repeatIntervalDays)}`);
+    applyCourseColor(card, getEffectiveCourseColor(course));
+    card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)}，${getRepeatDescription(course.repeatIntervalDays, course.repeatCount)}`);
     card.title = canEdit ? "拖动将移动整个课程系列，点击可编辑详情" : "点击查看课程详情";
     card.append(
       createElement("strong", "", course.name),
       createElement("span", "course-time", `${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`),
-      createElement("span", "course-repeat", getRepeatDescription(course.repeatIntervalDays)),
+      createElement("span", "course-repeat", getRepeatDescription(course.repeatIntervalDays, course.repeatCount)),
     );
     enableCourseInteraction(card, course, { date, dayIndex });
     grid.append(card);
@@ -615,6 +714,14 @@ function enableTimelineCreation() {
     const cell = event.target.closest(".grid-cell");
     if (!cell) return;
 
+    if (copiedCourse) {
+      event.preventDefault();
+      if (isPastingCourse) return;
+      const targetStart = timelineStart + Number(cell.dataset.slot) * snapMinutes;
+      pasteCopiedCourse(Number(cell.dataset.dayIndex), targetStart);
+      return;
+    }
+
     event.preventDefault();
     const preview = createElement("div", "course-create-preview");
     preview.append(createElement("span", "", ""));
@@ -657,6 +764,44 @@ function enableTimelineCreation() {
   grid.addEventListener("pointercancel", clearSelection);
 }
 
+async function pasteCopiedCourse(dayIndex, targetStart) {
+  if (!canEdit || !copiedCourse || isPastingCourse) return;
+  const candidate = {
+    ...copiedCourse,
+    startDate: toISODate(addDays(selectedWeekStart, dayIndex)),
+    startTime: Math.min(targetStart, timelineEnd - copiedCourse.duration),
+    studentIds: [...copiedCourse.studentIds],
+  };
+  if (hasSeriesConflict(candidate)) {
+    showStatus("粘贴位置与该学生的现有课程冲突，请换一个时间刻度");
+    return;
+  }
+
+  isPastingCourse = true;
+  const saved = await createCourse(candidate, `“${candidate.name}”已粘贴，可继续选择时间刻度`);
+  isPastingCourse = false;
+  if (saved) updateCopyModeUI();
+}
+
+function copySelectedCourse() {
+  const course = schedule.find((item) => item.id === selectedCourseId);
+  if (!canEdit || !course) return;
+  copiedCourse = {
+    startDate: course.startDate,
+    repeatIntervalDays: course.repeatIntervalDays,
+    repeatCount: course.repeatCount,
+    startTime: course.startTime,
+    duration: course.duration,
+    name: course.name,
+    notes: course.notes,
+    color: course.color,
+    studentIds: [...course.studentIds],
+  };
+  dialog.close();
+  updateCopyModeUI();
+  showStatus(`已复制“${course.name}”，点击时间轴即可粘贴`);
+}
+
 function showCourse(courseId, occurrenceDate) {
   const course = schedule.find((item) => item.id === courseId);
   if (!course) return;
@@ -669,7 +814,6 @@ function showCourse(courseId, occurrenceDate) {
 
 function showCourseDetails(course) {
   const occurrence = selectedOccurrenceDate ? parseISODate(selectedOccurrenceDate) : parseISODate(course.startDate);
-  const tone = getCourseTone(course.id);
   dialog.classList.remove("is-editing");
   courseForm.hidden = true;
   dialogDetails.hidden = false;
@@ -682,11 +826,11 @@ function showCourseDetails(course) {
   document.querySelector("#dialogStudents").textContent = assignedNames.length
     ? `上课学生：${assignedNames.join("、")}`
     : "尚未分配学生";
-  document.querySelector("#dialogRepeat").textContent = `${getRepeatDescription(course.repeatIntervalDays)} · 首次 ${formatFullDate(parseISODate(course.startDate))}`;
+  document.querySelector("#dialogRepeat").textContent = `${getRepeatDescription(course.repeatIntervalDays, course.repeatCount)} · 首次 ${formatFullDate(parseISODate(course.startDate))}`;
   const notes = document.querySelector("#dialogNotes");
   notes.textContent = course.notes || "暂无备注";
   notes.classList.toggle("is-empty", !course.notes);
-  document.querySelector("#dialogAccent").style.background = toneColors[tone];
+  document.querySelector("#dialogAccent").style.background = getEffectiveCourseColor(course);
   dialogCourseActions.hidden = !canEdit;
 }
 
@@ -717,12 +861,21 @@ function setDurationValue(minutes) {
   durationInput.value = value;
 }
 
-function setRepeatControls(interval) {
+function updateRepeatFields() {
+  const isRepeating = repeatInput.value !== "";
+  customRepeatField.hidden = repeatInput.value !== "custom";
+  repeatStopField.hidden = !isRepeating;
+  repeatCountField.hidden = !isRepeating || repeatStopInput.value !== "count";
+}
+
+function setRepeatControls(interval, count) {
   if (interval === null) repeatInput.value = "";
   else if (repeatPresets.has(interval)) repeatInput.value = String(interval);
   else repeatInput.value = "custom";
   repeatDaysInput.value = String(interval ?? 4);
-  customRepeatField.hidden = repeatInput.value !== "custom";
+  repeatStopInput.value = interval !== null && count !== null ? "count" : "";
+  repeatCountInput.value = String(count ?? 2);
+  updateRepeatFields();
 }
 
 function readRepeatInterval() {
@@ -731,13 +884,49 @@ function readRepeatInterval() {
   return Number(repeatInput.value);
 }
 
+function readRepeatCount(interval) {
+  if (interval === null) return 1;
+  return repeatStopInput.value === "count" ? Number(repeatCountInput.value) : null;
+}
+
+function renderColorPalette(container, selectedValue, onSelect, labelPrefix) {
+  container.replaceChildren();
+  colorPalette.forEach((option) => {
+    const button = createElement("button", `color-swatch${option.value === selectedValue ? " is-selected" : ""}`);
+    button.type = "button";
+    button.dataset.value = option.value;
+    button.style.setProperty("--swatch-color", option.color);
+    button.title = option.label;
+    button.setAttribute("aria-label", `${labelPrefix}：${option.label}`);
+    button.setAttribute("role", "radio");
+    button.setAttribute("aria-checked", String(option.value === selectedValue));
+    if (!option.value) button.classList.add("is-auto");
+    button.addEventListener("click", () => {
+      onSelect(option.value);
+      renderColorPalette(container, option.value, onSelect, labelPrefix);
+    });
+    container.append(button);
+  });
+}
+
+function setCourseColor(value = "") {
+  courseColorInput.value = value;
+  renderColorPalette(
+    document.querySelector("#courseColorPalette"),
+    value,
+    setCourseColor,
+    "课程颜色",
+  );
+}
+
 function fillCourseForm(course) {
   document.querySelector("#courseNameInput").value = course?.name || "";
   dayStartInput.value = course?.startDate || toISODate(selectedWeekStart);
   startTimeInput.value = formatTime(course?.startTime ?? timelineStart);
   setDurationValue(course?.duration ?? 100);
   document.querySelector("#courseNotesInput").value = course?.notes || "";
-  setRepeatControls(course?.repeatIntervalDays ?? 7);
+  setRepeatControls(course ? course.repeatIntervalDays : 7, course ? course.repeatCount : null);
+  setCourseColor(course?.color || "");
   renderStudentChecklist(course?.studentIds || []);
 }
 
@@ -752,7 +941,10 @@ function renderStudentChecklist(selectedIds) {
     checkbox.name = "studentIds";
     checkbox.value = student.id;
     checkbox.checked = selected.has(student.id);
-    label.append(checkbox, createElement("span", "", student.username));
+    const color = createElement("i", "student-color-indicator");
+    color.style.setProperty("--student-color", student.color || defaultCourseColor);
+    color.setAttribute("aria-hidden", "true");
+    label.append(checkbox, color, createElement("span", "", student.username));
     checklist.append(label);
   });
   document.querySelector("#studentChecklistEmpty").hidden = students.length > 0;
@@ -771,7 +963,7 @@ function openNewCourse(preset = null) {
   dialog.classList.add("is-editing");
   document.querySelector("#dialogType").textContent = "新建课程";
   document.querySelector("#dialogTitle").textContent = "新增课程";
-  document.querySelector("#dialogAccent").style.background = toneColors[0];
+  document.querySelector("#dialogAccent").style.background = defaultCourseColor;
   dialogCourseActions.hidden = true;
   dialogDetails.hidden = true;
   courseForm.hidden = false;
@@ -822,16 +1014,18 @@ function toSaveCourseParams(course, expectedVersion) {
     p_id: course.id,
     p_start_date: course.startDate,
     p_repeat_interval_days: course.repeatIntervalDays,
+    p_repeat_count: course.repeatCount,
     p_start_time: course.startTime,
     p_duration: course.duration,
     p_name: course.name,
     p_notes: course.notes,
+    p_color: course.color || null,
     p_student_ids: course.studentIds,
     p_expected_version: expectedVersion,
   };
 }
 
-async function createCourse(candidate) {
+async function createCourse(candidate, successMessage = "课程已创建并实时同步") {
   if (!canEdit) return false;
   const newCourse = {
     ...candidate,
@@ -848,7 +1042,7 @@ async function createCourse(candidate) {
   schedule.push(savedCourse);
   sortSchedule();
   renderSchedule();
-  showStatus("课程已创建并实时同步");
+  showStatus(successMessage);
   return true;
 }
 
@@ -944,12 +1138,16 @@ async function applyStudentRealtimeChange() {
 
   const { data, error } = await supabaseClient
     .from("students")
-    .select("lesson_count")
+    .select("lesson_count, current_lesson_count, required_lesson_count, color")
     .eq("id", currentUser.id)
     .single();
   if (!error && data) {
     currentUser.lesson_count = Number(data.lesson_count) || 0;
+    currentUser.current_lesson_count = Number(data.current_lesson_count) || 0;
+    currentUser.required_lesson_count = Number(data.required_lesson_count) || 0;
+    currentUser.color = data.color || "";
     updateLessonSummary();
+    renderSchedule();
   }
 }
 
@@ -984,16 +1182,37 @@ async function loadStudents() {
   }
   const { data, error } = await supabaseClient
     .from("students")
-    .select("id, username, lesson_count, created_at")
+    .select("id, username, lesson_count, current_lesson_count, required_lesson_count, color, created_at")
     .eq("is_admin", false)
     .order("created_at", { ascending: true });
   if (error) {
     showStatus("无法读取访客账号，请稍后重试");
     return false;
   }
-  students = data;
+  students = data.map((student) => ({
+    ...student,
+    lesson_count: Number(student.lesson_count) || 0,
+    current_lesson_count: Number(student.current_lesson_count) || 0,
+    required_lesson_count: Number(student.required_lesson_count) || 0,
+    color: student.color || "",
+  }));
   renderStudentList();
+  renderSchedule();
   return true;
+}
+
+function createStudentCountField(labelText, value) {
+  const label = createElement("label", "student-count-field");
+  const caption = createElement("small", "", labelText);
+  const input = createElement("input");
+  input.type = "number";
+  input.min = "0";
+  input.max = "100000";
+  input.step = "1";
+  input.value = String(value);
+  input.setAttribute("aria-label", labelText);
+  label.append(caption, input);
+  return { label, input };
 }
 
 function renderStudentList() {
@@ -1001,25 +1220,71 @@ function renderStudentList() {
   list.replaceChildren();
   students.forEach((student) => {
     const row = createElement("div", "student-row");
-    const countEditor = createElement("label", "lesson-count-editor");
-    const countInput = createElement("input");
-    countInput.type = "number";
-    countInput.min = "0";
-    countInput.max = "100000";
-    countInput.step = "1";
-    countInput.value = String(Number(student.lesson_count) || 0);
-    countInput.setAttribute("aria-label", `${student.username}累计已上课次数`);
+    let selectedColor = student.color || "";
+
+    const identity = createElement("div", "student-identity");
+    const colorPicker = createElement("div", "student-color-picker");
+    const colorButton = createElement("button", "student-color-button");
+    const studentName = createElement("strong", "", student.username);
+    const palette = createElement("div", "color-palette student-color-palette");
+    colorButton.type = "button";
+    colorButton.title = `设置${student.username}的颜色`;
+    colorButton.setAttribute("aria-label", `设置${student.username}的颜色`);
+    colorButton.style.setProperty("--student-color", selectedColor || defaultCourseColor);
+    palette.hidden = true;
+    const selectStudentColor = (value) => {
+      selectedColor = value;
+      colorButton.style.setProperty("--student-color", value || defaultCourseColor);
+      palette.hidden = true;
+    };
+    renderColorPalette(palette, selectedColor, selectStudentColor, `${student.username}的颜色`);
+    colorButton.addEventListener("click", () => {
+      palette.hidden = !palette.hidden;
+    });
+    colorPicker.append(colorButton, palette);
+    identity.append(colorPicker, studentName);
+
+    const currentField = createStudentCountField(`${student.username}当前已上`, student.current_lesson_count);
+    const requiredField = createStudentCountField(`${student.username}当前应上`, student.required_lesson_count);
+    const lifetimeField = createStudentCountField(`${student.username}历史已上`, student.lesson_count);
+    const remaining = createElement("output", "student-remaining-count");
+    let previousCurrentCount = student.current_lesson_count;
+    const updateRemaining = () => {
+      const current = Number(currentField.input.value) || 0;
+      const required = Number(requiredField.input.value) || 0;
+      remaining.textContent = `${Math.max(required - current, 0)} 次`;
+    };
+    currentField.input.addEventListener("input", () => {
+      if (currentField.input.value !== "") {
+        const nextCurrentCount = Number(currentField.input.value);
+        if (Number.isInteger(nextCurrentCount) && nextCurrentCount >= 0) {
+          const lifetimeCount = Number(lifetimeField.input.value) || 0;
+          lifetimeField.input.value = String(Math.max(lifetimeCount + nextCurrentCount - previousCurrentCount, 0));
+          previousCurrentCount = nextCurrentCount;
+        }
+      }
+      updateRemaining();
+    });
+    requiredField.input.addEventListener("input", updateRemaining);
+    updateRemaining();
 
     const saveButton = createElement("button", "icon-button save-lesson-count");
     saveButton.type = "button";
     saveButton.title = `保存${student.username}的课次数`;
     saveButton.setAttribute("aria-label", `保存${student.username}的课次数`);
     saveButton.innerHTML = '<i data-lucide="save"></i>';
-    saveButton.addEventListener("click", () => saveStudentLessonCount(student.id, countInput, saveButton));
-    countInput.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
-      event.preventDefault();
-      saveButton.click();
+    saveButton.addEventListener("click", () => saveStudentLearningProfile(student.id, {
+      currentInput: currentField.input,
+      requiredInput: requiredField.input,
+      lifetimeInput: lifetimeField.input,
+      color: selectedColor,
+    }, saveButton));
+    [currentField.input, requiredField.input, lifetimeField.input].forEach((input) => {
+      input.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        saveButton.click();
+      });
     });
 
     const removeButton = createElement("button", "icon-button delete-student");
@@ -1032,10 +1297,9 @@ function renderStudentList() {
       document.querySelector("#deleteStudentName").textContent = student.username;
       deleteStudentDialog.showModal();
     });
-    countEditor.append(createElement("span", "", "累计已上"), countInput, createElement("span", "", "次"));
     const actions = createElement("div", "student-row-actions");
     actions.append(saveButton, removeButton);
-    row.append(createElement("strong", "", student.username), countEditor, actions);
+    row.append(identity, currentField.label, requiredField.label, remaining, lifetimeField.label, actions);
     list.append(row);
   });
   document.querySelector("#studentCount").textContent = `${students.length} 人`;
@@ -1043,30 +1307,44 @@ function renderStudentList() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-async function saveStudentLessonCount(studentId, input, button) {
+async function saveStudentLearningProfile(studentId, fields, button) {
   if (!canEdit) return;
-  const lessonCount = Number(input.value);
-  if (!Number.isInteger(lessonCount) || lessonCount < 0 || lessonCount > 100000) {
-    showStatus("累计课次数需为 0 - 100000 的整数");
+  const currentCount = Number(fields.currentInput.value);
+  const requiredCount = Number(fields.requiredInput.value);
+  const lifetimeCount = Number(fields.lifetimeInput.value);
+  const counts = [currentCount, requiredCount, lifetimeCount];
+  if (counts.some((count) => !Number.isInteger(count) || count < 0 || count > 100000)) {
+    showStatus("课次数需为 0 - 100000 的整数");
     return;
   }
 
   button.disabled = true;
-  const { error } = await supabaseClient.rpc("set_student_lesson_count", {
+  const { error } = await supabaseClient.rpc("set_student_learning_profile", {
     p_student_id: studentId,
-    p_lesson_count: lessonCount,
+    p_current_count: currentCount,
+    p_required_count: requiredCount,
+    p_lifetime_count: lifetimeCount,
+    p_color: fields.color || null,
   });
   button.disabled = false;
   if (error) {
-    showStatus("课次数保存失败，请稍后重试");
+    showStatus("学生课程进度保存失败，请稍后重试");
     await loadStudents();
     return;
   }
 
   const student = students.find((item) => item.id === studentId);
-  if (student) student.lesson_count = lessonCount;
-  input.value = String(lessonCount);
-  showStatus(`已保存${student?.username || "该学生"}的累计课次数`);
+  if (student) {
+    student.current_lesson_count = currentCount;
+    student.required_lesson_count = requiredCount;
+    student.lesson_count = lifetimeCount;
+    student.color = fields.color || "";
+  }
+  fields.currentInput.value = String(currentCount);
+  fields.requiredInput.value = String(requiredCount);
+  fields.lifetimeInput.value = String(lifetimeCount);
+  renderSchedule();
+  showStatus(`已保存${student?.username || "该学生"}的颜色与课程进度`);
 }
 
 async function handleStudentSubmit(event) {
@@ -1115,6 +1393,10 @@ async function applySession(session) {
     students = [];
     appShell.hidden = true;
     loginScreen.hidden = false;
+    adminPage.hidden = true;
+    scheduleSection.hidden = false;
+    pageFooter.hidden = false;
+    clearCopyMode();
     if (realtimeChannel) await supabaseClient.removeChannel(realtimeChannel);
     if (realtimeAssignmentChannel) await supabaseClient.removeChannel(realtimeAssignmentChannel);
     if (realtimeStudentChannel) await supabaseClient.removeChannel(realtimeStudentChannel);
@@ -1128,7 +1410,7 @@ async function applySession(session) {
 
   const { data: profile, error } = await supabaseClient
     .from("students")
-    .select("id, username, is_admin, lesson_count")
+    .select("id, username, is_admin, lesson_count, current_lesson_count, required_lesson_count, color")
     .eq("id", session.user.id)
     .single();
 
@@ -1138,7 +1420,13 @@ async function applySession(session) {
     return;
   }
 
-  currentUser = { ...profile, lesson_count: Number(profile.lesson_count) || 0 };
+  currentUser = {
+    ...profile,
+    lesson_count: Number(profile.lesson_count) || 0,
+    current_lesson_count: Number(profile.current_lesson_count) || 0,
+    required_lesson_count: Number(profile.required_lesson_count) || 0,
+    color: profile.color || "",
+  };
   canEdit = profile.is_admin === true;
   if (canEdit) await loadStudents();
   appShell.hidden = false;
@@ -1154,15 +1442,18 @@ async function handleCourseSubmit(event) {
   if (!canEdit || !["create", "edit"].includes(formMode)) return;
   const existing = schedule.find((item) => item.id === selectedCourseId);
   if (formMode === "edit" && !existing) return;
+  const repeatIntervalDays = readRepeatInterval();
 
   const candidate = {
     ...(existing || {}),
     startDate: dayStartInput.value,
-    repeatIntervalDays: readRepeatInterval(),
+    repeatIntervalDays,
+    repeatCount: readRepeatCount(repeatIntervalDays),
     startTime: parseTime(startTimeInput.value),
     duration: Number(durationInput.value),
     name: document.querySelector("#courseNameInput").value.trim(),
     notes: document.querySelector("#courseNotesInput").value.trim(),
+    color: courseColorInput.value,
     studentIds: readSelectedStudentIds(),
   };
 
@@ -1172,6 +1463,11 @@ async function handleCourseSubmit(event) {
   }
   if (candidate.repeatIntervalDays !== null && (!Number.isInteger(candidate.repeatIntervalDays) || candidate.repeatIntervalDays < 1 || candidate.repeatIntervalDays > 365)) {
     showStatus("重复间隔需为 1 - 365 天的整数");
+    return;
+  }
+  if (candidate.repeatIntervalDays !== null && candidate.repeatCount !== null
+    && (!Number.isInteger(candidate.repeatCount) || candidate.repeatCount < 1 || candidate.repeatCount > 10000)) {
+    showStatus("重复次数需为 1 - 10000 的整数，并包含首次课程");
     return;
   }
   if (hasSeriesConflict(candidate, existing?.id)) {
@@ -1245,6 +1541,7 @@ function bindEvents() {
   document.querySelector("#addCourse").addEventListener("click", () => openNewCourse());
   enableTimelineCreation();
   document.querySelector("#closeDialog").addEventListener("click", () => dialog.close());
+  document.querySelector("#copyCourse").addEventListener("click", copySelectedCourse);
   document.querySelector("#editCourse").addEventListener("click", startEditingCourse);
   document.querySelector("#deleteCourse").addEventListener("click", () => {
     const course = schedule.find((item) => item.id === selectedCourseId);
@@ -1255,8 +1552,12 @@ function bindEvents() {
   document.querySelector("#cancelEdit").addEventListener("click", cancelCourseForm);
   courseForm.addEventListener("submit", handleCourseSubmit);
   repeatInput.addEventListener("change", () => {
-    customRepeatField.hidden = repeatInput.value !== "custom";
+    updateRepeatFields();
     if (!customRepeatField.hidden) repeatDaysInput.focus();
+  });
+  repeatStopInput.addEventListener("change", () => {
+    updateRepeatFields();
+    if (!repeatCountField.hidden) repeatCountInput.focus();
   });
   dialog.addEventListener("close", () => {
     selectedCourseId = null;
@@ -1269,19 +1570,15 @@ function bindEvents() {
 
   document.querySelector("#cancelDelete").addEventListener("click", () => deleteDialog.close());
   confirmDeleteButton.addEventListener("click", deleteSelectedCourse);
+  document.querySelector("#cancelCopyMode").addEventListener("click", clearCopyMode);
 
   authButton.addEventListener("click", async () => {
     const { error } = await supabaseClient.auth.signOut();
     if (error) showStatus("退出失败，请稍后重试");
   });
 
-  document.querySelector("#studentManagerButton").addEventListener("click", async () => {
-    if (!canEdit) return;
-    await loadStudents();
-    studentDialog.showModal();
-    document.querySelector("#studentUsernameInput").focus();
-  });
-  document.querySelector("#closeStudentDialog").addEventListener("click", () => studentDialog.close());
+  document.querySelector("#studentManagerButton").addEventListener("click", showAdminView);
+  document.querySelector("#closeAdminPage").addEventListener("click", showScheduleView);
   studentForm.addEventListener("submit", handleStudentSubmit);
   document.querySelector("#cancelDeleteStudent").addEventListener("click", () => deleteStudentDialog.close());
   confirmDeleteStudentButton.addEventListener("click", deleteSelectedStudent);

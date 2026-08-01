@@ -10,7 +10,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'none'"
     />
     <title>我的课程表</title>
-    <link rel="stylesheet" href="styles.css?v=20260801-4" />
+    <link rel="stylesheet" href="styles.css?v=20260801-7" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -83,7 +83,7 @@
         </div>
       </header>
 
-      <section class="schedule-section" aria-labelledby="scheduleTitle">
+      <section class="schedule-section" id="scheduleSection" aria-labelledby="scheduleTitle">
         <div class="section-heading">
           <div>
             <p class="eyebrow" id="todayText">周一，4月13日</p>
@@ -91,10 +91,21 @@
           </div>
           <div class="section-actions">
             <div class="lesson-summary" id="lessonSummary" hidden>
-              <span class="lesson-summary-icon" aria-hidden="true"><i data-lucide="graduation-cap"></i></span>
-              <div>
-                <small>累计已上课</small>
-                <strong><span id="lessonCount">0</span> 次</strong>
+              <div class="lesson-stat">
+                <small>当前已上</small>
+                <strong><span id="currentLessonCount">0</span> 次</strong>
+              </div>
+              <div class="lesson-stat">
+                <small>当前应上</small>
+                <strong><span id="requiredLessonCount">0</span> 次</strong>
+              </div>
+              <div class="lesson-stat is-remaining">
+                <small>还剩</small>
+                <strong><span id="remainingLessonCount">0</span> 次</strong>
+              </div>
+              <div class="lesson-stat">
+                <small>历史已上</small>
+                <strong><span id="lifetimeLessonCount">0</span> 次</strong>
               </div>
             </div>
             <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
@@ -104,12 +115,68 @@
           </div>
         </div>
 
+        <div class="copy-mode-bar" id="copyModeBar" hidden>
+          <div>
+            <i data-lucide="copy"></i>
+            <span>已复制“<strong id="copiedCourseName"></strong>”，点击时间轴上的任意 10 分钟刻度即可粘贴</span>
+          </div>
+          <button class="secondary-button" id="cancelCopyMode" type="button">
+            <i data-lucide="x"></i>
+            <span>取消复制</span>
+          </button>
+        </div>
+
         <div class="schedule-scroll" id="scheduleScroll">
           <div class="schedule-grid" id="scheduleGrid" aria-label="一周课程表"></div>
         </div>
       </section>
 
-      <footer class="page-footer">
+      <section class="admin-page" id="adminPage" aria-labelledby="adminPageTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学生与访问权限</p>
+            <h2 id="adminPageTitle">管理后台</h2>
+          </div>
+          <button class="secondary-button" id="closeAdminPage" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回课程表</span>
+          </button>
+        </div>
+
+        <div class="admin-create-band">
+          <form class="student-create-form" id="studentForm">
+            <label class="form-field">
+              <span>学生姓名 / 登录用户名</span>
+              <input id="studentUsernameInput" name="username" type="text" maxlength="40" autocomplete="off" placeholder="例如：张三" required />
+            </label>
+            <button class="primary-button" id="addStudentButton" type="submit">
+              <i data-lucide="user-plus"></i>
+              <span>新增账号</span>
+            </button>
+          </form>
+          <p class="shared-password-note"><i data-lucide="key-round"></i><span>所有访客账号统一使用密码 <strong>88888888</strong></span></p>
+        </div>
+
+        <div class="student-list-heading">
+          <div>
+            <strong>学生账号、课程进度与访问权限</strong>
+            <span>剩余次数根据当前应上减去当前已上自动计算</span>
+          </div>
+          <span id="studentCount">0 人</span>
+        </div>
+        <div class="student-table-head" aria-hidden="true">
+          <span>学生与颜色</span>
+          <span>当前已上</span>
+          <span>当前应上</span>
+          <span>还剩</span>
+          <span>历史已上</span>
+          <span>操作</span>
+        </div>
+        <div class="student-list" id="studentList"></div>
+        <p class="empty-list-hint" id="studentListEmpty">暂无访客账号</p>
+      </section>
+
+      <footer class="page-footer" id="pageFooter">
         <p>
           共 <strong id="courseCount">0</strong> 门课程 · 本周
           <strong id="occurrenceCount">0</strong> 次 ·
@@ -149,6 +216,9 @@
           <div class="dialog-title-row">
             <h3 id="dialogTitle">课程名称</h3>
             <div class="dialog-course-actions" id="dialogCourseActions" hidden>
+              <button class="icon-button copy-course-button" id="copyCourse" type="button" aria-label="复制课程" title="复制课程">
+                <i data-lucide="copy"></i>
+              </button>
               <button class="icon-button edit-course-button" id="editCourse" type="button" aria-label="编辑课程" title="编辑课程">
                 <i data-lucide="pencil"></i>
               </button>
@@ -203,6 +273,20 @@
             <span>天</span>
           </div>
         </label>
+        <label class="form-field" id="repeatStopField" hidden>
+          <span>停止方式</span>
+          <select id="courseRepeatStopInput" name="repeatStop">
+            <option value="">持续重复</option>
+            <option value="count">按次数停止</option>
+          </select>
+        </label>
+        <label class="form-field" id="repeatCountField" hidden>
+          <span>总重复次数（含首次）</span>
+          <div class="number-field-with-suffix">
+            <input id="courseRepeatCountInput" name="repeatCount" type="number" min="1" max="10000" step="1" value="2" />
+            <span>次</span>
+          </div>
+        </label>
         <label class="form-field">
           <span>开始时间</span>
           <input id="courseStartTimeInput" name="startTime" type="time" min="08:00" max="20:50" step="600" required />
@@ -215,6 +299,11 @@
           <span>备注</span>
           <textarea id="courseNotesInput" name="notes" maxlength="500" rows="4" placeholder="记录课程要求、准备事项等"></textarea>
         </label>
+        <fieldset class="color-field form-field-wide">
+          <legend>课程颜色</legend>
+          <input id="courseColorInput" name="color" type="hidden" value="" />
+          <div class="color-palette" id="courseColorPalette" role="radiogroup" aria-label="课程颜色"></div>
+        </fieldset>
         <fieldset class="student-assignment-field form-field-wide">
           <legend>上课学生</legend>
           <div class="student-checklist" id="studentChecklist"></div>
@@ -240,35 +329,6 @@
       </div>
     </dialog>
 
-    <dialog class="student-dialog" id="studentDialog">
-      <div class="login-dialog-header">
-        <div>
-          <p class="eyebrow">学生与访问权限</p>
-          <h3>管理后台</h3>
-        </div>
-        <button class="icon-button" id="closeStudentDialog" type="button" aria-label="关闭" title="关闭">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <form class="student-create-form" id="studentForm">
-        <label class="form-field">
-          <span>学生姓名 / 登录用户名</span>
-          <input id="studentUsernameInput" name="username" type="text" maxlength="40" autocomplete="off" placeholder="例如：张三" required />
-        </label>
-        <button class="primary-button" id="addStudentButton" type="submit">
-          <i data-lucide="user-plus"></i>
-          <span>新增账号</span>
-        </button>
-      </form>
-      <p class="shared-password-note"><i data-lucide="key-round"></i><span>所有访客账号统一使用密码 <strong>88888888</strong></span></p>
-      <div class="student-list-heading">
-        <strong>学生账号与累计课次</strong>
-        <span id="studentCount">0 人</span>
-      </div>
-      <div class="student-list" id="studentList"></div>
-      <p class="empty-list-hint" id="studentListEmpty">暂无访客账号</p>
-    </dialog>
-
     <dialog class="confirm-dialog" id="deleteStudentDialog">
       <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="user-minus"></i></div>
       <h3>删除访客账号</h3>
@@ -283,6 +343,6 @@
 
     <script src="vendor/lucide-0.468.0.min.js"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20260801-4"></script>
+    <script src="app.js?v=20260801-7"></script>
   </body>
 </html>
