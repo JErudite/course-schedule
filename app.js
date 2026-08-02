@@ -2627,8 +2627,7 @@ function createAdminPetDetails(student, assignedPet) {
     ["宠物种类", assignedPet?.name || "暂未分配"],
     ["宠物名字", assignedPet ? getPetDisplayName(student, assignedPet) : "-"],
     ["当前等级", `Lv.${levelInfo.level}`],
-    ["累计经验", student.pet_experience.toLocaleString("zh-CN")],
-    ["本级进度", `${levelInfo.progress.toLocaleString("zh-CN")} / ${levelInfo.required.toLocaleString("zh-CN")}`],
+    ["当前等级经验", levelInfo.progress.toLocaleString("zh-CN")],
     ["金币余额", student.pet_coins.toLocaleString("zh-CN")],
     ["连续签到", `${student.pet_checkin_streak} 天`],
     ["最近签到", formatPetCheckinDate(student.pet_checkin_date)],
@@ -2729,12 +2728,13 @@ function renderPetStudentList() {
     const levelInfo = getPetLevel(student.pet_experience);
     const resourceEditor = createElement("div", "pet-resource-editor");
     const levelPreview = createElement("div", "pet-resource-level");
-    levelPreview.innerHTML = `<small>当前等级</small><strong>Lv.${levelInfo.level}</strong><span>${levelInfo.progress.toLocaleString("zh-CN")} / ${levelInfo.required.toLocaleString("zh-CN")} 经验</span>`;
-    const experienceField = createPetResourceField(`${student.username}的累计经验`, student.pet_experience, "经验");
+    levelPreview.innerHTML = `<small>当前等级与本级经验</small><strong>Lv.${levelInfo.level}</strong><span>${levelInfo.progress.toLocaleString("zh-CN")} 经验</span>`;
+    const experienceField = createPetResourceField(`为${student.username}增加经验`, 0, "经验");
+    experienceField.input.placeholder = "输入本次增加值";
     const coinsField = createPetResourceField(`${student.username}的金币余额`, student.pet_coins, "金币");
     const saveButton = createElement("button", "primary-button pet-resource-save");
     saveButton.type = "button";
-    saveButton.innerHTML = '<i data-lucide="save"></i><span>保存资源</span>';
+    saveButton.innerHTML = '<i data-lucide="badge-plus"></i><span>分配经验与金币</span>';
     saveButton.disabled = !assignedPet;
     experienceField.input.disabled = !assignedPet;
     coinsField.input.disabled = !assignedPet;
@@ -2780,17 +2780,17 @@ async function saveStudentPet(studentId, petId, chooser) {
 
 async function saveStudentPetResources(studentId, experienceInput, coinsInput, button) {
   if (!canEdit) return;
-  const experience = Number(experienceInput.value);
+  const experienceGain = Number(experienceInput.value);
   const coins = Number(coinsInput.value);
-  if (![experience, coins].every((value) => Number.isSafeInteger(value) && value >= 0)) {
-    showStatus("经验与金币需为不小于 0 的整数");
+  if (![experienceGain, coins].every((value) => Number.isSafeInteger(value) && value >= 0)) {
+    showStatus("增加经验与金币余额需为不小于 0 的整数");
     return;
   }
 
   button.disabled = true;
-  const { error } = await supabaseClient.rpc("set_student_pet_resources", {
+  const { data, error } = await supabaseClient.rpc("add_student_pet_resources", {
     p_student_id: studentId,
-    p_experience: experience,
+    p_experience_gain: experienceGain,
     p_coins: coins,
   });
   button.disabled = false;
@@ -2800,20 +2800,30 @@ async function saveStudentPetResources(studentId, experienceInput, coinsInput, b
     return;
   }
 
+  const saved = Array.isArray(data) ? data[0] : data;
+  const updatedExperience = Number(saved?.experience);
+  const updatedCoins = Number(saved?.coins);
+  if (!Number.isSafeInteger(updatedExperience) || !Number.isSafeInteger(updatedCoins)) {
+    showStatus("宠物资源已保存，正在刷新数据");
+    await loadStudents();
+    return;
+  }
+
   if (currentUser?.id === studentId) {
-    currentUser.pet_experience = experience;
-    currentUser.pet_coins = coins;
+    currentUser.pet_experience = updatedExperience;
+    currentUser.pet_coins = updatedCoins;
   } else {
     const student = students.find((item) => item.id === studentId);
     if (student) {
-      student.pet_experience = experience;
-      student.pet_coins = coins;
+      student.pet_experience = updatedExperience;
+      student.pet_coins = updatedCoins;
     }
   }
+  const levelInfo = getPetLevel(updatedExperience);
   renderPetStudentList();
   updateVisitorPet();
   if (!petDetailPage.hidden) renderPetDetail();
-  showStatus("宠物经验与金币已保存");
+  showStatus(`已增加 ${experienceGain} 经验，当前 Lv.${levelInfo.level} · ${levelInfo.progress.toLocaleString("zh-CN")} 经验`);
 }
 
 async function saveStudentLearningProfile(studentId, fields, button) {
