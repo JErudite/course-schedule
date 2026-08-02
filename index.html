@@ -7,11 +7,11 @@
     <meta name="referrer" content="no-referrer" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'none'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'self' blob:"
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260802-6" />
+    <link rel="stylesheet" href="styles.css?v=20260802-7" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -120,10 +120,6 @@
                 <small>还剩</small>
                 <strong><span id="remainingLessonCount">0</span> 次</strong>
               </div>
-              <div class="lesson-stat">
-                <small>历史已上</small>
-                <strong><span id="lifetimeLessonCount">0</span> 次</strong>
-              </div>
             </div>
             <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
               <i data-lucide="plus"></i>
@@ -164,6 +160,12 @@
             <span class="admin-feature-icon is-student"><i data-lucide="users-round"></i></span>
             <strong>学生管理</strong>
             <span id="adminStudentCount">0 人</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openAttendanceManagement" type="button">
+            <span class="admin-feature-icon is-attendance"><i data-lucide="clipboard-check"></i></span>
+            <strong>上课打卡</strong>
+            <span id="adminAttendanceCount">今日课程</span>
             <i data-lucide="chevron-right"></i>
           </button>
           <button class="admin-feature-button" id="openPetManagement" type="button">
@@ -247,11 +249,35 @@
           <span>当前已上</span>
           <span>当前应上</span>
           <span>还剩</span>
-          <span>历史已上</span>
           <span>操作</span>
         </div>
         <div class="student-list" id="studentList"></div>
         <p class="empty-list-hint" id="studentListEmpty">暂无访客账号</p>
+      </section>
+
+      <section class="admin-page attendance-page" id="attendanceManagementPage" aria-labelledby="attendanceManagementTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">今日课程记录</p>
+            <h2 id="attendanceManagementTitle">上课打卡</h2>
+          </div>
+          <button class="secondary-button" id="closeAttendanceManagement" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+        <div class="attendance-toolbar">
+          <div>
+            <strong id="attendanceDateLabel">今天</strong>
+            <span id="attendanceSummary">读取今日课程</span>
+          </div>
+          <button class="primary-button" id="markAllPresent" type="button">
+            <i data-lucide="check-check"></i>
+            <span>一键全部到课</span>
+          </button>
+        </div>
+        <div class="attendance-list" id="attendanceList"></div>
+        <p class="empty-list-hint" id="attendanceEmpty">今天没有分配学生的课程</p>
       </section>
 
       <section class="admin-page pet-management-page" id="petManagementPage" aria-labelledby="petManagementTitle" hidden>
@@ -264,6 +290,18 @@
             <i data-lucide="arrow-left"></i>
             <span>返回管理后台</span>
           </button>
+        </div>
+        <div class="student-sort-toolbar pet-sort-toolbar">
+          <div>
+            <i data-lucide="arrow-up-down"></i>
+            <label for="petSortMode">宠物列表排序</label>
+          </div>
+          <select id="petSortMode">
+            <option value="manual">手动排序</option>
+            <option value="level">等级从高到低</option>
+            <option value="surname">姓氏 A-Z</option>
+          </select>
+          <span id="petDragHint">拖动学生行可调整顺序</span>
         </div>
         <div class="pet-list-heading">
           <div>
@@ -445,7 +483,7 @@
         </div>
         <div class="leaderboard-status-band">
           <div><i data-lucide="radio"></i><strong>实时排名</strong><span>经验变化后自动更新</span></div>
-          <div><i data-lucide="calendar-clock"></i><strong>每周一 00:05</strong><span>结算上一周奖励</span></div>
+          <div><i data-lucide="calendar-clock"></i><strong>每周一 00:00</strong><span>结算上一周奖励</span></div>
         </div>
         <div class="leaderboard-table-head" aria-hidden="true">
           <span>排名</span>
@@ -549,16 +587,16 @@
           <div class="question-import-heading">
             <span class="admin-feature-icon is-question-bank"><i data-lucide="file-type-2"></i></span>
             <div>
-              <h3 id="questionImportTitle">Word 题目导入</h3>
-              <span id="questionImportStatus">等待选择 .docx 文档</span>
+              <h3 id="questionImportTitle">题库文件导入</h3>
+              <span id="questionImportStatus">等待选择 Word、PDF 或图片文件</span>
             </div>
           </div>
           <div class="question-import-controls">
             <label class="file-picker-button" for="questionBankFile">
               <i data-lucide="file-up"></i>
-              <span>选择 Word</span>
+              <span>选择文件</span>
             </label>
-            <input id="questionBankFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+            <input id="questionBankFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf,image/png,image/jpeg,image/webp" hidden />
             <button class="primary-button" id="importQuestionPreview" type="button" disabled>
               <i data-lucide="scan-text"></i>
               <span>识别题目</span>
@@ -775,6 +813,8 @@
     <script src="vendor/supabase-2.111.0.min.js"></script>
     <script src="vendor/pinyin-pro-3.26.0.min.js"></script>
     <script src="vendor/mammoth-1.8.0.min.js"></script>
-    <script src="app.js?v=20260802-6"></script>
+    <script src="vendor/pdfjs/pdf.min.js"></script>
+    <script src="vendor/tesseract/tesseract.min.js"></script>
+    <script src="app.js?v=20260802-7"></script>
   </body>
 </html>

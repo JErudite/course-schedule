@@ -80,6 +80,7 @@ let realtimeChannel = null;
 let realtimeAssignmentChannel = null;
 let realtimeStudentChannel = null;
 let realtimeBattleChannel = null;
+let realtimeAttendanceChannel = null;
 let selectedStudentId = null;
 let statusTimer = null;
 let copiedCourse = null;
@@ -104,7 +105,10 @@ let challengeState = {
   answered: false,
 };
 let studentSortMode = "manual";
+let petSortMode = "manual";
 let draggedStudentId = null;
+let attendanceRecords = [];
+let attendanceBusy = false;
 
 const grid = document.querySelector("#scheduleGrid");
 const scheduleScroll = document.querySelector("#scheduleScroll");
@@ -145,6 +149,7 @@ const lessonSummary = document.querySelector("#lessonSummary");
 const scheduleSection = document.querySelector("#scheduleSection");
 const adminHub = document.querySelector("#adminHub");
 const studentManagementPage = document.querySelector("#studentManagementPage");
+const attendanceManagementPage = document.querySelector("#attendanceManagementPage");
 const petManagementPage = document.querySelector("#petManagementPage");
 const petBattleHistoryPage = document.querySelector("#petBattleHistoryPage");
 const petDetailPage = document.querySelector("#petDetailPage");
@@ -449,6 +454,16 @@ function getVisibleOccurrences() {
   return occurrences.sort((first, second) => first.dayIndex - second.dayIndex || first.course.startTime - second.course.startTime);
 }
 
+function getTodayAttendanceStudentIds() {
+  const today = getScheduleToday();
+  const ids = new Set();
+  schedule.forEach((course) => {
+    if (!courseOccursOnDate(course, today)) return;
+    course.studentIds.forEach((studentId) => ids.add(studentId));
+  });
+  return [...ids];
+}
+
 function mapCourse(row) {
   const repeatIntervalDays = row.repeat_interval_days === null ? null : Number(row.repeat_interval_days);
   return {
@@ -511,7 +526,6 @@ function updateLessonSummary() {
   document.querySelector("#currentLessonCount").textContent = String(current);
   document.querySelector("#requiredLessonCount").textContent = String(required);
   document.querySelector("#remainingLessonCount").textContent = String(Math.max(required - current, 0));
-  document.querySelector("#lifetimeLessonCount").textContent = String(Number(currentUser?.lesson_count) || 0);
 }
 
 function normalizePetFields(profile) {
@@ -526,10 +540,19 @@ function normalizePetFields(profile) {
   };
 }
 
+function getPetLevelRequirement(levelValue) {
+  return Math.max(1, Math.floor(Number(levelValue) || 1)) * 10;
+}
+
+function getPetLevelThreshold(levelValue) {
+  const level = Math.max(0, Math.floor(Number(levelValue) || 0));
+  return 5 * level * (level + 1);
+}
+
 function getPetLevel(experienceValue) {
   const experience = Math.max(Number(experienceValue) || 0, 0);
   let completedLevels = Math.floor((-1 + Math.sqrt(1 + (0.8 * experience))) / 2);
-  const threshold = (level) => 5 * level * (level + 1);
+  const threshold = getPetLevelThreshold;
   while (threshold(completedLevels + 1) <= experience) completedLevels += 1;
   while (completedLevels > 0 && threshold(completedLevels) > experience) completedLevels -= 1;
   const level = completedLevels + 1;
@@ -540,7 +563,7 @@ function getPetLevel(experienceValue) {
     levelStart,
     levelEnd,
     progress: experience - levelStart,
-    required: levelEnd - levelStart,
+    required: getPetLevelRequirement(level),
   };
 }
 
@@ -1189,47 +1212,158 @@ async function loadQuestionBank({ quiet = false } = {}) {
   return true;
 }
 
+function getQuestionFileKind(file) {
+  const name = file?.name?.toLocaleLowerCase("zh-CN") || "";
+  if (name.endsWith(".docx")) return "docx";
+  if (name.endsWith(".pdf") || file?.type === "application/pdf") return "pdf";
+  if (["image/png", "image/jpeg", "image/webp"].includes(file?.type) || /\.(?:png|jpe?g|webp)$/.test(name)) return "image";
+  return "";
+}
+
+function validateQuestionFile(file, kind) {
+  const limits = { docx: 10, pdf: 20, image: 12 };
+  if (!kind) return "请选择 DOCX、PDF、PNG、JPG 或 WebP 文件";
+  if (file.size > limits[kind] * 1024 * 1024) return `${kind === "image" ? "图片" : kind.toUpperCase()} 文件不能超过 ${limits[kind]} MB`;
+  return "";
+}
+
+function updateQuestionImportProgress(message) {
+  document.querySelector("#questionImportStatus").textContent = message;
+}
+
+async function extractDocxQuestionContent(file) {
+  if (!window.mammoth) throw new Error("Word 识别组件加载失败");
+  const arrayBuffer = await file.arrayBuffer();
+  const [rawResult, htmlResult] = await Promise.all([
+    window.mammoth.extractRawText({ arrayBuffer }),
+    window.mammoth.convertToHtml({ arrayBuffer }),
+  ]);
+  return { text: rawResult.value, tableRows: getQuestionDocumentRows(htmlResult.value), method: "Word 文本识别" };
+}
+
+function extractPdfTextItems(textContent) {
+  let text = "";
+  let previousY = null;
+  textContent.items.forEach((item) => {
+    const value = String(item.str || "").trim();
+    if (!value) return;
+    const y = Number(item.transform?.[5]);
+    const newLine = previousY !== null && Number.isFinite(y) && Math.abs(y - previousY) > 3;
+    text += `${text && (newLine || item.hasEOL) ? "\n" : (text ? " " : "")}${value}`;
+    previousY = item.hasEOL ? null : y;
+  });
+  return text;
+}
+
+async function createQuestionOcrWorker(fileName) {
+  if (!window.Tesseract) throw new Error("图片识别组件加载失败");
+  return window.Tesseract.createWorker("chi_sim+eng", 1, {
+    workerPath: "vendor/tesseract/worker.min.js",
+    langPath: "vendor/tessdata",
+    corePath: "vendor/tesseract/core",
+    logger: (message) => {
+      if (message.status === "recognizing text") {
+        updateQuestionImportProgress(`${fileName} · 正在识别文字 ${Math.round((message.progress || 0) * 100)}%`);
+      }
+    },
+  });
+}
+
+function createScaledCanvas(width, height, maxSide = 2600) {
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  return { canvas, scale };
+}
+
+async function extractImageQuestionContent(file) {
+  const bitmap = await createImageBitmap(file);
+  const { canvas } = createScaledCanvas(bitmap.width, bitmap.height);
+  canvas.getContext("2d", { alpha: false }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const worker = await createQuestionOcrWorker(file.name);
+  try {
+    const result = await worker.recognize(canvas);
+    return { text: result.data.text, tableRows: [], method: "图片文字识别" };
+  } finally {
+    await worker.terminate();
+  }
+}
+
+async function renderPdfPageForOcr(page) {
+  const viewport = page.getViewport({ scale: 2 });
+  const { canvas, scale } = createScaledCanvas(viewport.width, viewport.height);
+  const renderViewport = page.getViewport({ scale: 2 * scale });
+  await page.render({ canvasContext: canvas.getContext("2d", { alpha: false }), viewport: renderViewport }).promise;
+  return canvas;
+}
+
+async function extractPdfQuestionContent(file) {
+  if (!window.pdfjsLib) throw new Error("PDF 识别组件加载失败");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdfjs/pdf.worker.min.js";
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  if (pdf.numPages > 30) {
+    await pdf.destroy();
+    throw new Error("PDF 最多支持 30 页，请拆分后再导入");
+  }
+
+  const pages = [];
+  const ocrPages = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    updateQuestionImportProgress(`${file.name} · 正在读取第 ${pageNumber} / ${pdf.numPages} 页`);
+    const page = await pdf.getPage(pageNumber);
+    const pageText = extractPdfTextItems(await page.getTextContent());
+    pages[pageNumber - 1] = pageText;
+    if (normalizeQuestionText(pageText).length < 30) ocrPages.push({ pageNumber, page });
+  }
+
+  if (ocrPages.length) {
+    const worker = await createQuestionOcrWorker(file.name);
+    try {
+      for (let index = 0; index < ocrPages.length; index += 1) {
+        const { pageNumber, page } = ocrPages[index];
+        updateQuestionImportProgress(`${file.name} · 扫描页 OCR ${index + 1} / ${ocrPages.length}`);
+        const result = await worker.recognize(await renderPdfPageForOcr(page));
+        pages[pageNumber - 1] = result.data.text;
+      }
+    } finally {
+      await worker.terminate();
+    }
+  }
+  await pdf.destroy();
+  return { text: pages.join("\n\n"), tableRows: [], method: ocrPages.length ? "PDF 文本提取 + 扫描页识别" : "PDF 文本提取" };
+}
+
 async function previewQuestionDocument() {
   const fileInput = document.querySelector("#questionBankFile");
   const file = fileInput.files?.[0];
   if (!file) return;
-  if (!file.name.toLocaleLowerCase("zh-CN").endsWith(".docx")) {
-    showStatus("请选择 .docx 格式的 Word 文档");
-    return;
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    showStatus("Word 文档不能超过 10 MB");
-    return;
-  }
-  if (!window.mammoth) {
-    showStatus("Word 识别组件加载失败，请刷新页面重试");
-    return;
-  }
+  const kind = getQuestionFileKind(file);
+  const validationError = validateQuestionFile(file, kind);
+  if (validationError) return showStatus(validationError);
 
   const button = document.querySelector("#importQuestionPreview");
   button.disabled = true;
-  document.querySelector("#questionImportStatus").textContent = `正在识别 ${file.name}`;
+  updateQuestionImportProgress(`正在识别 ${file.name}`);
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const [rawResult, htmlResult] = await Promise.all([
-      window.mammoth.extractRawText({ arrayBuffer }),
-      window.mammoth.convertToHtml({ arrayBuffer }),
-    ]);
-    const tableRows = getQuestionDocumentRows(htmlResult.value);
+    const content = kind === "docx"
+      ? await extractDocxQuestionContent(file)
+      : (kind === "pdf" ? await extractPdfQuestionContent(file) : await extractImageQuestionContent(file));
     importedQuestions = dedupeImportedQuestions([
-      ...parseChoiceQuestions(rawResult.value, tableRows),
-      ...parseWordQuestions(rawResult.value, tableRows),
+      ...parseChoiceQuestions(content.text, content.tableRows),
+      ...parseWordQuestions(content.text, content.tableRows),
     ]);
     renderImportedQuestionPreview();
-    document.querySelector("#questionImportStatus").textContent = importedQuestions.length
-      ? `${file.name} · 已识别 ${importedQuestions.length} 道题`
-      : `${file.name} · 未识别到有效题目`;
-    showStatus(importedQuestions.length ? `已识别 ${importedQuestions.length} 道题，请确认后加入题库` : "未识别到有效题目，请检查文档内容");
+    updateQuestionImportProgress(importedQuestions.length
+      ? `${file.name} · ${content.method} · 已识别 ${importedQuestions.length} 道题`
+      : `${file.name} · 未识别到有效题目`);
+    showStatus(importedQuestions.length ? `已识别 ${importedQuestions.length} 道题，请确认后加入题库` : "未识别到有效题目，请检查文件内容");
   } catch (error) {
     importedQuestions = [];
     renderImportedQuestionPreview();
-    document.querySelector("#questionImportStatus").textContent = `${file.name} · 识别失败`;
-    showStatus("Word 文档识别失败，请确认文件可以正常打开");
+    updateQuestionImportProgress(`${file.name} · 识别失败`);
+    showStatus(error?.message || "文件识别失败，请确认文件可以正常打开");
   } finally {
     button.disabled = false;
   }
@@ -1242,7 +1376,7 @@ async function saveImportedQuestions() {
   button.disabled = true;
   const { data, error } = await supabaseClient.rpc("import_pet_challenge_questions", {
     p_questions: importedQuestions,
-    p_source_name: file?.name || "Word 导入",
+    p_source_name: file?.name || "文件导入",
   });
   button.disabled = false;
   if (error) {
@@ -1255,7 +1389,7 @@ async function saveImportedQuestions() {
   importedQuestions = [];
   document.querySelector("#questionBankFile").value = "";
   document.querySelector("#importQuestionPreview").disabled = true;
-  document.querySelector("#questionImportStatus").textContent = "等待选择 .docx 文档";
+  updateQuestionImportProgress("等待选择 Word、PDF 或图片文件");
   renderImportedQuestionPreview();
   await loadQuestionBank({ quiet: true });
   showStatus(`已加入 ${inserted} 道题${skipped ? `，跳过 ${skipped} 道重复题` : ""}`);
@@ -1480,6 +1614,7 @@ async function showChallengeRecords() {
 function hideAdminPages() {
   adminHub.hidden = true;
   studentManagementPage.hidden = true;
+  attendanceManagementPage.hidden = true;
   petManagementPage.hidden = true;
   petBattleHistoryPage.hidden = true;
   petDetailPage.hidden = true;
@@ -1500,6 +1635,7 @@ function showScheduleView() {
 function renderAdminHubCounts() {
   document.querySelector("#adminStudentCount").textContent = `${students.length} 人`;
   document.querySelector("#assignedPetCount").textContent = `${students.filter((student) => student.pet).length} 人已分配`;
+  document.querySelector("#adminAttendanceCount").textContent = `${getTodayAttendanceStudentIds().length} 人待打卡`;
   if (questionBank.length) renderQuestionBankSummary();
 }
 
@@ -1520,6 +1656,19 @@ async function showStudentManagement() {
   hideAdminPages();
   studentManagementPage.hidden = false;
   document.querySelector("#studentUsernameInput").focus();
+}
+
+async function showAttendanceManagement() {
+  if (!canEdit) return;
+  await loadSchedule({ quiet: true });
+  await loadAttendance();
+  hideAdminPages();
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
+  attendanceManagementPage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  renderAttendance();
+  document.querySelector("#markAllPresent").focus();
 }
 
 async function showPetManagement() {
@@ -2282,6 +2431,10 @@ async function loadSchedule({ quiet = false } = {}) {
 
   schedule = data.map(mapCourse);
   renderSchedule();
+  if (canEdit) renderAdminHubCounts();
+  if (!attendanceManagementPage.hidden && canEdit) {
+    await loadAttendance();
+  }
   refreshOpenDialog();
   if (!quiet) setSyncState("connecting", "正在建立实时同步");
   return true;
@@ -2335,6 +2488,7 @@ function subscribeToCourses() {
   if (realtimeAssignmentChannel) supabaseClient.removeChannel(realtimeAssignmentChannel);
   if (realtimeStudentChannel) supabaseClient.removeChannel(realtimeStudentChannel);
   if (realtimeBattleChannel) supabaseClient.removeChannel(realtimeBattleChannel);
+  if (realtimeAttendanceChannel) supabaseClient.removeChannel(realtimeAttendanceChannel);
   realtimeChannel = supabaseClient
     .channel("course-schedule-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "courses" }, applyRealtimeChange)
@@ -2357,6 +2511,12 @@ function subscribeToCourses() {
     .channel("pet-battle-history-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "pet_battles" }, async () => {
       if (canEdit && (!petManagementPage.hidden || !petBattleHistoryPage.hidden)) await loadPetBattleHistory();
+    })
+    .subscribe();
+  realtimeAttendanceChannel = supabaseClient
+    .channel("attendance-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "student_attendance" }, async () => {
+      if (canEdit && !attendanceManagementPage.hidden) await loadAttendance();
     })
     .subscribe();
 }
@@ -2389,6 +2549,96 @@ async function loadStudents() {
   renderAdminHubCounts();
   renderSchedule();
   return true;
+}
+
+async function loadAttendance() {
+  if (!canEdit) return false;
+  const { data, error } = await supabaseClient.rpc("get_today_attendance");
+  if (error) {
+    attendanceRecords = [];
+    renderAttendance();
+    showStatus("今日打卡记录读取失败，请稍后重试");
+    return false;
+  }
+  attendanceRecords = (data || []).map((record) => ({
+    ...record,
+    current_lesson_count: Number(record.current_lesson_count) || 0,
+    status: record.status || "",
+    course_names: record.course_names || "",
+  }));
+  renderAttendance();
+  return true;
+}
+
+function renderAttendance() {
+  const list = document.querySelector("#attendanceList");
+  if (!list) return;
+  const today = getScheduleToday();
+  document.querySelector("#attendanceDateLabel").textContent = `${today.getMonth() + 1} 月 ${today.getDate()} 日`;
+  const presentCount = attendanceRecords.filter((record) => record.status === "present").length;
+  document.querySelector("#attendanceSummary").textContent = `${attendanceRecords.length} 名学生 · 已到课 ${presentCount} 人`;
+  list.replaceChildren();
+  attendanceRecords.forEach((record) => {
+    const row = createElement("article", "attendance-row");
+    const identity = createElement("div", "attendance-identity");
+    const color = createElement("i", "student-color-indicator");
+    const student = students.find((item) => item.id === record.student_id);
+    color.style.setProperty("--student-color", student?.color || defaultCourseColor);
+    identity.append(color, createElement("strong", "", record.username || student?.username || "学生"));
+    identity.append(createElement("small", "", record.course_names || "今日课程"));
+    const progress = createElement("span", "attendance-current-count", `当前已上 ${record.current_lesson_count} 次`);
+    const controls = createElement("div", "attendance-status-controls");
+    [
+      ["present", "到课", "check"],
+      ["leave", "请假", "calendar-off"],
+    ].forEach(([status, label, icon]) => {
+      const button = createElement("button", `secondary-button attendance-status-button${record.status === status ? " is-selected" : ""}`);
+      button.type = "button";
+      button.disabled = attendanceBusy;
+      button.innerHTML = `<i data-lucide="${icon}"></i><span>${label}</span>`;
+      button.addEventListener("click", () => setAttendanceStatus(record.student_id, status));
+      controls.append(button);
+    });
+    row.append(identity, progress, controls);
+    list.append(row);
+  });
+  document.querySelector("#attendanceEmpty").hidden = attendanceRecords.length > 0;
+  document.querySelector("#markAllPresent").disabled = attendanceBusy || attendanceRecords.length === 0;
+  document.querySelector("#adminAttendanceCount").textContent = `${attendanceRecords.length} 人待打卡`;
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function setAttendanceStatus(studentId, status) {
+  if (!canEdit || attendanceBusy) return;
+  attendanceBusy = true;
+  renderAttendance();
+  const { error } = await supabaseClient.rpc("set_today_attendance", {
+    p_student_id: studentId,
+    p_status: status,
+  });
+  attendanceBusy = false;
+  if (error) {
+    showStatus("打卡保存失败，请确认学生今天有分配课程");
+    renderAttendance();
+    return;
+  }
+  await Promise.all([loadStudents(), loadAttendance()]);
+  showStatus(status === "present" ? "已登记到课，当前已上次数 +1" : "已登记请假，当前已上次数不变");
+}
+
+async function markAllStudentsPresent() {
+  if (!canEdit || attendanceBusy || attendanceRecords.length === 0) return;
+  attendanceBusy = true;
+  renderAttendance();
+  const { data, error } = await supabaseClient.rpc("mark_all_today_attendance_present");
+  attendanceBusy = false;
+  if (error) {
+    showStatus("一键到课失败，请稍后重试");
+    renderAttendance();
+    return;
+  }
+  await Promise.all([loadStudents(), loadAttendance()]);
+  showStatus(`已登记今日 ${Number(data) || attendanceRecords.length} 名学生到课`);
 }
 
 async function loadPetFoods() {
@@ -2496,25 +2746,13 @@ function renderStudentList() {
 
     const currentField = createStudentCountField(`${student.username}当前已上`, student.current_lesson_count);
     const requiredField = createStudentCountField(`${student.username}当前应上`, student.required_lesson_count);
-    const lifetimeField = createStudentCountField(`${student.username}历史已上`, student.lesson_count);
     const remaining = createElement("output", "student-remaining-count");
-    let previousCurrentCount = student.current_lesson_count;
     const updateRemaining = () => {
       const current = Number(currentField.input.value) || 0;
       const required = Number(requiredField.input.value) || 0;
       remaining.textContent = `${Math.max(required - current, 0)} 次`;
     };
-    currentField.input.addEventListener("input", () => {
-      if (currentField.input.value !== "") {
-        const nextCurrentCount = Number(currentField.input.value);
-        if (Number.isInteger(nextCurrentCount) && nextCurrentCount >= 0) {
-          const lifetimeCount = Number(lifetimeField.input.value) || 0;
-          lifetimeField.input.value = String(Math.max(lifetimeCount + nextCurrentCount - previousCurrentCount, 0));
-          previousCurrentCount = nextCurrentCount;
-        }
-      }
-      updateRemaining();
-    });
+    currentField.input.addEventListener("input", updateRemaining);
     requiredField.input.addEventListener("input", updateRemaining);
     updateRemaining();
 
@@ -2526,10 +2764,10 @@ function renderStudentList() {
     saveButton.addEventListener("click", () => saveStudentLearningProfile(student.id, {
       currentInput: currentField.input,
       requiredInput: requiredField.input,
-      lifetimeInput: lifetimeField.input,
+      lifetimeCount: student.lesson_count,
       color: selectedColor,
     }, saveButton));
-    [currentField.input, requiredField.input, lifetimeField.input].forEach((input) => {
+    [currentField.input, requiredField.input].forEach((input) => {
       input.addEventListener("keydown", (event) => {
         if (event.key !== "Enter") return;
         event.preventDefault();
@@ -2549,7 +2787,7 @@ function renderStudentList() {
     });
     const actions = createElement("div", "student-row-actions");
     actions.append(saveButton, removeButton);
-    row.append(identity, currentField.label, requiredField.label, remaining, lifetimeField.label, actions);
+    row.append(identity, currentField.label, requiredField.label, remaining, actions);
     if (studentSortMode === "manual") bindStudentRowDrag(row, student.id);
     list.append(row);
   });
@@ -2614,6 +2852,29 @@ function setStudentSortMode(value) {
   studentSortMode = value === "surname" ? "surname" : "manual";
   document.querySelector("#studentDragHint").hidden = studentSortMode !== "manual";
   renderStudentList();
+}
+
+function setPetSortMode(value) {
+  petSortMode = ["level", "surname"].includes(value) ? value : "manual";
+  document.querySelector("#petDragHint").hidden = petSortMode !== "manual";
+  renderPetStudentList();
+}
+
+function getOrderedPetOwners() {
+  const adminOwner = currentUser ? [currentUser] : [];
+  let orderedStudents = students;
+  if (petSortMode === "surname") {
+    orderedStudents = [...students].sort((first, second) => first.username.localeCompare(second.username, "zh-CN-u-co-pinyin", { sensitivity: "base" }));
+  } else if (petSortMode === "level") {
+    orderedStudents = [...students].sort((first, second) => {
+      const levelDifference = getPetLevel(second.pet_experience).level - getPetLevel(first.pet_experience).level;
+      if (levelDifference) return levelDifference;
+      const experienceDifference = second.pet_experience - first.pet_experience;
+      if (experienceDifference) return experienceDifference;
+      return first.username.localeCompare(second.username, "zh-CN-u-co-pinyin", { sensitivity: "base" });
+    });
+  }
+  return [...adminOwner, ...orderedStudents];
 }
 
 function createPetVisual(pet, className = "", owner = null) {
@@ -2727,10 +2988,13 @@ function createAdminPetDetails(student, assignedPet) {
 function renderPetStudentList() {
   const list = document.querySelector("#petStudentList");
   list.replaceChildren();
-  const owners = [currentUser, ...students].filter(Boolean);
+  const owners = getOrderedPetOwners();
   owners.forEach((student) => {
     const isAdminOwner = student.is_admin === true;
-    const row = createElement("section", `pet-student-row${isAdminOwner ? " is-admin-pet" : ""}`);
+    const isDraggable = !isAdminOwner && petSortMode === "manual";
+    const row = createElement("section", `pet-student-row${isAdminOwner ? " is-admin-pet" : ""}${isDraggable ? " is-draggable" : ""}`);
+    row.dataset.studentId = student.id;
+    row.draggable = isDraggable;
     const header = createElement("div", "pet-student-header");
     const identity = createElement("div", "pet-student-identity");
     const color = createElement("i", "student-color-indicator");
@@ -2740,6 +3004,13 @@ function renderPetStudentList() {
     const assignedPet = petCatalog.find((pet) => pet.id === student.pet);
     color.style.setProperty("--student-color", student.color || defaultCourseColor);
     color.setAttribute("aria-hidden", "true");
+    if (isDraggable) {
+      const dragHandle = createElement("span", "student-drag-handle");
+      dragHandle.innerHTML = '<i data-lucide="grip-vertical"></i>';
+      dragHandle.title = "拖动调整顺序";
+      dragHandle.setAttribute("aria-hidden", "true");
+      identity.append(dragHandle);
+    }
     identity.append(color, createElement("strong", "", student.username));
     if (isAdminOwner) identity.append(createElement("small", "pet-admin-label", "曾老师"));
 
@@ -2824,11 +3095,49 @@ function renderPetStudentList() {
 
     row.append(header, resourceEditor, details);
     if (!isAdminOwner) row.append(chooser);
+    if (isDraggable) bindPetRowDrag(row, student.id);
     list.append(row);
   });
   document.querySelector("#petStudentCount").textContent = `${owners.length} 人（含曾老师）`;
   document.querySelector("#petStudentListEmpty").hidden = students.length > 0;
   if (window.lucide) window.lucide.createIcons();
+}
+
+function bindPetRowDrag(row, studentId) {
+  row.addEventListener("dragstart", (event) => {
+    draggedStudentId = studentId;
+    row.classList.add("is-dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", studentId);
+  });
+  row.addEventListener("dragover", (event) => {
+    if (!draggedStudentId || draggedStudentId === studentId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".pet-student-row.is-drop-target").forEach((item) => item.classList.remove("is-drop-target"));
+    row.classList.add("is-drop-target");
+  });
+  row.addEventListener("dragleave", () => row.classList.remove("is-drop-target"));
+  row.addEventListener("drop", async (event) => {
+    event.preventDefault();
+    row.classList.remove("is-drop-target");
+    if (!draggedStudentId || draggedStudentId === studentId) return;
+    const sourceIndex = students.findIndex((item) => item.id === draggedStudentId);
+    const targetIndex = students.findIndex((item) => item.id === studentId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const nextOrder = [...students];
+    const [moved] = nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(targetIndex, 0, moved);
+    students = nextOrder;
+    renderPetStudentList();
+    await saveStudentOrder();
+  });
+  row.addEventListener("dragend", () => {
+    draggedStudentId = null;
+    document.querySelectorAll(".pet-student-row.is-dragging, .pet-student-row.is-drop-target").forEach((item) => {
+      item.classList.remove("is-dragging", "is-drop-target");
+    });
+  });
 }
 
 async function saveStudentPet(studentId, petId, chooser) {
@@ -2906,7 +3215,7 @@ async function saveStudentLearningProfile(studentId, fields, button) {
   if (!canEdit) return;
   const currentCount = Number(fields.currentInput.value);
   const requiredCount = Number(fields.requiredInput.value);
-  const lifetimeCount = Number(fields.lifetimeInput.value);
+  const lifetimeCount = Number(fields.lifetimeCount) || 0;
   const counts = [currentCount, requiredCount, lifetimeCount];
   if (counts.some((count) => !Number.isInteger(count) || count < 0 || count > 100000)) {
     showStatus("课次数需为 0 - 100000 的整数");
@@ -2937,7 +3246,6 @@ async function saveStudentLearningProfile(studentId, fields, button) {
   }
   fields.currentInput.value = String(currentCount);
   fields.requiredInput.value = String(requiredCount);
-  fields.lifetimeInput.value = String(lifetimeCount);
   renderSchedule();
   showStatus(`已保存${student?.username || "该学生"}的颜色与课程进度`);
 }
@@ -3001,10 +3309,13 @@ async function applySession(session) {
     if (realtimeAssignmentChannel) await supabaseClient.removeChannel(realtimeAssignmentChannel);
     if (realtimeStudentChannel) await supabaseClient.removeChannel(realtimeStudentChannel);
     if (realtimeBattleChannel) await supabaseClient.removeChannel(realtimeBattleChannel);
+    if (realtimeAttendanceChannel) await supabaseClient.removeChannel(realtimeAttendanceChannel);
     realtimeChannel = null;
     realtimeAssignmentChannel = null;
     realtimeStudentChannel = null;
     realtimeBattleChannel = null;
+    realtimeAttendanceChannel = null;
+    attendanceRecords = [];
     petBattleHistory = [];
     petLeaderboard = [];
     adminPetComparison = null;
@@ -3211,12 +3522,14 @@ function bindEvents() {
   document.querySelector("#studentManagerButton").addEventListener("click", showAdminHub);
   document.querySelector("#closeAdminHub").addEventListener("click", showScheduleView);
   document.querySelector("#openStudentManagement").addEventListener("click", showStudentManagement);
+  document.querySelector("#openAttendanceManagement").addEventListener("click", showAttendanceManagement);
   document.querySelector("#openPetManagement").addEventListener("click", showPetManagement);
   document.querySelector("#openPetRankingManagement").addEventListener("click", () => showPetLeaderboard("admin"));
   document.querySelector("#openChallengeRecords").addEventListener("click", showChallengeRecords);
   document.querySelector("#openQuestionBank").addEventListener("click", showQuestionBank);
   document.querySelector("#openStudentChallenge").addEventListener("click", showStudentChallenge);
   document.querySelector("#closeStudentManagement").addEventListener("click", showAdminHub);
+  document.querySelector("#closeAttendanceManagement").addEventListener("click", showAdminHub);
   document.querySelector("#closePetManagement").addEventListener("click", showAdminHub);
   document.querySelector("#closePetBattleHistory").addEventListener("click", showPetManagement);
   document.querySelector("#openPetLeaderboard").addEventListener("click", () => showPetLeaderboard(canEdit ? "admin" : "schedule"));
@@ -3232,7 +3545,7 @@ function bindEvents() {
   document.querySelector("#questionBankFile").addEventListener("change", (event) => {
     const file = event.target.files?.[0];
     document.querySelector("#importQuestionPreview").disabled = !file;
-    document.querySelector("#questionImportStatus").textContent = file ? `${file.name} · 准备识别` : "等待选择 .docx 文档";
+    document.querySelector("#questionImportStatus").textContent = file ? `${file.name} · 准备识别` : "等待选择 Word、PDF 或图片文件";
   });
   document.querySelector("#importQuestionPreview").addEventListener("click", previewQuestionDocument);
   document.querySelector("#saveImportedQuestions").addEventListener("click", saveImportedQuestions);
@@ -3255,6 +3568,11 @@ function bindEvents() {
     setStudentSortMode(event.target.value);
     window.localStorage.setItem("student-sort-mode", studentSortMode);
   });
+  document.querySelector("#petSortMode").addEventListener("change", (event) => {
+    setPetSortMode(event.target.value);
+    window.localStorage.setItem("pet-sort-mode", petSortMode);
+  });
+  document.querySelector("#markAllPresent").addEventListener("click", markAllStudentsPresent);
   document.querySelector("#studentUsernameInput").addEventListener("input", updateStudentPasswordPreview);
   studentForm.addEventListener("submit", handleStudentSubmit);
   document.querySelector("#cancelDeleteStudent").addEventListener("click", () => deleteStudentDialog.close());
@@ -3268,8 +3586,13 @@ function bindEvents() {
 async function initializeApp() {
   populateDurationOptions();
   studentSortMode = window.localStorage.getItem("student-sort-mode") === "surname" ? "surname" : "manual";
+  petSortMode = ["level", "surname"].includes(window.localStorage.getItem("pet-sort-mode"))
+    ? window.localStorage.getItem("pet-sort-mode")
+    : "manual";
   document.querySelector("#studentSortMode").value = studentSortMode;
   document.querySelector("#studentDragHint").hidden = studentSortMode !== "manual";
+  document.querySelector("#petSortMode").value = petSortMode;
+  document.querySelector("#petDragHint").hidden = petSortMode !== "manual";
   startDateAutoRefresh();
   bindEvents();
   renderSchedule();
