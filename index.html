@@ -103,6 +103,10 @@
               <i data-lucide="trophy"></i>
               <span>宠物排行</span>
             </button>
+            <button class="secondary-button pet-challenge-shortcut" id="openStudentChallenge" type="button" hidden>
+              <i data-lucide="brain-circuit"></i>
+              <span>学习挑战</span>
+            </button>
             <div class="lesson-summary" id="lessonSummary" hidden>
               <div class="lesson-stat">
                 <small>当前已上</small>
@@ -172,6 +176,12 @@
             <span class="admin-feature-icon is-ranking"><i data-lucide="trophy"></i></span>
             <strong>宠物排行榜</strong>
             <span id="adminRankingCount">实时排名</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openChallengeRecords" type="button">
+            <span class="admin-feature-icon is-challenge"><i data-lucide="clipboard-check"></i></span>
+            <strong>挑战记录</strong>
+            <span id="adminChallengeCount">查看学生答题情况</span>
             <i data-lucide="chevron-right"></i>
           </button>
         </div>
@@ -414,6 +424,82 @@
         </div>
         <div class="pet-leaderboard-list" id="petLeaderboardList"></div>
         <p class="empty-list-hint" id="petLeaderboardEmpty">暂无已分配宠物的学生</p>
+      </section>
+
+      <section class="admin-page student-challenge-page" id="studentChallengePage" aria-labelledby="studentChallengeTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">宠物成长</p>
+            <h2 id="studentChallengeTitle">学习挑战</h2>
+          </div>
+          <button class="secondary-button" id="closeStudentChallenge" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回课程表</span>
+          </button>
+        </div>
+        <div class="challenge-summary-grid">
+          <article class="challenge-summary-card is-choice">
+            <span><i data-lucide="list-checks"></i></span>
+            <div><small>选择题挑战</small><strong id="choiceChallengeCount">0 / 50</strong></div>
+            <em id="choiceChallengeStreak">连续答对 0</em>
+          </article>
+          <article class="challenge-summary-card is-word">
+            <span><i data-lucide="languages"></i></span>
+            <div><small>单词挑战</small><strong id="wordChallengeCount">0 / 50</strong></div>
+            <em>中英文互问</em>
+          </article>
+        </div>
+        <div class="challenge-tabs" role="tablist" aria-label="挑战类型">
+          <button class="challenge-tab is-active" id="showChoiceChallenge" type="button" role="tab" aria-selected="true">
+            <i data-lucide="list-checks"></i><span>选择题</span>
+          </button>
+          <button class="challenge-tab" id="showWordChallenge" type="button" role="tab" aria-selected="false">
+            <i data-lucide="languages"></i><span>单词</span>
+          </button>
+        </div>
+        <section class="challenge-question-card" id="challengeQuestionCard" aria-live="polite">
+          <div class="challenge-question-head">
+            <small id="challengeQuestionType">选择题挑战</small>
+            <strong id="challengeQuestionProgress">今日剩余 50 题</strong>
+          </div>
+          <h3 id="challengePrompt">准备开始今天的挑战</h3>
+          <div class="choice-challenge-options" id="choiceChallengeOptions"></div>
+          <form class="word-challenge-form" id="wordChallengeForm" hidden>
+            <label class="form-field">
+              <span>输入答案</span>
+              <input id="wordChallengeAnswer" type="text" maxlength="120" autocomplete="off" required />
+            </label>
+            <button class="primary-button" id="submitWordChallenge" type="submit">
+              <i data-lucide="check"></i><span>提交答案</span>
+            </button>
+          </form>
+          <div class="challenge-result" id="challengeResult" hidden>
+            <span id="challengeResultIcon"><i data-lucide="sparkles"></i></span>
+            <div><strong id="challengeResultTitle"></strong><small id="challengeResultDetail"></small></div>
+          </div>
+          <button class="primary-button challenge-next-button" id="nextChallengeQuestion" type="button" hidden>
+            <i data-lucide="arrow-right"></i><span>下一题</span>
+          </button>
+        </section>
+      </section>
+
+      <section class="admin-page challenge-records-page" id="challengeRecordsPage" aria-labelledby="challengeRecordsTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学习数据</p>
+            <h2 id="challengeRecordsTitle">挑战记录</h2>
+          </div>
+          <button class="secondary-button" id="closeChallengeRecords" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+        <div class="challenge-records-toolbar">
+          <div><i data-lucide="clock-3"></i><strong>全部学生答题记录</strong><span id="challengeRecordTotal">0 条</span></div>
+          <button class="icon-button" id="refreshChallengeRecords" type="button" aria-label="刷新挑战记录" title="刷新挑战记录"><i data-lucide="refresh-cw"></i></button>
+        </div>
+        <div class="challenge-record-list" id="challengeRecordList"></div>
+        <p class="empty-list-hint" id="challengeRecordEmpty">暂时没有已完成的挑战记录</p>
       </section>
 
       <footer class="page-footer" id="pageFooter">

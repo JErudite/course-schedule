@@ -90,6 +90,15 @@ let petLeaderboardReturnView = "schedule";
 let petLeaderboard = [];
 let adminPetComparison = null;
 let petBattleHistory = [];
+let challengeRecords = [];
+let challengeState = {
+  type: "choice",
+  attemptId: null,
+  attemptsUsed: 0,
+  attemptsRemaining: 50,
+  choiceStreak: 0,
+  answered: false,
+};
 let studentSortMode = "manual";
 let draggedStudentId = null;
 
@@ -135,6 +144,8 @@ const studentManagementPage = document.querySelector("#studentManagementPage");
 const petManagementPage = document.querySelector("#petManagementPage");
 const petDetailPage = document.querySelector("#petDetailPage");
 const petLeaderboardPage = document.querySelector("#petLeaderboardPage");
+const studentChallengePage = document.querySelector("#studentChallengePage");
+const challengeRecordsPage = document.querySelector("#challengeRecordsPage");
 const pageFooter = document.querySelector("#pageFooter");
 const copyModeBar = document.querySelector("#copyModeBar");
 const visitorPet = document.querySelector("#visitorPet");
@@ -797,9 +808,10 @@ function renderPetLeaderboard() {
     const pet = petCatalog.find((item) => item.id === entry.pet_type);
     if (!pet) return;
     const leaderboardPetName = entry.pet_name && entry.pet_name !== "未命名宠物" ? entry.pet_name : pet.name;
-    const row = createElement("article", `pet-leaderboard-row rank-${Math.min(Number(entry.rank_position), 4)}${entry.is_self ? " is-self" : ""}`);
-    const rank = createElement("span", "pet-leaderboard-rank", String(entry.rank_position));
-    if (Number(entry.rank_position) <= 3) rank.innerHTML = `<i data-lucide="${["crown", "medal", "award"][Number(entry.rank_position) - 1]}"></i><strong>${entry.rank_position}</strong>`;
+    const rankPosition = Number(entry.rank_position);
+    const row = createElement("article", `pet-leaderboard-row rank-${Math.min(rankPosition, 4)}${entry.is_self ? " is-self" : ""}`);
+    const rank = createElement("span", "pet-leaderboard-rank", `第${rankPosition}名`);
+    if (rankPosition <= 3) rank.innerHTML = `<i data-lucide="${["crown", "medal", "award"][rankPosition - 1]}"></i><strong>第${rankPosition}名</strong>`;
 
     const identity = createElement("div", "pet-leaderboard-identity");
     const image = createElement("img");
@@ -860,12 +872,213 @@ async function loadPetLeaderboard() {
   return true;
 }
 
+function formatChallengeDuration(seconds) {
+  if (seconds === null || seconds === undefined) return "未提交";
+  const value = Number(seconds) || 0;
+  if (value < 60) return `${value} 秒`;
+  return `${Math.floor(value / 60)} 分 ${value % 60} 秒`;
+}
+
+function formatChallengeDate(value) {
+  if (!value) return "暂无时间";
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: scheduleTimeZone,
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function renderChallengeSummary(summary) {
+  const choiceAttempts = Number(summary.choice_attempts) || 0;
+  const wordAttempts = Number(summary.word_attempts) || 0;
+  const choiceRemaining = Number(summary.choice_remaining ?? Math.max(0, 50 - choiceAttempts));
+  const wordRemaining = Number(summary.word_remaining ?? Math.max(0, 50 - wordAttempts));
+  document.querySelector("#choiceChallengeCount").textContent = `${choiceAttempts} / 50`;
+  document.querySelector("#wordChallengeCount").textContent = `${wordAttempts} / 50`;
+  document.querySelector("#choiceChallengeStreak").textContent = `连续答对 ${Number(summary.choice_streak) || 0}`;
+  if (challengeState.type === "choice") document.querySelector("#challengeQuestionProgress").textContent = `今日剩余 ${choiceRemaining} 题`;
+  else document.querySelector("#challengeQuestionProgress").textContent = `今日剩余 ${wordRemaining} 题`;
+}
+
+async function loadChallengeSummary() {
+  const { data, error } = await supabaseClient.rpc("get_my_challenge_summary");
+  if (error) {
+    showStatus("挑战进度读取失败，请稍后重试");
+    return null;
+  }
+  const summary = Array.isArray(data) ? data[0] : data;
+  renderChallengeSummary(summary || {});
+  return summary || {};
+}
+
+function setChallengeType(type) {
+  challengeState.type = type;
+  challengeState.attemptId = null;
+  challengeState.answered = false;
+  document.querySelector("#showChoiceChallenge").classList.toggle("is-active", type === "choice");
+  document.querySelector("#showChoiceChallenge").setAttribute("aria-selected", String(type === "choice"));
+  document.querySelector("#showWordChallenge").classList.toggle("is-active", type === "word");
+  document.querySelector("#showWordChallenge").setAttribute("aria-selected", String(type === "word"));
+  document.querySelector("#choiceChallengeOptions").hidden = type !== "choice";
+  document.querySelector("#wordChallengeForm").hidden = type !== "word";
+  document.querySelector("#challengeResult").hidden = true;
+  document.querySelector("#nextChallengeQuestion").hidden = true;
+  document.querySelector("#wordChallengeAnswer").value = "";
+  loadNextChallengeQuestion();
+}
+
+function renderChallengeQuestion(question) {
+  challengeState.attemptId = Number(question.attempt_id);
+  challengeState.attemptsUsed = Number(question.attempts_used) || 0;
+  challengeState.attemptsRemaining = Number(question.attempts_remaining) || 0;
+  challengeState.choiceStreak = Number(question.choice_streak) || 0;
+  challengeState.answered = false;
+  document.querySelector("#challengeQuestionType").textContent = question.challenge_type === "choice" ? "选择题挑战" : "单词挑战";
+  document.querySelector("#challengePrompt").textContent = question.prompt;
+  document.querySelector("#challengeResult").hidden = true;
+  document.querySelector("#nextChallengeQuestion").hidden = true;
+  const options = document.querySelector("#choiceChallengeOptions");
+  options.replaceChildren();
+  (question.options || []).forEach((option, index) => {
+    const button = createElement("button", "challenge-option");
+    button.type = "button";
+    button.innerHTML = `<span>${String.fromCharCode(65 + index)}</span><strong></strong>`;
+    button.querySelector("strong").textContent = option;
+    button.addEventListener("click", () => submitChallengeAnswer(option, button));
+    options.append(button);
+  });
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function loadNextChallengeQuestion() {
+  if (!currentUser?.pet || canEdit) return;
+  const questionCard = document.querySelector("#challengeQuestionCard");
+  questionCard.classList.add("is-loading");
+  const { data, error } = await supabaseClient.rpc("get_next_pet_challenge_question", { p_challenge_type: challengeState.type });
+  questionCard.classList.remove("is-loading");
+  if (error) {
+    document.querySelector("#challengePrompt").textContent = error.message?.includes("daily challenge limit")
+      ? "今日挑战次数已用完，明天再来吧"
+      : "当前没有可用题目，请稍后再试";
+    document.querySelector("#choiceChallengeOptions").replaceChildren();
+    document.querySelector("#wordChallengeForm").hidden = true;
+    document.querySelector("#challengeQuestionProgress").textContent = "今日剩余 0 题";
+    await loadChallengeSummary();
+    return false;
+  }
+  const question = Array.isArray(data) ? data[0] : data;
+  if (!question) return false;
+  renderChallengeQuestion(question);
+  await loadChallengeSummary();
+  return true;
+}
+
+function renderChallengeResult(result) {
+  const resultBox = document.querySelector("#challengeResult");
+  const correct = result.is_correct === true;
+  resultBox.className = `challenge-result ${correct ? "is-correct" : "is-wrong"}`;
+  document.querySelector("#challengeResultTitle").textContent = correct ? `答对了，获得 ${result.gained_experience} 经验` : "这次答错了";
+  document.querySelector("#challengeResultDetail").textContent = `本题用时 ${formatChallengeDuration(result.duration_seconds)} · 今日还剩 ${result.attempts_remaining} 题`;
+  resultBox.hidden = false;
+  document.querySelector("#nextChallengeQuestion").hidden = result.attempts_remaining <= 0;
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function submitChallengeAnswer(answer, clickedButton = null) {
+  if (!challengeState.attemptId || challengeState.answered) return;
+  if (clickedButton) clickedButton.disabled = true;
+  document.querySelector("#submitWordChallenge").disabled = true;
+  challengeState.answered = true;
+  const { data, error } = await supabaseClient.rpc("answer_pet_challenge_question", {
+    p_attempt_id: challengeState.attemptId,
+    p_answer: answer,
+  });
+  document.querySelector("#submitWordChallenge").disabled = false;
+  if (error) {
+    challengeState.answered = false;
+    if (clickedButton) clickedButton.disabled = false;
+    showStatus("提交答案失败，请重试");
+    return;
+  }
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result) return;
+  currentUser.pet_experience = Number(result.total_experience) || currentUser.pet_experience;
+  renderChallengeResult(result);
+  await loadChallengeSummary();
+  if (!petDetailPage.hidden) renderPetDetail();
+  updateVisitorPet();
+  showStatus(result.is_correct ? `答对了，获得 ${result.gained_experience} 经验` : "答错了，继续加油");
+}
+
+function renderChallengeRecords() {
+  const list = document.querySelector("#challengeRecordList");
+  list.replaceChildren();
+  challengeRecords.forEach((record) => {
+    const row = createElement("article", `challenge-record-row ${record.is_correct ? "is-correct" : "is-wrong"}`);
+    const result = createElement("span", "challenge-record-result", record.is_correct ? "对" : "错");
+    const identity = createElement("div", "challenge-record-identity");
+    identity.append(createElement("strong", "", record.student_username), createElement("small", "", `${record.pet_name} · ${record.challenge_type === "choice" ? "选择题" : "单词"}`));
+    const question = createElement("div", "challenge-record-question");
+    question.append(createElement("strong", "", record.question_prompt), createElement("small", "", `回答：${record.submitted_answer || "-"}`));
+    const metrics = createElement("div", "challenge-record-metrics");
+    metrics.append(createElement("strong", "", `+${record.reward_experience} 经验`), createElement("small", "", `${formatChallengeDuration(record.duration_seconds)} · ${formatChallengeDate(record.answered_at)}`));
+    row.append(result, identity, question, metrics);
+    list.append(row);
+  });
+  document.querySelector("#challengeRecordEmpty").hidden = challengeRecords.length > 0;
+  document.querySelector("#challengeRecordTotal").textContent = `${challengeRecords.length} 条`;
+}
+
+async function loadAdminChallengeRecords() {
+  if (!canEdit) return false;
+  const { data, error } = await supabaseClient.rpc("get_admin_pet_challenge_records", { p_limit: 500 });
+  if (error) {
+    challengeRecords = [];
+    renderChallengeRecords();
+    showStatus("挑战记录读取失败，请稍后重试");
+    return false;
+  }
+  challengeRecords = (data || []).map((record) => ({
+    ...record,
+    reward_experience: Number(record.reward_experience) || 0,
+    duration_seconds: record.duration_seconds === null ? null : Number(record.duration_seconds) || 0,
+  }));
+  renderChallengeRecords();
+  return true;
+}
+
+async function showStudentChallenge() {
+  if (canEdit || !currentUser?.pet) return;
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
+  hideAdminPages();
+  studentChallengePage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  setChallengeType("choice");
+  document.querySelector("#showChoiceChallenge").focus();
+}
+
+async function showChallengeRecords() {
+  if (!canEdit) return;
+  await loadAdminChallengeRecords();
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
+  hideAdminPages();
+  challengeRecordsPage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  document.querySelector("#refreshChallengeRecords").focus();
+}
+
 function hideAdminPages() {
   adminHub.hidden = true;
   studentManagementPage.hidden = true;
   petManagementPage.hidden = true;
   petDetailPage.hidden = true;
   petLeaderboardPage.hidden = true;
+  studentChallengePage.hidden = true;
+  challengeRecordsPage.hidden = true;
 }
 
 function showScheduleView() {
@@ -950,6 +1163,7 @@ function updatePermissionUI() {
   document.body.classList.toggle("can-edit", canEdit);
   document.querySelector("#addCourse").hidden = !canEdit;
   document.querySelector("#studentManagerButton").hidden = !canEdit;
+  document.querySelector("#openStudentChallenge").hidden = canEdit || !currentUser?.pet;
   dialogCourseActions.hidden = !canEdit || formMode !== "view" || !selectedCourseId;
   document.querySelector("#permissionHint").textContent = canEdit
     ? `${currentUser?.username || "管理员"} · 可管理课程、学生账号和课次进度`
@@ -2352,6 +2566,7 @@ async function applySession(session) {
   loginError.textContent = "";
   updatePermissionUI();
   await loadSchedule();
+  document.querySelector("#openStudentChallenge").hidden = canEdit || !currentUser.pet;
   subscribeToCourses();
 }
 
@@ -2521,12 +2736,24 @@ function bindEvents() {
   document.querySelector("#openStudentManagement").addEventListener("click", showStudentManagement);
   document.querySelector("#openPetManagement").addEventListener("click", showPetManagement);
   document.querySelector("#openPetRankingManagement").addEventListener("click", () => showPetLeaderboard("admin"));
+  document.querySelector("#openChallengeRecords").addEventListener("click", showChallengeRecords);
+  document.querySelector("#openStudentChallenge").addEventListener("click", showStudentChallenge);
   document.querySelector("#closeStudentManagement").addEventListener("click", showAdminHub);
   document.querySelector("#closePetManagement").addEventListener("click", showAdminHub);
   document.querySelector("#openPetLeaderboard").addEventListener("click", () => showPetLeaderboard(canEdit ? "admin" : "schedule"));
   document.querySelector("#closePetLeaderboard").addEventListener("click", () => {
     if (petLeaderboardReturnView === "admin") showAdminHub();
     else showScheduleView();
+  });
+  document.querySelector("#closeStudentChallenge").addEventListener("click", showScheduleView);
+  document.querySelector("#closeChallengeRecords").addEventListener("click", showAdminHub);
+  document.querySelector("#refreshChallengeRecords").addEventListener("click", loadAdminChallengeRecords);
+  document.querySelector("#showChoiceChallenge").addEventListener("click", () => setChallengeType("choice"));
+  document.querySelector("#showWordChallenge").addEventListener("click", () => setChallengeType("word"));
+  document.querySelector("#nextChallengeQuestion").addEventListener("click", loadNextChallengeQuestion);
+  document.querySelector("#wordChallengeForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitChallengeAnswer(document.querySelector("#wordChallengeAnswer").value);
   });
   visitorPet.addEventListener("click", showPetDetail);
   document.querySelector("#closePetDetail").addEventListener("click", () => {
