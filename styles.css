@@ -616,9 +616,30 @@ h1 {
   min-width: 0;
 }
 
+.admin-pet-battle-heading {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
 .admin-pet-battle-history h4 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 13px;
+}
+
+.pet-battle-more-button {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+
+.pet-battle-more-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .admin-pet-battle-record {
@@ -671,6 +692,68 @@ h1 {
 
 .pet-leaderboard-page {
   min-height: 520px;
+}
+
+.pet-battle-history-page {
+  min-height: 520px;
+}
+
+.pet-battle-history-summary {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(100px, .45fr));
+  gap: 1px;
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
+.pet-battle-history-summary > div {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 16px;
+  background: var(--surface);
+}
+
+.pet-battle-history-summary > div:not(:first-child) {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+}
+
+.pet-battle-history-summary svg {
+  width: 18px;
+  height: 18px;
+  color: var(--green);
+}
+
+.pet-battle-history-summary span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pet-battle-history-summary strong {
+  font-size: 15px;
+}
+
+.pet-battle-history-list .admin-pet-battle-record {
+  min-height: 58px;
+  padding: 10px 4px;
+}
+
+.pet-battle-history-list .admin-pet-battle-result {
+  width: 30px;
+  height: 30px;
+}
+
+.pet-battle-history-list .admin-pet-battle-copy strong {
+  font-size: 13px;
+}
+
+.pet-battle-history-list .admin-pet-battle-copy small {
+  font-size: 11px;
 }
 
 .leaderboard-status-band {
@@ -3508,6 +3591,10 @@ body.is-admin-view .topbar-actions {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .pet-battle-history-summary {
+    grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(80px, .45fr));
+  }
+
   .leaderboard-table-head,
   .pet-leaderboard-row {
     grid-template-columns: 58px minmax(180px, 1fr) minmax(170px, .8fr) minmax(130px, .6fr);
@@ -3833,6 +3920,14 @@ body.is-admin-view .topbar-actions {
   .admin-pet-details {
     margin-top: 12px;
     padding: 14px;
+  }
+
+  .pet-battle-history-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pet-battle-history-summary > div:first-child {
+    grid-column: 1 / -1;
   }
 
   .leaderboard-status-band {

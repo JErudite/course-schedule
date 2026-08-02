@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260802-5" />
+    <link rel="stylesheet" href="styles.css?v=20260802-6" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -276,6 +276,27 @@
         <p class="empty-list-hint" id="petStudentListEmpty">暂无学生账号</p>
       </section>
 
+      <section class="admin-page pet-battle-history-page" id="petBattleHistoryPage" aria-labelledby="petBattleHistoryTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">宠物对战档案</p>
+            <h2 id="petBattleHistoryTitle">全部对战记录</h2>
+          </div>
+          <button class="secondary-button" id="closePetBattleHistory" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回宠物分配</span>
+          </button>
+        </div>
+        <div class="pet-battle-history-summary">
+          <div><i data-lucide="user-round"></i><strong id="petBattleHistoryStudent">学生</strong></div>
+          <div><span>总场次</span><strong id="petBattleHistoryTotal">0</strong></div>
+          <div><span>获胜</span><strong id="petBattleHistoryWins">0</strong></div>
+          <div><span>失败</span><strong id="petBattleHistoryLosses">0</strong></div>
+        </div>
+        <div class="pet-battle-history-list" id="petBattleHistoryList"></div>
+        <p class="empty-list-hint" id="petBattleHistoryEmpty">暂无对战记录</p>
+      </section>
+
       <section class="admin-page pet-detail-page" id="petDetailPage" aria-labelledby="petDetailTitle" hidden>
         <div class="admin-page-header pet-detail-header">
           <div>
@@ -344,7 +365,7 @@
           <section class="pet-battle-panel" id="petBattlePanel" aria-labelledby="petBattleTitle" hidden>
             <div class="pet-panel-heading">
               <div>
-                <small>随机匹配</small>
+                <small id="petBattleDailyStatus">今日 0 / 3 场</small>
                 <h3 id="petBattleTitle">宠物对战</h3>
               </div>
               <button class="primary-button pet-battle-button" id="matchPetBattle" type="button">
@@ -754,6 +775,6 @@
     <script src="vendor/supabase-2.111.0.min.js"></script>
     <script src="vendor/pinyin-pro-3.26.0.min.js"></script>
     <script src="vendor/mammoth-1.8.0.min.js"></script>
-    <script src="app.js?v=20260802-5"></script>
+    <script src="app.js?v=20260802-6"></script>
   </body>
 </html>

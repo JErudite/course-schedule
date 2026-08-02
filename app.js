@@ -90,6 +90,8 @@ let petLeaderboardReturnView = "schedule";
 let petLeaderboard = [];
 let adminPetComparison = null;
 let petBattleHistory = [];
+let selectedBattleHistoryStudentId = null;
+let dailyPetBattleCount = 0;
 let challengeRecords = [];
 let questionBank = [];
 let importedQuestions = [];
@@ -144,6 +146,7 @@ const scheduleSection = document.querySelector("#scheduleSection");
 const adminHub = document.querySelector("#adminHub");
 const studentManagementPage = document.querySelector("#studentManagementPage");
 const petManagementPage = document.querySelector("#petManagementPage");
+const petBattleHistoryPage = document.querySelector("#petBattleHistoryPage");
 const petDetailPage = document.querySelector("#petDetailPage");
 const petLeaderboardPage = document.querySelector("#petLeaderboardPage");
 const studentChallengePage = document.querySelector("#studentChallengePage");
@@ -254,7 +257,9 @@ function refreshCurrentDate() {
   currentWeekStart = startOfWeek(scheduleToday);
   if (wasShowingCurrentWeek) selectedWeekStart = new Date(currentWeekStart);
   updateAcademicPeriod();
+  dailyPetBattleCount = 0;
   renderSchedule();
+  if (!canEdit && !petDetailPage.hidden) loadDailyPetBattleCount().then(renderPetDetail);
   if (weekOverviewDialog.open) renderWeekOverview();
 }
 
@@ -543,6 +548,11 @@ function getPetDisplayName(owner, pet) {
   return owner?.pet_name || pet?.name || "我的宠物";
 }
 
+function getMaskedStudentName(username) {
+  const name = String(username || "").normalize("NFKC").trim();
+  return name ? `${Array.from(name)[0]}同学` : "其他同学";
+}
+
 function isPetCheckedInToday(owner) {
   return owner?.pet_checkin_date === toISODate(getScheduleToday());
 }
@@ -661,6 +671,11 @@ function renderPetDetail() {
   });
   document.querySelector("#petFoodEmpty").hidden = foods.length > 0;
   document.querySelector("#petBattlePanel").hidden = canEdit;
+  const battleButton = document.querySelector("#matchPetBattle");
+  const reachedBattleLimit = dailyPetBattleCount >= 3;
+  battleButton.disabled = reachedBattleLimit;
+  document.querySelector("#matchPetBattleText").textContent = reachedBattleLimit ? "今日已完成" : "匹配对手";
+  document.querySelector("#petBattleDailyStatus").textContent = `今日 ${Math.min(dailyPetBattleCount, 3)} / 3 场`;
   document.querySelector("#adminPetComparePanel").hidden = canEdit || !adminPetComparison;
   if (!canEdit && adminPetComparison) renderAdminPetComparison();
   updateVisitorPet();
@@ -691,6 +706,17 @@ async function loadAdminPetComparison() {
   }
   const { data, error } = await supabaseClient.rpc("get_admin_pet_comparison");
   adminPetComparison = error ? null : (Array.isArray(data) ? data[0] : data);
+  return !error;
+}
+
+async function loadDailyPetBattleCount() {
+  if (canEdit || !currentUser?.pet) {
+    dailyPetBattleCount = 0;
+    return true;
+  }
+  const { data, error } = await supabaseClient.rpc("get_my_pet_battle_summary");
+  const summary = Array.isArray(data) ? data[0] : data;
+  dailyPetBattleCount = error ? 0 : Math.max(Number(summary?.battles_used_today) || 0, 0);
   return !error;
 }
 
@@ -765,7 +791,7 @@ function renderPetBattleResult(result) {
   document.querySelector("#battleMyPetName").textContent = getPetDisplayName(currentUser, myPet);
   document.querySelector("#battleMyPetLevel").textContent = `Lv.${result.challenger_level} · ${currentUser.username}`;
   document.querySelector("#battleOpponentPetName").textContent = result.opponent_pet_name || opponentPet.name;
-  document.querySelector("#battleOpponentPetLevel").textContent = `Lv.${result.opponent_level} · ${result.opponent_username}`;
+  document.querySelector("#battleOpponentPetLevel").textContent = `Lv.${result.opponent_level} · ${result.opponent_display_name || getMaskedStudentName(result.opponent_username)}`;
   document.querySelector("#petBattleOutcome").className = `pet-battle-outcome ${challengerWon ? "is-win" : "is-loss"}`;
   document.querySelector("#petBattleOutcomeTitle").textContent = challengerWon ? "匹配获胜" : "匹配惜败";
   document.querySelector("#petBattleOutcomeText").textContent = result.battle_method === "level"
@@ -786,12 +812,18 @@ async function matchCurrentPetBattle() {
   label.textContent = "再次匹配";
   if (error) {
     const noOpponent = error.message?.includes("no battle opponent");
-    showStatus(noOpponent ? "暂时没有其他已分配宠物的学生" : "匹配失败，请稍后重试");
+    const dailyLimit = error.message?.includes("daily battle limit reached");
+    if (dailyLimit) {
+      dailyPetBattleCount = 3;
+      renderPetDetail();
+    }
+    showStatus(dailyLimit ? "今日 3 次对战机会已用完" : (noOpponent ? "暂时没有其他已分配宠物的学生" : "匹配失败，请稍后重试"));
     return;
   }
   const result = Array.isArray(data) ? data[0] : data;
   if (!result) return;
   currentUser.pet_experience = Number(result.challenger_experience) || currentUser.pet_experience;
+  dailyPetBattleCount = Number(result.battles_used_today) || Math.min(dailyPetBattleCount + 1, 3);
   renderPetDetail();
   renderPetBattleResult(result);
   showStatus(`匹配完成，获得 ${result.challenger_reward} 经验`);
@@ -824,7 +856,9 @@ function renderPetLeaderboard() {
     const identityCopy = createElement("div");
     identityCopy.append(
       createElement("strong", "", leaderboardPetName),
-      createElement("small", "", canEdit ? `${entry.owner_username} · ${pet.name}` : (entry.is_self ? `我的宠物 · ${pet.name}` : pet.name)),
+      createElement("small", "", canEdit
+        ? `${entry.owner_username} · ${pet.name}`
+        : (entry.is_self ? `我的宠物 · ${pet.name}` : `${entry.owner_display_name || getMaskedStudentName(entry.owner_username)} · ${pet.name}`)),
     );
     identity.append(image, identityCopy);
 
@@ -1447,6 +1481,7 @@ function hideAdminPages() {
   adminHub.hidden = true;
   studentManagementPage.hidden = true;
   petManagementPage.hidden = true;
+  petBattleHistoryPage.hidden = true;
   petDetailPage.hidden = true;
   petLeaderboardPage.hidden = true;
   studentChallengePage.hidden = true;
@@ -1496,6 +1531,31 @@ async function showPetManagement() {
   document.querySelector("#petStudentList")?.querySelector("button")?.focus();
 }
 
+function renderFullPetBattleHistory() {
+  const student = getOwnerById(selectedBattleHistoryStudentId);
+  const battles = student ? getStudentPetBattles(student.id) : [];
+  const wins = student ? battles.filter((battle) => battle.winner_id === student.id).length : 0;
+  document.querySelector("#petBattleHistoryTitle").textContent = student ? `${student.username}的对战记录` : "全部对战记录";
+  document.querySelector("#petBattleHistoryStudent").textContent = student?.username || "学生";
+  document.querySelector("#petBattleHistoryTotal").textContent = String(battles.length);
+  document.querySelector("#petBattleHistoryWins").textContent = String(wins);
+  document.querySelector("#petBattleHistoryLosses").textContent = String(battles.length - wins);
+  document.querySelector("#petBattleHistoryList").replaceChildren(
+    ...battles.map((battle) => renderAdminPetBattleRecord(battle, student)),
+  );
+  document.querySelector("#petBattleHistoryEmpty").hidden = battles.length > 0;
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function showFullPetBattleHistory(studentId) {
+  if (!canEdit || !getOwnerById(studentId)) return;
+  selectedBattleHistoryStudentId = studentId;
+  hideAdminPages();
+  petBattleHistoryPage.hidden = false;
+  renderFullPetBattleHistory();
+  document.querySelector("#closePetBattleHistory").focus();
+}
+
 async function showQuestionBank() {
   if (!canEdit) return;
   await loadQuestionBank();
@@ -1521,7 +1581,7 @@ async function showPetLeaderboard(returnView = canEdit ? "admin" : "schedule") {
 async function showPetDetail() {
   const pet = petCatalog.find((item) => item.id === currentUser?.pet);
   if (!currentUser || !pet) return;
-  if (!canEdit) await loadAdminPetComparison();
+  if (!canEdit) await Promise.all([loadAdminPetComparison(), loadDailyPetBattleCount()]);
   petDetailReturnView = "schedule";
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
@@ -2296,7 +2356,7 @@ function subscribeToCourses() {
   realtimeBattleChannel = supabaseClient
     .channel("pet-battle-history-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "pet_battles" }, async () => {
-      if (canEdit && !petManagementPage.hidden) await loadPetBattleHistory();
+      if (canEdit && (!petManagementPage.hidden || !petBattleHistoryPage.hidden)) await loadPetBattleHistory();
     })
     .subscribe();
 }
@@ -2354,17 +2414,23 @@ async function loadPetBattleHistory() {
     petBattleHistory = [];
     return true;
   }
-  const { data, error } = await supabaseClient
-    .from("pet_battles")
-    .select("id, challenger_id, opponent_id, challenger_level, opponent_level, battle_method, challenger_move, opponent_move, winner_id, challenger_reward, opponent_reward, challenger_pet, opponent_pet, challenger_pet_name, opponent_pet_name, created_at")
-    .order("created_at", { ascending: false })
-    .limit(500);
-  if (error) {
-    petBattleHistory = [];
-    renderPetStudentList();
-    return false;
+  const pageSize = 1000;
+  const allBattles = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabaseClient
+      .from("pet_battles")
+      .select("id, challenger_id, opponent_id, challenger_level, opponent_level, battle_method, challenger_move, opponent_move, winner_id, challenger_reward, opponent_reward, challenger_pet, opponent_pet, challenger_pet_name, opponent_pet_name, created_at")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) {
+      petBattleHistory = [];
+      renderPetStudentList();
+      return false;
+    }
+    allBattles.push(...(data || []));
+    if (!data || data.length < pageSize) break;
   }
-  petBattleHistory = (data || []).map((battle) => ({
+  petBattleHistory = allBattles.map((battle) => ({
     ...battle,
     challenger_level: Number(battle.challenger_level) || 1,
     opponent_level: Number(battle.opponent_level) || 1,
@@ -2372,6 +2438,7 @@ async function loadPetBattleHistory() {
     opponent_reward: Number(battle.opponent_reward) || 0,
   }));
   renderPetStudentList();
+  if (!petBattleHistoryPage.hidden && selectedBattleHistoryStudentId) renderFullPetBattleHistory();
   return true;
 }
 
@@ -2640,8 +2707,17 @@ function createAdminPetDetails(student, assignedPet) {
   });
 
   const battleSection = createElement("section", "admin-pet-battle-history");
-  battleSection.append(createElement("h4", "", "最近对战"));
-  if (battles.length) battles.slice(0, 10).forEach((battle) => battleSection.append(renderAdminPetBattleRecord(battle, student)));
+  const battleHeading = createElement("div", "admin-pet-battle-heading");
+  battleHeading.append(createElement("h4", "", "最近 5 场"));
+  if (battles.length > 5) {
+    const moreButton = createElement("button", "secondary-button pet-battle-more-button");
+    moreButton.type = "button";
+    moreButton.innerHTML = `<span>查看全部 ${battles.length} 场</span><i data-lucide="arrow-right"></i>`;
+    moreButton.addEventListener("click", () => showFullPetBattleHistory(student.id));
+    battleHeading.append(moreButton);
+  }
+  battleSection.append(battleHeading);
+  if (battles.length) battles.slice(0, 5).forEach((battle) => battleSection.append(renderAdminPetBattleRecord(battle, student)));
   else battleSection.append(createElement("p", "empty-list-hint", "暂无对战记录"));
   details.append(metrics, battleSection);
   details.hidden = true;
@@ -3142,6 +3218,7 @@ function bindEvents() {
   document.querySelector("#openStudentChallenge").addEventListener("click", showStudentChallenge);
   document.querySelector("#closeStudentManagement").addEventListener("click", showAdminHub);
   document.querySelector("#closePetManagement").addEventListener("click", showAdminHub);
+  document.querySelector("#closePetBattleHistory").addEventListener("click", showPetManagement);
   document.querySelector("#openPetLeaderboard").addEventListener("click", () => showPetLeaderboard(canEdit ? "admin" : "schedule"));
   document.querySelector("#closePetLeaderboard").addEventListener("click", () => {
     if (petLeaderboardReturnView === "admin") showAdminHub();
