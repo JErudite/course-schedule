@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260802-3" />
+    <link rel="stylesheet" href="styles.css?v=20260802-4" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -184,6 +184,12 @@
             <span id="adminChallengeCount">查看学生答题情况</span>
             <i data-lucide="chevron-right"></i>
           </button>
+          <button class="admin-feature-button" id="openQuestionBank" type="button">
+            <span class="admin-feature-icon is-question-bank"><i data-lucide="library-big"></i></span>
+            <strong>题库设置</strong>
+            <span id="adminQuestionCount">读取题库</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
         </div>
       </section>
 
@@ -205,12 +211,16 @@
               <span>学生姓名 / 登录用户名</span>
               <input id="studentUsernameInput" name="username" type="text" maxlength="40" autocomplete="off" placeholder="例如：张三" required />
             </label>
+            <label class="form-field generated-password-field">
+              <span>自动登录密码</span>
+              <input id="studentPasswordInput" name="password" type="text" maxlength="12" autocomplete="off" placeholder="姓名大写首字母" readonly required />
+            </label>
             <button class="primary-button" id="addStudentButton" type="submit">
               <i data-lucide="user-plus"></i>
               <span>新增账号</span>
             </button>
           </form>
-          <p class="shared-password-note"><i data-lucide="key-round"></i><span>所有访客账号统一使用密码 <strong>88888888</strong></span></p>
+          <p class="shared-password-note"><i data-lucide="key-round"></i><span>学生密码按姓名拼音大写首字母自动生成</span></p>
         </div>
 
         <div class="student-sort-toolbar">
@@ -258,7 +268,7 @@
         <div class="pet-list-heading">
           <div>
             <strong>宠物分配与资源</strong>
-            <small>管理员可设置宠物经验与金币余额</small>
+            <small>曾老师可设置宠物经验与金币余额</small>
           </div>
           <span id="petStudentCount">0 人</span>
         </div>
@@ -366,9 +376,9 @@
             <div class="pet-panel-heading">
               <div>
                 <small>成长对比</small>
-                <h3 id="adminPetCompareTitle">管理员宠物</h3>
+                <h3 id="adminPetCompareTitle">曾老师的宠物</h3>
               </div>
-              <span class="pet-exclusive-label"><i data-lucide="shield-check"></i><span>管理员专属</span></span>
+              <span class="pet-exclusive-label"><i data-lucide="shield-check"></i><span>曾老师专属</span></span>
             </div>
             <div class="admin-pet-compare-card">
               <img id="adminComparePetImage" src="" alt="" />
@@ -502,13 +512,75 @@
         <p class="empty-list-hint" id="challengeRecordEmpty">暂时没有已完成的挑战记录</p>
       </section>
 
+      <section class="admin-page question-bank-page" id="questionBankPage" aria-labelledby="questionBankTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学习挑战</p>
+            <h2 id="questionBankTitle">题库设置</h2>
+          </div>
+          <button class="secondary-button" id="closeQuestionBank" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+
+        <section class="question-import-band" aria-labelledby="questionImportTitle">
+          <div class="question-import-heading">
+            <span class="admin-feature-icon is-question-bank"><i data-lucide="file-type-2"></i></span>
+            <div>
+              <h3 id="questionImportTitle">Word 题目导入</h3>
+              <span id="questionImportStatus">等待选择 .docx 文档</span>
+            </div>
+          </div>
+          <div class="question-import-controls">
+            <label class="file-picker-button" for="questionBankFile">
+              <i data-lucide="file-up"></i>
+              <span>选择 Word</span>
+            </label>
+            <input id="questionBankFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+            <button class="primary-button" id="importQuestionPreview" type="button" disabled>
+              <i data-lucide="scan-text"></i>
+              <span>识别题目</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="question-preview-section" id="questionPreviewSection" hidden>
+          <div class="question-bank-heading">
+            <div>
+              <strong>识别预览</strong>
+              <span id="questionPreviewSummary">0 道题</span>
+            </div>
+            <button class="primary-button" id="saveImportedQuestions" type="button">
+              <i data-lucide="database-zap"></i>
+              <span>确认加入题库</span>
+            </button>
+          </div>
+          <div class="question-preview-list" id="questionPreviewList"></div>
+        </section>
+
+        <section class="question-bank-section">
+          <div class="question-bank-heading">
+            <div>
+              <strong>全部题目</strong>
+              <span id="questionBankSummary">读取中</span>
+            </div>
+            <button class="icon-button" id="refreshQuestionBank" type="button" aria-label="刷新题库" title="刷新题库">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+          <div class="question-bank-list" id="questionBankList"></div>
+          <p class="empty-list-hint" id="questionBankEmpty">题库中暂无题目</p>
+        </section>
+      </section>
+
       <footer class="page-footer" id="pageFooter">
         <p>
           共 <strong id="courseCount">0</strong> 门课程 · 本周
           <strong id="occurrenceCount">0</strong> 次 ·
           <strong id="durationCount">0</strong> 小时
         </p>
-        <p id="permissionHint">只读模式 · 管理员的修改会实时显示在这里</p>
+        <p id="permissionHint">只读模式 · 曾老师的修改会实时显示在这里</p>
       </footer>
     </main>
 
@@ -680,6 +752,8 @@
 
     <script src="vendor/lucide-0.468.0.min.js"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20260802-3"></script>
+    <script src="vendor/pinyin-pro-3.26.0.min.js"></script>
+    <script src="vendor/mammoth-1.8.0.min.js"></script>
+    <script src="app.js?v=20260802-4"></script>
   </body>
 </html>

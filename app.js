@@ -91,6 +91,8 @@ let petLeaderboard = [];
 let adminPetComparison = null;
 let petBattleHistory = [];
 let challengeRecords = [];
+let questionBank = [];
+let importedQuestions = [];
 let challengeState = {
   type: "choice",
   attemptId: null,
@@ -146,6 +148,7 @@ const petDetailPage = document.querySelector("#petDetailPage");
 const petLeaderboardPage = document.querySelector("#petLeaderboardPage");
 const studentChallengePage = document.querySelector("#studentChallengePage");
 const challengeRecordsPage = document.querySelector("#challengeRecordsPage");
+const questionBankPage = document.querySelector("#questionBankPage");
 const pageFooter = document.querySelector("#pageFooter");
 const copyModeBar = document.querySelector("#copyModeBar");
 const visitorPet = document.querySelector("#visitorPet");
@@ -574,14 +577,14 @@ function updateVisitorPet() {
   visitorPet.hidden = !currentUser;
   visitorPet.disabled = !pet;
   visitorPet.classList.toggle("is-unassigned", !pet);
-  visitorPet.setAttribute("aria-label", pet ? "查看我的宠物中心" : "宠物等待管理员分配");
+  visitorPet.setAttribute("aria-label", pet ? "查看我的宠物中心" : "宠物等待曾老师分配");
   if (!pet) {
     const image = document.querySelector("#visitorPetImage");
     image.removeAttribute("src");
     image.alt = "";
     image.className = "pet-image";
     document.querySelector("#visitorPetMood").textContent = "宠物中心";
-    document.querySelector("#visitorPetName").textContent = "等待管理员分配";
+    document.querySelector("#visitorPetName").textContent = "等待曾老师分配";
     return;
   }
   const level = getPetLevel(currentUser.pet_experience).level;
@@ -872,6 +875,375 @@ async function loadPetLeaderboard() {
   return true;
 }
 
+function normalizeQuestionText(value) {
+  return String(value || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function stripQuestionNumber(value) {
+  return normalizeQuestionText(value).replace(/^(?:第\s*)?\d+\s*[.、)）]\s*/, "");
+}
+
+function stripChoiceLabel(value) {
+  return normalizeQuestionText(value).replace(/^[（(]?\s*[A-Da-d]\s*[）).、:：]\s*/, "");
+}
+
+function resolveChoiceAnswer(value, options) {
+  const cleaned = normalizeQuestionText(value)
+    .replace(/^(?:参考)?(?:正确)?答案\s*[:：]?\s*/i, "")
+    .replace(/[。；;，,\s]+$/g, "");
+  if (/^[A-Da-d]$/.test(cleaned)) return options[cleaned.toUpperCase().charCodeAt(0) - 65] || "";
+  return options.find((option) => option.toLocaleLowerCase("zh-CN") === cleaned.toLocaleLowerCase("zh-CN")) || "";
+}
+
+function isValidImportedQuestion(question) {
+  if (!question || !["choice", "word"].includes(question.challenge_type)) return false;
+  if (!question.prompt || question.prompt.length > 300 || !question.correct_answer || question.correct_answer.length > 120) return false;
+  if (question.challenge_type === "word") return question.options === null;
+  return Array.isArray(question.options)
+    && question.options.length === 4
+    && question.options.every((option) => option && option.length <= 120)
+    && question.options.some((option) => option.toLocaleLowerCase("zh-CN") === question.correct_answer.toLocaleLowerCase("zh-CN"));
+}
+
+function dedupeImportedQuestions(questions) {
+  const seen = new Set();
+  return questions.filter((question) => {
+    if (!isValidImportedQuestion(question)) return false;
+    const key = JSON.stringify([
+      question.challenge_type,
+      question.prompt.toLocaleLowerCase("zh-CN"),
+      question.correct_answer.toLocaleLowerCase("zh-CN"),
+      question.options,
+    ]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 500);
+}
+
+function prepareQuestionLines(rawText) {
+  return String(rawText || "")
+    .replace(/\r/g, "\n")
+    .replace(/\s+(?=[A-Da-d]\s*[.、)）:：]\s*)/g, "\n")
+    .replace(/\s+(?=(?:参考)?(?:正确)?答案\s*[:：])/g, "\n")
+    .split(/\n+/)
+    .map(normalizeQuestionText)
+    .filter(Boolean);
+}
+
+function parseChoiceTableRows(tableRows) {
+  const questions = [];
+  tableRows.forEach((rawCells) => {
+    const cells = rawCells.map(normalizeQuestionText).filter(Boolean);
+    const promptIndex = /^\d+$/.test(cells[0] || "") ? 1 : 0;
+    if (cells.length < promptIndex + 6) return;
+    const prompt = stripQuestionNumber(cells[promptIndex]);
+    const options = cells.slice(promptIndex + 1, promptIndex + 5).map(stripChoiceLabel);
+    const correctAnswer = resolveChoiceAnswer(cells[promptIndex + 5], options);
+    const question = { challenge_type: "choice", prompt, options, correct_answer: correctAnswer };
+    if (isValidImportedQuestion(question)) questions.push(question);
+  });
+  return questions;
+}
+
+function parseChoiceQuestions(rawText, tableRows = []) {
+  const questions = parseChoiceTableRows(tableRows);
+  let current = null;
+  let pendingPrompt = "";
+
+  const finishCurrent = (answerValue) => {
+    if (!current) return;
+    const options = ["A", "B", "C", "D"].map((letter) => normalizeQuestionText(current.options[letter]));
+    const question = {
+      challenge_type: "choice",
+      prompt: normalizeQuestionText(current.prompt),
+      options,
+      correct_answer: resolveChoiceAnswer(answerValue || current.answer, options),
+    };
+    if (isValidImportedQuestion(question)) questions.push(question);
+    current = null;
+  };
+
+  prepareQuestionLines(rawText).forEach((line) => {
+    const answerMatch = line.match(/^(?:参考)?(?:正确)?答案\s*[:：]?\s*(.+)$/i);
+    if (answerMatch) {
+      if (current) finishCurrent(answerMatch[1]);
+      pendingPrompt = "";
+      return;
+    }
+
+    const optionMatch = line.match(/^[（(]?\s*([A-Da-d])\s*[）).、:：]\s*(.+)$/);
+    if (optionMatch) {
+      if (!current) current = { prompt: pendingPrompt, options: {} };
+      current.options[optionMatch[1].toUpperCase()] = normalizeQuestionText(optionMatch[2]);
+      return;
+    }
+
+    const questionMatch = line.match(/^(?:第\s*)?\d+\s*[.、)）]\s*(.+)$/);
+    if (questionMatch) {
+      if (current) finishCurrent("");
+      current = { prompt: normalizeQuestionText(questionMatch[1]), options: {} };
+      pendingPrompt = "";
+      return;
+    }
+
+    if (current) {
+      const lastOption = ["D", "C", "B", "A"].find((letter) => current.options[letter]);
+      if (lastOption) current.options[lastOption] = normalizeQuestionText(`${current.options[lastOption]} ${line}`);
+      else current.prompt = normalizeQuestionText(`${current.prompt} ${line}`);
+    } else pendingPrompt = normalizeQuestionText(line.replace(/^(?:题目|问题)\s*[:：]\s*/, ""));
+  });
+  if (current) finishCurrent("");
+  return questions;
+}
+
+function containsChinese(value) {
+  return /[\u3400-\u9fff]/.test(value);
+}
+
+function containsLatin(value) {
+  return /[A-Za-z]/.test(value);
+}
+
+function createWordPairQuestions(firstValue, secondValue) {
+  const first = normalizeQuestionText(firstValue);
+  const second = normalizeQuestionText(secondValue);
+  if (!first || !second || first.length > 120 || second.length > 120) return [];
+  if (containsChinese(first) && containsLatin(second) && !containsChinese(second)) {
+    return [
+      { challenge_type: "word", prompt: `“${first}”的英文是？`, options: null, correct_answer: second },
+      { challenge_type: "word", prompt: `“${second}”的中文是？`, options: null, correct_answer: first },
+    ];
+  }
+  if (containsLatin(first) && !containsChinese(first) && containsChinese(second)) {
+    return [
+      { challenge_type: "word", prompt: `“${first}”的中文是？`, options: null, correct_answer: second },
+      { challenge_type: "word", prompt: `“${second}”的英文是？`, options: null, correct_answer: first },
+    ];
+  }
+  return [];
+}
+
+function parseWordQuestions(rawText, tableRows = []) {
+  const questions = [];
+  const addPair = (first, second) => questions.push(...createWordPairQuestions(first, second));
+
+  tableRows.forEach((cells) => {
+    const values = cells.map(normalizeQuestionText).filter(Boolean);
+    const start = /^\d+$/.test(values[0] || "") ? 1 : 0;
+    if (values.length === start + 2) addPair(values[start], values[start + 1]);
+  });
+
+  prepareQuestionLines(rawText).forEach((rawLine) => {
+    const line = stripQuestionNumber(rawLine);
+    if (/^[（(]?\s*[A-Da-d]\s*[）).、:：]/.test(line) || /^(?:参考)?(?:正确)?答案\s*[:：]/.test(line)) return;
+
+    const directQuestion = line.match(/^(?:题目|问题|Q)\s*[:：]\s*(.+?)\s+(?:答案|A)\s*[:：]\s*(.+)$/i);
+    if (directQuestion) {
+      const question = {
+        challenge_type: "word",
+        prompt: normalizeQuestionText(directQuestion[1]),
+        options: null,
+        correct_answer: normalizeQuestionText(directQuestion[2]),
+      };
+      if (isValidImportedQuestion(question)) questions.push(question);
+      return;
+    }
+
+    const pair = line.match(/^(.+?)\s*(?:\t|[-–—=＝→|｜])\s*(.+)$/);
+    if (pair) {
+      addPair(pair[1], pair[2]);
+      return;
+    }
+
+    const spacedPair = line.match(/^([A-Za-z][A-Za-z '\-]{0,80})\s+([\u3400-\u9fff][\u3400-\u9fff\s]{0,80})$/)
+      || line.match(/^([\u3400-\u9fff][\u3400-\u9fff\s]{0,80})\s+([A-Za-z][A-Za-z '\-]{0,80})$/);
+    if (spacedPair) addPair(spacedPair[1], spacedPair[2]);
+  });
+  return questions;
+}
+
+function getQuestionDocumentRows(html) {
+  const parsed = new DOMParser().parseFromString(String(html || ""), "text/html");
+  return [...parsed.querySelectorAll("tr")].map((row) => [...row.querySelectorAll(":scope > th, :scope > td")].map((cell) => cell.textContent));
+}
+
+function renderQuestionRow(question, { preview = false, index = 0 } = {}) {
+  const row = createElement("article", "question-bank-row");
+  const type = createElement("span", `question-type-badge${question.challenge_type === "word" ? " is-word" : ""}`, question.challenge_type === "choice" ? "选择题" : "单词题");
+  const copy = createElement("div", "question-bank-copy");
+  const optionText = question.challenge_type === "choice"
+    ? question.options.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`).join(" · ")
+    : "中英文互问";
+  copy.append(createElement("strong", "", question.prompt), createElement("small", "", optionText));
+  const meta = createElement("div", "question-bank-meta");
+  meta.append(createElement("strong", "", `答案：${question.correct_answer}`), createElement("small", "", preview ? "待确认导入" : question.source_name));
+
+  if (preview) {
+    row.append(type, copy, meta, createElement("span", "question-preview-index", `#${index + 1}`));
+    return row;
+  }
+
+  const toggle = createElement("label", "question-active-toggle");
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = question.is_active === true;
+  const label = createElement("span", "", checkbox.checked ? "已启用" : "已停用");
+  checkbox.addEventListener("change", async () => {
+    checkbox.disabled = true;
+    const { data, error } = await supabaseClient.rpc("set_pet_challenge_question_active", {
+      p_question_id: question.question_id,
+      p_is_active: checkbox.checked,
+    });
+    checkbox.disabled = false;
+    if (error || data !== true) {
+      checkbox.checked = !checkbox.checked;
+      showStatus("题目状态保存失败，请重试");
+      return;
+    }
+    question.is_active = checkbox.checked;
+    label.textContent = checkbox.checked ? "已启用" : "已停用";
+    renderQuestionBankSummary();
+    showStatus(checkbox.checked ? "题目已启用" : "题目已停用");
+  });
+  toggle.append(checkbox, label);
+  row.append(type, copy, meta, toggle);
+  return row;
+}
+
+function renderQuestionBankSummary() {
+  const activeQuestions = questionBank.filter((question) => question.is_active);
+  const choiceCount = activeQuestions.filter((question) => question.challenge_type === "choice").length;
+  const wordCount = activeQuestions.filter((question) => question.challenge_type === "word").length;
+  document.querySelector("#questionBankSummary").textContent = `${activeQuestions.length} 道启用 · 选择题 ${choiceCount} · 单词题 ${wordCount}`;
+  document.querySelector("#adminQuestionCount").textContent = `${activeQuestions.length} 道启用`;
+}
+
+function renderQuestionBank() {
+  const list = document.querySelector("#questionBankList");
+  list.replaceChildren(...questionBank.map((question) => renderQuestionRow(question)));
+  document.querySelector("#questionBankEmpty").hidden = questionBank.length > 0;
+  renderQuestionBankSummary();
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function renderImportedQuestionPreview() {
+  const previewSection = document.querySelector("#questionPreviewSection");
+  const previewList = document.querySelector("#questionPreviewList");
+  previewSection.hidden = importedQuestions.length === 0;
+  previewList.replaceChildren(...importedQuestions.map((question, index) => renderQuestionRow(question, { preview: true, index })));
+  const choiceCount = importedQuestions.filter((question) => question.challenge_type === "choice").length;
+  const wordCount = importedQuestions.filter((question) => question.challenge_type === "word").length;
+  document.querySelector("#questionPreviewSummary").textContent = `${importedQuestions.length} 道 · 选择题 ${choiceCount} · 单词题 ${wordCount}`;
+}
+
+async function loadQuestionBank({ quiet = false } = {}) {
+  if (!canEdit) return false;
+  const { data, error } = await supabaseClient.rpc("get_admin_pet_challenge_question_bank");
+  if (error) {
+    questionBank = [];
+    renderQuestionBank();
+    if (!quiet) showStatus("题库读取失败，请稍后重试");
+    return false;
+  }
+  questionBank = (data || []).map((question) => ({
+    ...question,
+    options: Array.isArray(question.options) ? question.options : null,
+    is_active: question.is_active === true,
+  }));
+  renderQuestionBank();
+  return true;
+}
+
+async function previewQuestionDocument() {
+  const fileInput = document.querySelector("#questionBankFile");
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  if (!file.name.toLocaleLowerCase("zh-CN").endsWith(".docx")) {
+    showStatus("请选择 .docx 格式的 Word 文档");
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showStatus("Word 文档不能超过 10 MB");
+    return;
+  }
+  if (!window.mammoth) {
+    showStatus("Word 识别组件加载失败，请刷新页面重试");
+    return;
+  }
+
+  const button = document.querySelector("#importQuestionPreview");
+  button.disabled = true;
+  document.querySelector("#questionImportStatus").textContent = `正在识别 ${file.name}`;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const [rawResult, htmlResult] = await Promise.all([
+      window.mammoth.extractRawText({ arrayBuffer }),
+      window.mammoth.convertToHtml({ arrayBuffer }),
+    ]);
+    const tableRows = getQuestionDocumentRows(htmlResult.value);
+    importedQuestions = dedupeImportedQuestions([
+      ...parseChoiceQuestions(rawResult.value, tableRows),
+      ...parseWordQuestions(rawResult.value, tableRows),
+    ]);
+    renderImportedQuestionPreview();
+    document.querySelector("#questionImportStatus").textContent = importedQuestions.length
+      ? `${file.name} · 已识别 ${importedQuestions.length} 道题`
+      : `${file.name} · 未识别到有效题目`;
+    showStatus(importedQuestions.length ? `已识别 ${importedQuestions.length} 道题，请确认后加入题库` : "未识别到有效题目，请检查文档内容");
+  } catch (error) {
+    importedQuestions = [];
+    renderImportedQuestionPreview();
+    document.querySelector("#questionImportStatus").textContent = `${file.name} · 识别失败`;
+    showStatus("Word 文档识别失败，请确认文件可以正常打开");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function saveImportedQuestions() {
+  if (!canEdit || importedQuestions.length === 0) return;
+  const file = document.querySelector("#questionBankFile").files?.[0];
+  const button = document.querySelector("#saveImportedQuestions");
+  button.disabled = true;
+  const { data, error } = await supabaseClient.rpc("import_pet_challenge_questions", {
+    p_questions: importedQuestions,
+    p_source_name: file?.name || "Word 导入",
+  });
+  button.disabled = false;
+  if (error) {
+    showStatus("题目保存失败，请检查题目内容后重试");
+    return;
+  }
+  const result = Array.isArray(data) ? data[0] : data;
+  const inserted = Number(result?.inserted) || 0;
+  const skipped = Number(result?.skipped) || 0;
+  importedQuestions = [];
+  document.querySelector("#questionBankFile").value = "";
+  document.querySelector("#importQuestionPreview").disabled = true;
+  document.querySelector("#questionImportStatus").textContent = "等待选择 .docx 文档";
+  renderImportedQuestionPreview();
+  await loadQuestionBank({ quiet: true });
+  showStatus(`已加入 ${inserted} 道题${skipped ? `，跳过 ${skipped} 道重复题` : ""}`);
+}
+
+function getStudentInitialPassword(username) {
+  const name = String(username || "").normalize("NFKC").trim();
+  if (!name || !window.pinyinPro?.pinyin) return "";
+  const syllables = window.pinyinPro.pinyin(name, { toneType: "none", type: "array" });
+  return syllables
+    .map((syllable) => String(syllable).replace(/[^A-Za-z]/g, "").charAt(0))
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 12);
+}
+
+function updateStudentPasswordPreview() {
+  const username = document.querySelector("#studentUsernameInput").value;
+  document.querySelector("#studentPasswordInput").value = getStudentInitialPassword(username);
+}
+
 function formatChallengeDuration(seconds) {
   if (seconds === null || seconds === undefined) return "未提交";
   const value = Number(seconds) || 0;
@@ -1079,6 +1451,7 @@ function hideAdminPages() {
   petLeaderboardPage.hidden = true;
   studentChallengePage.hidden = true;
   challengeRecordsPage.hidden = true;
+  questionBankPage.hidden = true;
 }
 
 function showScheduleView() {
@@ -1092,11 +1465,12 @@ function showScheduleView() {
 function renderAdminHubCounts() {
   document.querySelector("#adminStudentCount").textContent = `${students.length} 人`;
   document.querySelector("#assignedPetCount").textContent = `${students.filter((student) => student.pet).length} 人已分配`;
+  if (questionBank.length) renderQuestionBankSummary();
 }
 
 async function showAdminHub() {
   if (!canEdit) return;
-  await loadStudents();
+  await Promise.all([loadStudents(), loadQuestionBank({ quiet: true })]);
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
   hideAdminPages();
@@ -1120,6 +1494,17 @@ async function showPetManagement() {
   hideAdminPages();
   petManagementPage.hidden = false;
   document.querySelector("#petStudentList")?.querySelector("button")?.focus();
+}
+
+async function showQuestionBank() {
+  if (!canEdit) return;
+  await loadQuestionBank();
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
+  hideAdminPages();
+  questionBankPage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  document.querySelector("#questionBankFile").focus();
 }
 
 async function showPetLeaderboard(returnView = canEdit ? "admin" : "schedule") {
@@ -1166,7 +1551,7 @@ function updatePermissionUI() {
   document.querySelector("#openStudentChallenge").hidden = canEdit || !currentUser?.pet;
   dialogCourseActions.hidden = !canEdit || formMode !== "view" || !selectedCourseId;
   document.querySelector("#permissionHint").textContent = canEdit
-    ? `${currentUser?.username || "管理员"} · 可管理课程、学生账号和课次进度`
+    ? `${currentUser?.username || "曾老师"} · 可管理课程、学生账号和课次进度`
     : `${currentUser?.username || "访客"} · 只显示分配给你的课程`;
   updateLessonSummary();
   updateVisitorPet();
@@ -1747,7 +2132,7 @@ async function createCourse(candidate, successMessage = "课程已创建并实�
 
 async function persistCourseUpdate(original, candidate, successMessage) {
   if (!canEdit) {
-    showStatus("当前为只读模式，请先以管理员身份登录");
+    showStatus("当前为只读模式，请先以曾老师账号登录");
     renderSchedule();
     return false;
   }
@@ -1844,7 +2229,7 @@ async function loadSchedule({ quiet = false } = {}) {
 
 async function applyRealtimeChange() {
   await loadSchedule({ quiet: true });
-  setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
+  setSyncState("online", canEdit ? "曾老师 · 实时同步" : "只读 · 实时同步");
 }
 
 async function applyStudentRealtimeChange() {
@@ -1895,7 +2280,7 @@ function subscribeToCourses() {
     .on("postgres_changes", { event: "*", schema: "public", table: "courses" }, applyRealtimeChange)
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        setSyncState("online", canEdit ? "管理员 · 实时同步" : "只读 · 实时同步");
+        setSyncState("online", canEdit ? "曾老师 · 实时同步" : "只读 · 实时同步");
       } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
         setSyncState("offline", "实时连接中断");
       }
@@ -2281,7 +2666,7 @@ function renderPetStudentList() {
     color.style.setProperty("--student-color", student.color || defaultCourseColor);
     color.setAttribute("aria-hidden", "true");
     identity.append(color, createElement("strong", "", student.username));
-    if (isAdminOwner) identity.append(createElement("small", "pet-admin-label", "管理员"));
+    if (isAdminOwner) identity.append(createElement("small", "pet-admin-label", "曾老师"));
 
     if (assignedPet) current.append(createPetVisual(assignedPet, "is-current", student));
     else {
@@ -2292,7 +2677,7 @@ function renderPetStudentList() {
 
     if (isAdminOwner) {
       const exclusive = createElement("span", "pet-exclusive-label");
-      exclusive.innerHTML = '<i data-lucide="shield-check"></i><span>管理员专属</span>';
+      exclusive.innerHTML = '<i data-lucide="shield-check"></i><span>曾老师专属</span>';
       actions.append(exclusive);
     } else {
       const chooseButton = createElement("button", "secondary-button pet-choose-button");
@@ -2365,7 +2750,7 @@ function renderPetStudentList() {
     if (!isAdminOwner) row.append(chooser);
     list.append(row);
   });
-  document.querySelector("#petStudentCount").textContent = `${owners.length} 人（含管理员）`;
+  document.querySelector("#petStudentCount").textContent = `${owners.length} 人（含曾老师）`;
   document.querySelector("#petStudentListEmpty").hidden = students.length > 0;
   if (window.lucide) window.lucide.createIcons();
 }
@@ -2475,10 +2860,14 @@ async function handleStudentSubmit(event) {
   event.preventDefault();
   if (!canEdit) return;
   const username = document.querySelector("#studentUsernameInput").value.trim();
-  if (!username) return;
+  const password = document.querySelector("#studentPasswordInput").value;
+  if (!username || !password) {
+    showStatus("无法生成姓名首字母密码，请检查学生姓名");
+    return;
+  }
 
   addStudentButton.disabled = true;
-  const { error } = await supabaseClient.rpc("create_student_account", { p_username: username });
+  const { error } = await supabaseClient.rpc("create_student_account", { p_username: username, p_password: password });
   addStudentButton.disabled = false;
   if (error) {
     const duplicate = error.code === "23505" || error.message.toLowerCase().includes("already exists");
@@ -2487,7 +2876,7 @@ async function handleStudentSubmit(event) {
   }
   studentForm.reset();
   await loadStudents();
-  showStatus(`已新增访客“${username}”，登录密码为 88888888`);
+  showStatus(`已新增访客“${username}”，登录密码为 ${password}`);
 }
 
 async function deleteSelectedStudent() {
@@ -2533,6 +2922,8 @@ async function applySession(session) {
     petBattleHistory = [];
     petLeaderboard = [];
     adminPetComparison = null;
+    questionBank = [];
+    importedQuestions = [];
     renderSchedule();
     if (window.lucide) window.lucide.createIcons();
     return;
@@ -2545,7 +2936,7 @@ async function applySession(session) {
     .single();
 
   if (error || !profile) {
-    loginError.textContent = "该账号已失效，请联系管理员";
+    loginError.textContent = "该账号已失效，请联系曾老师";
     await supabaseClient.auth.signOut();
     return;
   }
@@ -2633,7 +3024,7 @@ async function handleLoginSubmit(event) {
   loginSubmit.disabled = true;
   let loginEmail = null;
   let lookupError = null;
-  if (username === "管理员") loginEmail = "703223232@qq.com";
+  if (username === "曾老师") loginEmail = "703223232@qq.com";
   else {
     const lookup = await supabaseClient.rpc("resolve_login_email", { p_username: username });
     loginEmail = lookup.data;
@@ -2737,6 +3128,7 @@ function bindEvents() {
   document.querySelector("#openPetManagement").addEventListener("click", showPetManagement);
   document.querySelector("#openPetRankingManagement").addEventListener("click", () => showPetLeaderboard("admin"));
   document.querySelector("#openChallengeRecords").addEventListener("click", showChallengeRecords);
+  document.querySelector("#openQuestionBank").addEventListener("click", showQuestionBank);
   document.querySelector("#openStudentChallenge").addEventListener("click", showStudentChallenge);
   document.querySelector("#closeStudentManagement").addEventListener("click", showAdminHub);
   document.querySelector("#closePetManagement").addEventListener("click", showAdminHub);
@@ -2748,6 +3140,15 @@ function bindEvents() {
   document.querySelector("#closeStudentChallenge").addEventListener("click", showScheduleView);
   document.querySelector("#closeChallengeRecords").addEventListener("click", showAdminHub);
   document.querySelector("#refreshChallengeRecords").addEventListener("click", loadAdminChallengeRecords);
+  document.querySelector("#closeQuestionBank").addEventListener("click", showAdminHub);
+  document.querySelector("#refreshQuestionBank").addEventListener("click", () => loadQuestionBank());
+  document.querySelector("#questionBankFile").addEventListener("change", (event) => {
+    const file = event.target.files?.[0];
+    document.querySelector("#importQuestionPreview").disabled = !file;
+    document.querySelector("#questionImportStatus").textContent = file ? `${file.name} · 准备识别` : "等待选择 .docx 文档";
+  });
+  document.querySelector("#importQuestionPreview").addEventListener("click", previewQuestionDocument);
+  document.querySelector("#saveImportedQuestions").addEventListener("click", saveImportedQuestions);
   document.querySelector("#showChoiceChallenge").addEventListener("click", () => setChallengeType("choice"));
   document.querySelector("#showWordChallenge").addEventListener("click", () => setChallengeType("word"));
   document.querySelector("#nextChallengeQuestion").addEventListener("click", loadNextChallengeQuestion);
@@ -2767,6 +3168,7 @@ function bindEvents() {
     setStudentSortMode(event.target.value);
     window.localStorage.setItem("student-sort-mode", studentSortMode);
   });
+  document.querySelector("#studentUsernameInput").addEventListener("input", updateStudentPasswordPreview);
   studentForm.addEventListener("submit", handleStudentSubmit);
   document.querySelector("#cancelDeleteStudent").addEventListener("click", () => deleteStudentDialog.close());
   confirmDeleteStudentButton.addEventListener("click", deleteSelectedStudent);

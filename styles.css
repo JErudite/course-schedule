@@ -737,6 +737,184 @@ h1 {
   color: #6c55a0;
 }
 
+.admin-feature-icon.is-question-bank {
+  background: #e7f1f5;
+  color: #27728c;
+}
+
+.generated-password-field input {
+  background: #f2f5f1;
+  color: var(--green);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.question-bank-page {
+  min-height: 560px;
+}
+
+.question-import-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.question-import-heading,
+.question-import-controls,
+.question-bank-heading,
+.question-bank-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.question-import-heading h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.question-import-heading > div,
+.question-bank-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.question-import-heading > div > span,
+.question-bank-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.file-picker-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.file-picker-button:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.file-picker-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.question-preview-section,
+.question-bank-section {
+  padding: 20px 0 4px;
+}
+
+.question-preview-section {
+  border-bottom: 1px solid var(--line);
+}
+
+.question-bank-heading {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.question-bank-heading strong {
+  font-size: 14px;
+}
+
+.question-preview-list,
+.question-bank-list {
+  display: grid;
+}
+
+.question-bank-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) minmax(110px, 0.5fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 8px;
+  border-top: 1px solid var(--line);
+}
+
+.question-bank-row:first-child {
+  border-top: 0;
+}
+
+.question-type-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.question-type-badge.is-word {
+  background: #efeafa;
+  color: #6c55a0;
+}
+
+.question-bank-copy,
+.question-bank-meta {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.question-bank-copy strong,
+.question-bank-copy small,
+.question-bank-meta strong,
+.question-bank-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.question-bank-copy strong,
+.question-bank-meta strong {
+  font-size: 12px;
+}
+
+.question-bank-copy small,
+.question-bank-meta small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.question-bank-meta strong {
+  color: var(--green);
+}
+
+.question-active-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.question-active-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+}
+
 .student-challenge-page,
 .challenge-records-page {
   min-height: 520px;
@@ -1873,7 +2051,7 @@ body.is-selecting-course {
 
 .student-create-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(130px, 0.55fr) auto;
   align-items: end;
   gap: 10px;
 }
@@ -3524,6 +3702,37 @@ body.is-admin-view .topbar-actions {
 
   .student-create-form .primary-button {
     width: 100%;
+  }
+
+  .question-import-band,
+  .question-import-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .question-import-controls .primary-button,
+  .file-picker-button {
+    width: 100%;
+  }
+
+  .question-bank-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 9px 12px;
+  }
+
+  .question-bank-meta,
+  .question-active-toggle,
+  .question-preview-index {
+    grid-column: 2;
+  }
+
+  .question-bank-copy strong,
+  .question-bank-copy small,
+  .question-bank-meta strong,
+  .question-bank-meta small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .copy-mode-bar {
