@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8f5" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data: blob: https://dpjyjzszqmgakwtdhmwq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'self' blob:"
+    />
+    <title>我的课程表</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css?v=20260903-1" />
+  </head>
+  <body>
+    <section class="login-screen" id="loginScreen">
+      <div class="login-panel">
+        <div class="login-brand">
+          <span class="brand-mark" aria-hidden="true">课</span>
+          <div>
+            <p class="eyebrow">课程安排与实时同步</p>
+            <h1>登录课程表</h1>
+          </div>
+        </div>
+        <form class="login-form" id="loginForm">
+          <label class="form-field">
+            <span>用户名</span>
+            <input id="loginUsername" name="username" type="text" maxlength="40" autocomplete="username" placeholder="请输入用户名" required />
+          </label>
+          <label class="form-field">
+            <span>密码</span>
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required />
+          </label>
+          <p class="login-error" id="loginError" role="alert" aria-live="polite"></p>
+          <button class="primary-button login-submit" id="loginSubmit" type="submit">
+            <i data-lucide="log-in"></i>
+            <span>进入课程表</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <main class="app-shell" id="appShell" hidden>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">课</span>
+          <div>
+            <p class="eyebrow" id="termLabel">正在读取当前学期</p>
+            <h1>我的课程表</h1>
+          </div>
+        </div>
+
+        <div class="week-controls" aria-label="日期范围切换">
+          <button class="icon-button" id="previousWeek" type="button" aria-label="上一周" title="上一周">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <button class="week-picker" id="currentWeek" type="button" aria-label="选择日期范围">
+            <span id="weekLabel">本周</span>
+            <small id="weekRange">正在读取日期</small>
+          </button>
+          <button class="icon-button" id="nextWeek" type="button" aria-label="下一周" title="下一周">
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+
+        <div class="topbar-actions">
+          <span class="sync-state is-connecting" id="syncState" role="status" aria-live="polite">
+            <i class="sync-dot" aria-hidden="true"></i>
+            <span id="syncStateText">正在连接</span>
+          </span>
+          <button class="today-button" id="todayButton" type="button">
+            <i data-lucide="calendar-days"></i>
+            <span>返回本周</span>
+          </button>
+          <button class="today-button student-manager-button" id="studentManagerButton" type="button" hidden>
+            <i data-lucide="settings-2"></i>
+            <span>管理后台</span>
+          </button>
+          <button class="auth-button is-authenticated" id="authButton" type="button" aria-label="退出登录">
+            <i data-lucide="log-out"></i>
+            <span>退出登录</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="schedule-section" id="scheduleSection" aria-labelledby="scheduleTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" id="todayText">周一，4月13日</p>
+            <h2 id="scheduleTitle">本周安排</h2>
+          </div>
+          <div class="section-actions">
+            <button class="visitor-pet" id="visitorPet" type="button" aria-label="查看我的宠物中心" hidden>
+              <img id="visitorPetImage" src="" alt="" />
+              <div>
+                <small id="visitorPetMood"></small>
+                <strong id="visitorPetName"></strong>
+              </div>
+              <i data-lucide="chevron-right"></i>
+            </button>
+            <button class="secondary-button pet-ranking-shortcut" id="openPetLeaderboard" type="button">
+              <i data-lucide="trophy"></i>
+              <span>宠物排行</span>
+            </button>
+            <button class="secondary-button pet-challenge-shortcut" id="openStudentChallenge" type="button" hidden>
+              <i data-lucide="brain-circuit"></i>
+              <span>学习挑战</span>
+            </button>
+            <div class="lesson-summary" id="lessonSummary" hidden>
+              <div class="lesson-stat">
+                <small>当前已上</small>
+                <strong><span id="currentLessonCount">0</span> 次</strong>
+              </div>
+              <div class="lesson-stat">
+                <small>当前应上</small>
+                <strong><span id="requiredLessonCount">0</span> 次</strong>
+              </div>
+              <div class="lesson-stat is-remaining">
+                <small>还剩</small>
+                <strong><span id="remainingLessonCount">0</span> 次</strong>
+              </div>
+            </div>
+            <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
+              <i data-lucide="plus"></i>
+              <span>新增课程</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="calendar-view-toolbar">
+          <div class="calendar-toolbar-controls">
+            <div class="schedule-view-switcher" id="scheduleViewSwitcher" role="group" aria-label="课程表视图">
+              <button class="is-active" type="button" data-schedule-view="week" aria-pressed="true">周视图</button>
+              <button type="button" data-schedule-view="month" aria-pressed="false">月视图</button>
+              <button type="button" data-schedule-view="year" aria-pressed="false">年视图</button>
+            </div>
+            <div class="page-font-control" aria-label="页面字号设置">
+              <label for="pageFontSizeInput">
+                <i data-lucide="type" aria-hidden="true"></i>
+                <span>页面字号</span>
+              </label>
+              <input
+                id="pageFontSizeInput"
+                type="range"
+                min="80"
+                max="130"
+                step="5"
+                value="100"
+                aria-label="调整整个页面字号"
+                aria-describedby="pageFontSizeValue"
+              />
+              <output id="pageFontSizeValue" for="pageFontSizeInput">100%</output>
+              <button id="resetPageFontSize" type="button" title="恢复默认字号" hidden>重置</button>
+            </div>
+          </div>
+          <div class="holiday-legend" aria-label="中国法定节假日图例">
+            <span><i class="calendar-status-badge is-holiday" aria-hidden="true">休</i>法定放假</span>
+            <span><i class="calendar-status-badge is-workday" aria-hidden="true">班</i>调休上班</span>
+            <small id="holidayDataNote">依据国务院办公厅放假调休通知</small>
+          </div>
+        </div>
+
+        <div class="copy-mode-bar" id="copyModeBar" hidden>
+          <div>
+            <i data-lucide="copy"></i>
+            <span>已复制“<strong id="copiedCourseName"></strong>”，点击时间轴上的任意 10 分钟刻度即可粘贴</span>
+          </div>
+          <button class="secondary-button" id="cancelCopyMode" type="button">
+            <i data-lucide="x"></i>
+            <span>取消复制</span>
+          </button>
+        </div>
+
+        <div class="schedule-scroll" id="scheduleScroll">
+          <div class="schedule-grid" id="scheduleGrid" aria-label="一周课程表"></div>
+        </div>
+        <div class="calendar-overview" id="calendarOverview" hidden></div>
+      </section>
+
+      <section class="admin-page admin-hub" id="adminHub" aria-labelledby="adminHubTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">功能管理</p>
+            <h2 id="adminHubTitle">管理后台</h2>
+          </div>
+          <button class="secondary-button" id="closeAdminHub" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回课程表</span>
+          </button>
+        </div>
+        <div class="admin-feature-grid">
+          <button class="admin-feature-button" id="openStudentManagement" type="button">
+            <span class="admin-feature-icon is-student"><i data-lucide="users-round"></i></span>
+            <strong>学生管理</strong>
+            <span id="adminStudentCount">0 人</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openAttendanceManagement" type="button">
+            <span class="admin-feature-icon is-attendance"><i data-lucide="clipboard-check"></i></span>
+            <strong>上课打卡</strong>
+            <span id="adminAttendanceCount">今日课程</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openPetManagement" type="button">
+            <span class="admin-feature-icon is-pet"><i data-lucide="paw-print"></i></span>
+            <strong>宠物分配</strong>
+            <span id="assignedPetCount">0 人已分配</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openPetRankingManagement" type="button">
+            <span class="admin-feature-icon is-ranking"><i data-lucide="trophy"></i></span>
+            <strong>宠物排行榜</strong>
+            <span id="adminRankingCount">实时排名</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openCoinShopManagement" type="button">
+            <span class="admin-feature-icon is-coin-shop"><i data-lucide="store"></i></span>
+            <strong>金币商城</strong>
+            <span id="adminCoinShopCount">0 件商品</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openChallengeRecords" type="button">
+            <span class="admin-feature-icon is-challenge"><i data-lucide="clipboard-check"></i></span>
+            <strong>挑战记录</strong>
+            <span id="adminChallengeCount">查看学生答题情况</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button class="admin-feature-button" id="openQuestionBank" type="button">
+            <span class="admin-feature-icon is-question-bank"><i data-lucide="library-big"></i></span>
+            <strong>题库设置</strong>
+            <span id="adminQuestionCount">读取题库</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="admin-page" id="studentManagementPage" aria-labelledby="studentManagementTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学生与访问权限</p>
+            <h2 id="studentManagementTitle">学生管理</h2>
+          </div>
+          <button class="secondary-button" id="closeStudentManagement" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+
+        <div class="admin-create-band">
+          <form class="student-create-form" id="studentForm">
+            <label class="form-field">
+              <span>学生姓名 / 登录用户名</span>
+              <input id="studentUsernameInput" name="username" type="text" maxlength="40" autocomplete="off" placeholder="例如：张三" required />
+            </label>
+            <label class="form-field generated-password-field">
+              <span>自动登录密码</span>
+              <input id="studentPasswordInput" name="password" type="text" maxlength="12" autocomplete="off" placeholder="姓名大写首字母" readonly required />
+            </label>
+            <button class="primary-button" id="addStudentButton" type="submit">
+              <i data-lucide="user-plus"></i>
+              <span>新增账号</span>
+            </button>
+          </form>
+          <p class="shared-password-note"><i data-lucide="key-round"></i><span>学生密码按姓名拼音大写首字母自动生成</span></p>
+        </div>
+
+        <div class="student-sort-toolbar">
+          <div>
+            <i data-lucide="arrow-up-down"></i>
+            <label for="studentSortMode">学生排序</label>
+          </div>
+          <select id="studentSortMode">
+            <option value="manual">手动排序</option>
+            <option value="surname">姓氏 A-Z</option>
+            <option value="remaining-asc">剩余次数从少到多</option>
+            <option value="remaining-desc">剩余次数从多到少</option>
+            <option value="class">按班级分配</option>
+          </select>
+          <span id="studentDragHint">拖动学生行可调整顺序</span>
+        </div>
+
+        <div class="student-list-heading">
+          <div>
+            <strong>学生账号、课程进度与访问权限</strong>
+            <span>剩余次数根据当前应上减去当前已上自动计算</span>
+          </div>
+          <span id="studentCount">0 人</span>
+        </div>
+        <div class="student-table-head" aria-hidden="true">
+          <span>学生与颜色</span>
+          <span>当前已上</span>
+          <span>当前应上</span>
+          <span>还剩</span>
+          <span>操作</span>
+        </div>
+        <div class="student-list" id="studentList"></div>
+        <p class="empty-list-hint" id="studentListEmpty">暂无访客账号</p>
+      </section>
+
+      <section class="admin-page attendance-page" id="attendanceManagementPage" aria-labelledby="attendanceManagementTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">每日课程记录</p>
+            <h2 id="attendanceManagementTitle">上课打卡</h2>
+          </div>
+          <button class="secondary-button" id="closeAttendanceManagement" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+        <div class="attendance-toolbar">
+          <div class="attendance-date-copy">
+            <strong id="attendanceDateLabel">今天</strong>
+            <span id="attendanceSummary">读取课程与打卡记录</span>
+          </div>
+          <div class="attendance-toolbar-actions">
+            <label class="attendance-date-picker">
+              <span>查看日期</span>
+              <input id="attendanceDatePicker" type="date" />
+            </label>
+            <button class="secondary-button" id="showTodayAttendance" type="button">
+              <i data-lucide="calendar-days"></i>
+              <span>今天</span>
+            </button>
+            <button class="primary-button" id="markAllPresent" type="button">
+              <i data-lucide="check-check"></i>
+              <span>一键全部到课</span>
+            </button>
+          </div>
+        </div>
+        <div class="attendance-list" id="attendanceList"></div>
+        <p class="empty-list-hint" id="attendanceEmpty">所选日期没有分配学生的课程或打卡记录</p>
+        <section class="attendance-history-section" aria-labelledby="attendanceHistoryTitle">
+          <div class="attendance-history-heading">
+            <div>
+              <strong id="attendanceHistoryTitle">每日打卡记录</strong>
+              <span>最近 30 个有记录的日期，点击日期可查看或修正详情</span>
+            </div>
+            <button class="icon-button" id="refreshAttendanceHistory" type="button" aria-label="刷新打卡记录" title="刷新打卡记录">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+          <div class="attendance-history-list" id="attendanceHistoryList"></div>
+          <p class="empty-list-hint" id="attendanceHistoryEmpty">暂时没有历史打卡记录</p>
+        </section>
+      </section>
+
+      <section class="admin-page pet-management-page" id="petManagementPage" aria-labelledby="petManagementTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学生个性化</p>
+            <h2 id="petManagementTitle">宠物分配</h2>
+          </div>
+          <button class="secondary-button" id="closePetManagement" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+        <div class="student-sort-toolbar pet-sort-toolbar">
+          <div>
+            <i data-lucide="arrow-up-down"></i>
+            <label for="petSortMode">宠物列表排序</label>
+          </div>
+          <select id="petSortMode">
+            <option value="manual">手动排序</option>
+            <option value="level">等级从高到低</option>
+            <option value="surname">姓氏 A-Z</option>
+          </select>
+          <span id="petDragHint">拖动学生行可调整顺序</span>
+        </div>
+        <div class="pet-list-heading">
+          <div>
+            <strong>宠物分配与资源</strong>
+            <small>曾老师可增加宠物经验并设置金币余额</small>
+          </div>
+          <span id="petStudentCount">0 人</span>
+        </div>
+        <div class="pet-student-list" id="petStudentList"></div>
+        <p class="empty-list-hint" id="petStudentListEmpty">暂无学生账号</p>
+      </section>
+
+      <section class="admin-page pet-battle-history-page" id="petBattleHistoryPage" aria-labelledby="petBattleHistoryTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">宠物对战档案</p>
+            <h2 id="petBattleHistoryTitle">全部对战记录</h2>
+          </div>
+          <button class="secondary-button" id="closePetBattleHistory" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回宠物分配</span>
+          </button>
+        </div>
+        <div class="pet-battle-history-summary">
+          <div><i data-lucide="user-round"></i><strong id="petBattleHistoryStudent">学生</strong></div>
+          <div><span>总场次</span><strong id="petBattleHistoryTotal">0</strong></div>
+          <div><span>获胜</span><strong id="petBattleHistoryWins">0</strong></div>
+          <div><span>失败</span><strong id="petBattleHistoryLosses">0</strong></div>
+        </div>
+        <div class="pet-battle-history-list" id="petBattleHistoryList"></div>
+        <p class="empty-list-hint" id="petBattleHistoryEmpty">暂无对战记录</p>
+      </section>
+
+      <section class="admin-page pet-detail-page" id="petDetailPage" aria-labelledby="petDetailTitle" hidden>
+        <div class="admin-page-header pet-detail-header">
+          <div>
+            <p class="eyebrow">宠物空间</p>
+            <h2 id="petDetailTitle">我的宠物</h2>
+          </div>
+          <button class="secondary-button" id="closePetDetail" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回</span>
+          </button>
+        </div>
+
+        <div class="pet-detail-layout">
+          <section class="pet-profile-panel" aria-labelledby="petProfileName">
+            <div class="pet-portrait-stage">
+              <span class="pet-level-badge" id="petLevelBadge">Lv.1</span>
+              <img class="pet-detail-image" id="petDetailImage" src="" alt="" />
+            </div>
+            <div class="pet-profile-copy">
+              <small id="petSpeciesName">专属宠物</small>
+              <h3 id="petProfileName">宠物名字</h3>
+              <form class="pet-name-form" id="petNameForm">
+                <label class="form-field">
+                  <span>自定义名字</span>
+                  <input id="petNameInput" name="petName" type="text" maxlength="20" autocomplete="off" required />
+                </label>
+                <button class="icon-button pet-name-save" id="savePetName" type="submit" aria-label="保存宠物名字" title="保存宠物名字">
+                  <i data-lucide="save"></i>
+                </button>
+              </form>
+            </div>
+          </section>
+
+          <section class="pet-progress-panel" aria-labelledby="petProgressTitle">
+            <div class="pet-panel-heading">
+              <div>
+                <small>成长记录</small>
+                <h3 id="petProgressTitle">等级与经验</h3>
+              </div>
+              <div class="pet-coin-balance"><i data-lucide="coins"></i><strong id="petCoinBalance">0</strong><span>金币</span></div>
+            </div>
+            <div class="pet-level-row">
+              <strong id="petLevelText">Lv.1</strong>
+              <span id="petExperienceText">0 / 10 经验</span>
+            </div>
+            <div class="pet-progress-track" role="progressbar" aria-label="宠物升级进度" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
+              <span id="petProgressFill"></span>
+            </div>
+            <div class="pet-total-experience"><i data-lucide="sparkles"></i><span>累计经验</span><strong id="petTotalExperience">0</strong></div>
+          </section>
+
+          <section class="pet-checkin-panel" aria-labelledby="petCheckinTitle">
+            <div class="pet-panel-heading">
+              <div>
+                <small>每日成长</small>
+                <h3 id="petCheckinTitle">每日签到</h3>
+              </div>
+              <div class="pet-streak"><i data-lucide="flame"></i><strong id="petCheckinStreak">0</strong><span>天连续</span></div>
+            </div>
+            <button class="primary-button pet-checkin-button" id="petCheckinButton" type="button">
+              <i data-lucide="calendar-check-2"></i>
+              <span id="petCheckinButtonText">签到领取 2 经验</span>
+            </button>
+          </section>
+
+          <section class="pet-battle-panel" id="petBattlePanel" aria-labelledby="petBattleTitle" hidden>
+            <div class="pet-panel-heading">
+              <div>
+                <small id="petBattleDailyStatus">今日 0 / 3 场</small>
+                <h3 id="petBattleTitle">宠物对战</h3>
+              </div>
+              <button class="primary-button pet-battle-button" id="matchPetBattle" type="button">
+                <i data-lucide="swords"></i>
+                <span id="matchPetBattleText">匹配对手</span>
+              </button>
+            </div>
+            <div class="pet-battle-result" id="petBattleResult" hidden>
+              <div class="pet-battle-players">
+                <article class="pet-battle-player">
+                  <img id="battleMyPetImage" src="" alt="" />
+                  <div><strong id="battleMyPetName"></strong><small id="battleMyPetLevel"></small></div>
+                </article>
+                <span class="pet-battle-versus" aria-hidden="true"><i data-lucide="swords"></i></span>
+                <article class="pet-battle-player is-opponent">
+                  <img id="battleOpponentPetImage" src="" alt="" />
+                  <div><strong id="battleOpponentPetName"></strong><small id="battleOpponentPetLevel"></small></div>
+                </article>
+              </div>
+              <div class="pet-battle-outcome" id="petBattleOutcome">
+                <strong id="petBattleOutcomeTitle"></strong>
+                <span id="petBattleOutcomeText"></span>
+                <small id="petBattleReward"></small>
+              </div>
+            </div>
+          </section>
+
+          <section class="admin-pet-compare-panel" id="adminPetComparePanel" aria-labelledby="adminPetCompareTitle" hidden>
+            <div class="pet-panel-heading">
+              <div>
+                <small>成长对比</small>
+                <h3 id="adminPetCompareTitle">曾老师的宠物</h3>
+              </div>
+              <span class="pet-exclusive-label"><i data-lucide="shield-check"></i><span>曾老师专属</span></span>
+            </div>
+            <div class="admin-pet-compare-card">
+              <img id="adminComparePetImage" src="" alt="" />
+              <div class="admin-pet-compare-identity">
+                <small id="adminComparePetSpecies"></small>
+                <strong id="adminComparePetName"></strong>
+              </div>
+              <dl class="admin-pet-compare-stats">
+                <div><dt>等级</dt><dd id="adminComparePetLevel">Lv.1</dd></div>
+                <div><dt>累计经验</dt><dd id="adminComparePetExperience">0</dd></div>
+                <div><dt>本级进度</dt><dd id="adminComparePetProgress">0 / 10</dd></div>
+                <div><dt>金币</dt><dd id="adminComparePetCoins">0</dd></div>
+                <div><dt>连续签到</dt><dd id="adminComparePetStreak">0 天</dd></div>
+                <div><dt>最近签到</dt><dd id="adminComparePetCheckin">暂无</dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <section class="pet-shop-panel" aria-labelledby="petShopTitle">
+            <div class="pet-panel-heading">
+              <div>
+                <small>宠物商城</small>
+                <h3 id="petShopTitle">食物补给</h3>
+              </div>
+              <i data-lucide="shopping-bag"></i>
+            </div>
+            <div class="pet-food-grid" id="petFoodGrid"></div>
+            <p class="empty-list-hint" id="petFoodEmpty" hidden>当前宠物暂无可用食物</p>
+          </section>
+        </div>
+      </section>
+
+      <section class="admin-page pet-leaderboard-page" id="petLeaderboardPage" aria-labelledby="petLeaderboardTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">每周荣誉</p>
+            <h2 id="petLeaderboardTitle">宠物排行榜</h2>
+          </div>
+          <button class="secondary-button" id="closePetLeaderboard" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回</span>
+          </button>
+        </div>
+        <div class="leaderboard-status-band">
+          <div><i data-lucide="radio"></i><strong>实时排名</strong><span>经验变化后自动更新</span></div>
+          <div><i data-lucide="calendar-clock"></i><strong>每周一 00:00</strong><span>结算上一周奖励</span></div>
+        </div>
+        <div class="leaderboard-table-head" aria-hidden="true">
+          <span>排名</span>
+          <span>宠物</span>
+          <span>等级与经验</span>
+          <span>本周奖励</span>
+        </div>
+        <div class="pet-leaderboard-list" id="petLeaderboardList"></div>
+        <p class="empty-list-hint" id="petLeaderboardEmpty">暂无已分配宠物的学生</p>
+      </section>
+
+      <section class="admin-page coin-shop-page" id="coinShopPage" aria-labelledby="coinShopTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">商品与金币</p>
+            <h2 id="coinShopTitle">金币商城</h2>
+          </div>
+          <button class="secondary-button" id="closeCoinShop" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+
+        <div class="coin-shop-student-summary" id="coinShopStudentSummary" hidden>
+          <span><i data-lucide="wallet-cards"></i></span>
+          <div><small>我的金币余额</small><strong id="coinShopStudentBalance">0 金币</strong></div>
+          <p>选择商品后使用金币购买，购买记录会自动保存。</p>
+        </div>
+
+        <section class="coin-shop-create-section" id="coinShopCreateSection" aria-labelledby="coinShopCreateTitle">
+          <div class="coin-shop-section-heading">
+            <span class="admin-feature-icon is-coin-shop"><i data-lucide="package-plus"></i></span>
+            <div>
+              <h3 id="coinShopCreateTitle">添加商品</h3>
+              <span id="coinShopUploadStatus">等待选择商品图片</span>
+            </div>
+          </div>
+          <form class="coin-shop-form" id="coinShopForm">
+            <label class="coin-shop-image-field" for="coinShopImageInput">
+              <span>商品图片</span>
+              <span class="coin-shop-image-preview">
+                <img id="coinShopImagePreview" alt="商品图片预览" hidden />
+                <span id="coinShopImagePlaceholder">
+                  <i data-lucide="image-plus"></i>
+                  <strong>选择图片</strong>
+                  <small>PNG / JPG / WebP / GIF</small>
+                </span>
+              </span>
+            </label>
+            <input id="coinShopImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+            <div class="coin-shop-form-fields">
+              <label class="form-field">
+                <span>商品名称</span>
+                <input id="coinShopNameInput" type="text" maxlength="40" autocomplete="off" placeholder="请输入商品名称" required />
+              </label>
+              <label class="form-field">
+                <span>所需金币</span>
+                <input id="coinShopCostInput" type="number" min="1" max="999999" step="1" inputmode="numeric" placeholder="请输入金币数量" required />
+              </label>
+              <button class="primary-button" id="addCoinShopProduct" type="submit">
+                <i data-lucide="plus"></i>
+                <span>添加商品</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="coin-shop-list-section" aria-labelledby="coinShopListTitle">
+          <div class="coin-shop-list-heading">
+            <div>
+              <strong id="coinShopListTitle">全部商品</strong>
+              <span id="coinShopProductCount">0 件</span>
+            </div>
+            <button class="icon-button" id="refreshCoinShop" type="button" aria-label="刷新金币商城" title="刷新金币商城">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+          <div class="coin-shop-product-grid" id="coinShopProductGrid"></div>
+          <p class="empty-list-hint" id="coinShopProductEmpty">商城中暂无商品</p>
+        </section>
+      </section>
+
+      <section class="admin-page student-challenge-page" id="studentChallengePage" aria-labelledby="studentChallengeTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">宠物成长</p>
+            <h2 id="studentChallengeTitle">学习挑战</h2>
+          </div>
+          <button class="secondary-button" id="closeStudentChallenge" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回课程表</span>
+          </button>
+        </div>
+        <div class="challenge-summary-grid">
+          <article class="challenge-summary-card is-choice">
+            <span><i data-lucide="circle-check-big"></i></span>
+            <div><small>今日答题</small><strong id="totalChallengeCount">0 / 50</strong></div>
+            <em id="choiceChallengeCount">选择题 0</em>
+          </article>
+          <article class="challenge-summary-card is-word">
+            <span><i data-lucide="layers-3"></i></span>
+            <div><small>今日挑战</small><strong id="challengeSessionCount">0 / 5</strong></div>
+            <em id="wordChallengeCount">单词题 0</em>
+          </article>
+          <button class="challenge-summary-card is-coin challenge-coin-shop-shortcut" id="challengeCoinShopShortcut" type="button" aria-label="查看金币商城">
+            <span><i data-lucide="coins"></i></span>
+            <div><small>今日获得</small><strong id="challengeCoinCount">0 金币</strong></div>
+            <em id="challengeBonusState">满 50 题奖励 10 金币 · 点击进入商城</em>
+          </button>
+        </div>
+        <section class="challenge-start-panel" id="challengeStartPanel">
+          <div class="challenge-tabs" role="tablist" aria-label="挑战类型">
+            <button class="challenge-tab is-active" id="showChoiceChallenge" type="button" role="tab" aria-selected="true">
+              <i data-lucide="list-checks"></i><span>选择题</span>
+            </button>
+            <button class="challenge-tab" id="showWordChallenge" type="button" role="tab" aria-selected="false">
+              <i data-lucide="languages"></i><span>单词题</span>
+            </button>
+          </div>
+          <label class="form-field challenge-bank-field">
+            <span>选择子题库</span>
+            <select id="studentChallengeBank"></select>
+          </label>
+          <p class="challenge-session-rule-note">
+            中途退出后，继续原题库会接着上次进度且不重复计次；更换级别或题型会新计 1 轮。
+          </p>
+          <div class="challenge-start-copy">
+            <div>
+              <strong>每轮 10 题</strong>
+              <span>每天最多挑战 5 轮，每题答对得 1 金币</span>
+            </div>
+            <button class="primary-button challenge-start-button" id="startChallengeSession" type="button">
+              <i data-lucide="play"></i><span>开始本轮挑战</span>
+            </button>
+          </div>
+          <p class="empty-list-hint" id="challengeBankEmpty" hidden>该类型暂无至少包含 10 道启用题目的子题库</p>
+        </section>
+        <section class="challenge-question-card" id="challengeQuestionCard" aria-live="polite" hidden>
+          <div class="challenge-question-head">
+            <small id="challengeQuestionType">选择题挑战</small>
+            <strong id="challengeQuestionProgress">本轮第 1 / 10 题</strong>
+          </div>
+          <h3 id="challengePrompt">准备开始今天的挑战</h3>
+          <div class="choice-challenge-options" id="choiceChallengeOptions"></div>
+          <form class="word-challenge-form" id="wordChallengeForm" hidden>
+            <label class="form-field">
+              <span>输入答案</span>
+              <input id="wordChallengeAnswer" type="text" maxlength="120" autocomplete="off" required />
+            </label>
+            <button class="primary-button" id="submitWordChallenge" type="submit">
+              <i data-lucide="check"></i><span>提交答案</span>
+            </button>
+          </form>
+          <div class="challenge-result" id="challengeResult" hidden>
+            <span id="challengeResultIcon"><i data-lucide="sparkles"></i></span>
+            <div class="challenge-result-copy">
+              <strong id="challengeResultTitle"></strong>
+              <small id="challengeResultDetail"></small>
+              <div class="challenge-answer-feedback" id="challengeAnswerFeedback">
+                <strong id="challengeCorrectAnswer"></strong>
+                <p id="challengeAnswerExplanation"></p>
+              </div>
+            </div>
+          </div>
+          <button class="primary-button challenge-next-button" id="nextChallengeQuestion" type="button" hidden>
+            <i data-lucide="arrow-right"></i><span>下一题</span>
+          </button>
+          <button class="secondary-button challenge-next-button" id="finishChallengeSession" type="button" hidden>
+            <i data-lucide="layers-3"></i><span>选择下一轮题库</span>
+          </button>
+        </section>
+      </section>
+
+      <section class="admin-page challenge-records-page" id="challengeRecordsPage" aria-labelledby="challengeRecordsTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学习数据</p>
+            <h2 id="challengeRecordsTitle">挑战记录</h2>
+          </div>
+          <button class="secondary-button" id="closeChallengeRecords" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+        <div class="challenge-records-toolbar">
+          <div><i data-lucide="clock-3"></i><strong>全部学生答题记录</strong><span id="challengeRecordTotal">0 条</span></div>
+          <button class="icon-button" id="refreshChallengeRecords" type="button" aria-label="刷新挑战记录" title="刷新挑战记录"><i data-lucide="refresh-cw"></i></button>
+        </div>
+        <div class="challenge-record-list" id="challengeRecordList"></div>
+        <p class="empty-list-hint" id="challengeRecordEmpty">暂时没有已完成的挑战记录</p>
+      </section>
+
+      <section class="admin-page question-bank-page" id="questionBankPage" aria-labelledby="questionBankTitle" hidden>
+        <div class="admin-page-header">
+          <div>
+            <p class="eyebrow">学习挑战</p>
+            <h2 id="questionBankTitle">题库设置</h2>
+          </div>
+          <button class="secondary-button" id="closeQuestionBank" type="button">
+            <i data-lucide="arrow-left"></i>
+            <span>返回管理后台</span>
+          </button>
+        </div>
+
+        <section class="question-bank-dashboard" aria-label="题库概览">
+          <article><span><i data-lucide="library-big"></i></span><div><small>题目总数</small><strong id="questionDashboardTotal">0</strong></div></article>
+          <article><span><i data-lucide="folders"></i></span><div><small>子题库</small><strong id="questionDashboardBanks">0</strong></div></article>
+          <article><span><i data-lucide="circle-check-big"></i></span><div><small>启用题目</small><strong id="questionDashboardActive">0</strong></div></article>
+        </section>
+
+        <section class="question-bank-section question-bank-manager" aria-labelledby="questionBankManagerTitle">
+          <div class="question-bank-heading">
+            <div><strong id="questionBankManagerTitle">级别题库管理</strong><span>每个级别同时包含选择题和单词题，无需重复创建</span></div>
+          </div>
+          <form class="question-bank-create-form" id="questionBankCreateForm">
+            <label class="form-field"><span>级别名称</span><input id="newQuestionBankName" type="text" maxlength="40" placeholder="例如 Power Up 1" required /></label>
+            <button class="primary-button" type="submit"><i data-lucide="folder-plus"></i><span>新建级别题库</span></button>
+          </form>
+          <div class="question-sub-bank-list" id="questionSubBankList"></div>
+          <p class="empty-list-hint" id="questionSubBankEmpty">暂时没有子题库</p>
+        </section>
+
+        <section class="question-import-band" aria-labelledby="questionImportTitle">
+          <div class="question-import-heading">
+            <span class="admin-feature-icon is-question-bank"><i data-lucide="file-type-2"></i></span>
+            <div>
+              <h3 id="questionImportTitle">题库文件导入</h3>
+              <span id="questionImportStatus">支持 Word、PDF 和图片 OCR，答案与解析会自动匹配并进入审核页</span>
+            </div>
+          </div>
+          <div class="question-import-controls">
+            <label class="file-picker-button" for="questionBankFile">
+              <i data-lucide="file-up"></i>
+              <span>选择文件</span>
+            </label>
+            <input id="questionBankFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf,image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden />
+            <button class="primary-button" id="importQuestionPreview" type="button" disabled>
+              <i data-lucide="scan-text"></i>
+              <span>识别题目</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="question-bank-section">
+          <div class="question-bank-heading">
+            <div>
+              <strong>全部题目</strong>
+              <span id="questionBankSummary">读取中</span>
+            </div>
+            <button class="icon-button" id="refreshQuestionBank" type="button" aria-label="刷新题库" title="刷新题库">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+          <div class="question-bank-filters">
+            <label class="form-field"><span>题目类型</span><select id="questionTypeFilter"><option value="">全部类型</option><option value="choice">选择题</option><option value="word">单词题</option></select></label>
+            <label class="form-field"><span>所属子题库</span><select id="questionBankFilter"><option value="">全部子题库</option><option value="unassigned">未分类</option></select></label>
+            <label class="form-field question-search-field"><span>搜索题目</span><input id="questionSearchInput" type="search" placeholder="输入题干、答案或来源" /></label>
+          </div>
+          <div class="question-bank-list" id="questionBankList"></div>
+          <p class="empty-list-hint" id="questionBankEmpty">题库中暂无题目</p>
+        </section>
+      </section>
+
+      <section class="admin-page question-review-page" id="questionReviewPage" aria-labelledby="questionReviewTitle" hidden>
+        <div class="admin-page-header">
+          <div><p class="eyebrow">导入前确认</p><h2 id="questionReviewTitle">识别结果审核</h2></div>
+          <button class="secondary-button" id="closeQuestionReview" type="button"><i data-lucide="arrow-left"></i><span>返回题库后台</span></button>
+        </div>
+        <section class="question-review-summary">
+          <div><span><i data-lucide="scan-text"></i></span><div><small id="questionReviewFile">识别文件</small><strong id="questionPreviewSummary">0 道题</strong></div></div>
+          <p>系统会从 Word、PDF 或图片 OCR 结果中自动匹配题号、答案和解析。请检查无误并选择子题库后再正式导入。</p>
+        </section>
+        <section class="question-review-bank-tools">
+          <label class="form-field"><span>批量分配子题库</span><select id="questionReviewBank"></select></label>
+          <button class="secondary-button" id="applyReviewBank" type="button"><i data-lucide="list-plus"></i><span>应用到同类型题目</span></button>
+          <label class="form-field"><span>快速新建子题库</span><input id="questionReviewNewBankName" type="text" maxlength="40" placeholder="子题库名称" /></label>
+          <button class="secondary-button" id="createReviewBank" type="button"><i data-lucide="folder-plus"></i><span>新建并应用</span></button>
+        </section>
+        <div class="question-review-alert" id="questionReviewAlert" role="status"></div>
+        <div class="question-preview-list" id="questionPreviewList"></div>
+        <div class="question-review-actions">
+          <button class="secondary-button" id="cancelQuestionImport" type="button"><i data-lucide="x"></i><span>取消本次导入</span></button>
+          <button class="primary-button" id="saveImportedQuestions" type="button" disabled><i data-lucide="database-zap"></i><span>确认无误并加入题库</span></button>
+        </div>
+      </section>
+
+      <footer class="page-footer" id="pageFooter">
+        <p>
+          共 <strong id="courseCount">0</strong> 门课程 · <span id="occurrencePeriodLabel">本周</span>
+          <strong id="occurrenceCount">0</strong> 次 ·
+          <strong id="durationCount">0</strong> 小时
+        </p>
+        <p id="permissionHint">只读模式 · 曾老师的修改会实时显示在这里</p>
+      </footer>
+    </main>
+
+    <dialog class="week-overview-dialog" id="weekOverviewDialog">
+      <div class="week-overview-header">
+        <div>
+          <p class="eyebrow" id="periodOverviewEyebrow">全年周次</p>
+          <h3 id="weekOverviewTitle">2026 年周次总览</h3>
+        </div>
+        <button class="icon-button" id="closeWeekOverview" type="button" aria-label="关闭" title="关闭">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="week-year-controls" aria-label="切换年份">
+        <button class="icon-button" id="previousWeekYear" type="button" aria-label="上一年" title="上一年">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <strong id="weekOverviewYear">2026 年</strong>
+        <button class="icon-button" id="nextWeekYear" type="button" aria-label="下一年" title="下一年">
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+      <form class="period-year-jump" id="periodYearJumpForm">
+        <label for="periodYearInput">输入年份</label>
+        <input id="periodYearInput" type="number" min="1900" max="2200" step="1" inputmode="numeric" required />
+        <button class="secondary-button" type="submit">
+          <i data-lucide="calendar-search" aria-hidden="true"></i>
+          <span id="periodYearJumpText">定位年份</span>
+        </button>
+        <small id="periodYearJumpHint">输入年份后选择周次</small>
+      </form>
+      <div class="week-thumbnail-grid" id="weekThumbnailGrid" aria-label="全年周次列表"></div>
+    </dialog>
+
+    <dialog class="course-dialog" id="courseDialog">
+      <div class="dialog-accent" id="dialogAccent"></div>
+      <div class="dialog-header">
+        <div class="dialog-heading-copy">
+          <p class="eyebrow" id="dialogType">课程详情</p>
+          <div class="dialog-title-row">
+            <h3 id="dialogTitle">课程名称</h3>
+            <div class="dialog-course-actions" id="dialogCourseActions" hidden>
+              <button class="icon-button copy-course-button" id="copyCourse" type="button" aria-label="复制课程" title="复制课程">
+                <i data-lucide="copy"></i>
+              </button>
+              <button class="icon-button edit-course-button" id="editCourse" type="button" aria-label="编辑课程" title="编辑课程">
+                <i data-lucide="pencil"></i>
+              </button>
+              <button class="icon-button delete-course-button" id="deleteCourse" type="button" aria-label="删除课程" title="删除课程">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button class="icon-button dialog-close" id="closeDialog" type="button" aria-label="关闭" title="关闭">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="dialog-details" id="dialogDetails">
+        <p><i data-lucide="clock-3"></i><span id="dialogTime"></span></p>
+        <p><i data-lucide="users-round"></i><span id="dialogStudents"></span></p>
+        <p><i data-lucide="repeat-2"></i><span id="dialogRepeat"></span></p>
+        <div class="dialog-notes">
+          <i data-lucide="notebook-pen"></i>
+          <div>
+            <small>备注</small>
+            <p id="dialogNotes">暂无备注</p>
+          </div>
+        </div>
+      </div>
+
+      <form class="dialog-form" id="courseForm" hidden>
+        <label class="form-field form-field-wide">
+          <span>课程名称</span>
+          <input id="courseNameInput" name="name" type="text" maxlength="60" required />
+        </label>
+        <label class="form-field">
+          <span>首次上课日期</span>
+          <input id="courseStartDateInput" name="startDate" type="date" required />
+        </label>
+        <label class="form-field">
+          <span>重复方式</span>
+          <select id="courseRepeatInput" name="repeat">
+            <option value="">不重复</option>
+            <option value="1">每天</option>
+            <option value="7">每周</option>
+            <option value="custom">自定义间隔</option>
+            <option value="weekdays">自定义每周</option>
+          </select>
+        </label>
+        <label class="form-field form-field-wide" id="customRepeatField" hidden>
+          <span>间隔天数</span>
+          <div class="number-field-with-suffix">
+            <input id="courseRepeatDaysInput" name="repeatDays" type="number" min="1" max="365" step="1" value="4" />
+            <span>天</span>
+          </div>
+        </label>
+        <fieldset class="custom-weekday-field form-field-wide" id="customWeekdayField" hidden>
+          <legend>每周重复日期</legend>
+          <div class="weekday-selector" role="group" aria-label="选择每周重复日期">
+            <label><input type="checkbox" name="repeatWeekdays" value="1" /><span>周一</span></label>
+            <label><input type="checkbox" name="repeatWeekdays" value="2" /><span>周二</span></label>
+            <label><input type="checkbox" name="repeatWeekdays" value="3" /><span>周三</span></label>
+            <label><input type="checkbox" name="repeatWeekdays" value="4" /><span>周四</span></label>
+            <label><input type="checkbox" name="repeatWeekdays" value="5" /><span>周五</span></label>
+            <label><input type="checkbox" name="repeatWeekdays" value="6" /><span>周六</span></label>
+            <label><input type="checkbox" name="repeatWeekdays" value="7" /><span>周日</span></label>
+          </div>
+          <p class="weekday-selector-hint">可多选；首次上课日期对应的星期也必须选中。</p>
+        </fieldset>
+        <label class="form-field" id="repeatStopField" hidden>
+          <span>停止方式</span>
+          <select id="courseRepeatStopInput" name="repeatStop">
+            <option value="">持续重复</option>
+            <option value="count">按次数停止</option>
+            <option value="date">按截止日期停止</option>
+          </select>
+        </label>
+        <label class="form-field" id="repeatCountField" hidden>
+          <span>总重复次数（含首次）</span>
+          <div class="number-field-with-suffix">
+            <input id="courseRepeatCountInput" name="repeatCount" type="number" min="1" max="10000" step="1" value="2" />
+            <span>次</span>
+          </div>
+        </label>
+        <label class="form-field" id="repeatEndDateField" hidden>
+          <span>截止日期（含当天）</span>
+          <input id="courseRepeatEndDateInput" name="repeatEndDate" type="date" />
+        </label>
+        <label class="form-field">
+          <span>开始时间</span>
+          <input id="courseStartTimeInput" name="startTime" type="time" min="06:00" max="23:50" step="600" required />
+        </label>
+        <label class="form-field">
+          <span>持续时长</span>
+          <select id="courseDurationInput" name="duration"></select>
+        </label>
+        <label class="form-field form-field-wide">
+          <span>备注</span>
+          <textarea id="courseNotesInput" name="notes" maxlength="500" rows="4" placeholder="记录课程要求、准备事项等"></textarea>
+        </label>
+        <fieldset class="color-field form-field-wide">
+          <legend>课程颜色</legend>
+          <input id="courseColorInput" name="color" type="hidden" value="" />
+          <div class="color-palette" id="courseColorPalette" role="radiogroup" aria-label="课程颜色"></div>
+        </fieldset>
+        <fieldset class="student-assignment-field form-field-wide">
+          <legend>上课学生</legend>
+          <div class="student-checklist" id="studentChecklist"></div>
+          <p class="empty-list-hint" id="studentChecklistEmpty" hidden>暂无学生账号，请先前往账号管理中新增。</p>
+        </fieldset>
+        <div class="form-actions">
+          <button class="secondary-button" id="cancelEdit" type="button">取消</button>
+          <button class="primary-button" id="saveCourse" type="submit">
+            <i data-lucide="save"></i>
+            <span id="saveCourseText">保存修改</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteDialog">
+      <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="trash-2"></i></div>
+      <h3>删除课程</h3>
+      <p id="deleteDialogText">确认删除“<strong id="deleteCourseName"></strong>”吗？</p>
+      <div class="delete-series-options" id="deleteSeriesOptions" hidden>
+        <button class="secondary-button delete-series-button" id="deleteOccurrenceOnly" type="button">
+          <i data-lucide="calendar-x-2"></i>
+          <span><strong>仅删除当天</strong><small id="deleteOccurrenceDate"></small></span>
+        </button>
+        <button class="danger-button delete-series-button" id="deleteOccurrenceFuture" type="button">
+          <i data-lucide="calendar-minus-2"></i>
+          <span><strong>删除当天及后续</strong><small>此前已重复课程不受影响</small></span>
+        </button>
+      </div>
+      <div class="confirm-actions" id="deleteSingleActions">
+        <button class="secondary-button" id="cancelDelete" type="button">取消</button>
+        <button class="danger-button" id="confirmDelete" type="button">确认删除</button>
+      </div>
+      <button class="secondary-button delete-series-cancel" id="cancelSeriesDelete" type="button" hidden>取消</button>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="deleteStudentDialog">
+      <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="user-minus"></i></div>
+      <h3>删除访客账号</h3>
+      <p>删除“<strong id="deleteStudentName"></strong>”后，该账号将失去课程查看权限，已有课程分配也会一并移除。</p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="cancelDeleteStudent" type="button">取消</button>
+        <button class="danger-button" id="confirmDeleteStudent" type="button">确认删除</button>
+      </div>
+    </dialog>
+
+    <dialog class="confirm-dialog course-conflict-dialog" id="courseConflictDialog">
+      <div class="confirm-dialog-icon is-warning" aria-hidden="true"><i data-lucide="triangle-alert"></i></div>
+      <h3>课程时间重叠</h3>
+      <p id="courseConflictText">所选学生在该时间已有课程，是否仍要继续？</p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="cancelCourseConflict" type="button">返回调整</button>
+        <button class="primary-button" id="confirmCourseConflict" type="button">确认重叠并保存</button>
+      </div>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="coinShopDeleteDialog">
+      <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="package-x"></i></div>
+      <h3>删除商城商品</h3>
+      <p>确认删除“<strong id="coinShopDeleteProductName"></strong>”吗？商品图片也会一并移除。</p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="cancelCoinShopDelete" type="button">取消</button>
+        <button class="danger-button" id="confirmCoinShopDelete" type="button">确认删除</button>
+      </div>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="coinShopPurchaseDialog">
+      <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="shopping-bag"></i></div>
+      <h3>确认购买商品</h3>
+      <p>使用 <strong id="coinShopPurchaseProductCost">0</strong> 金币购买“<strong id="coinShopPurchaseProductName"></strong>”吗？</p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="cancelCoinShopPurchase" type="button">取消</button>
+        <button class="primary-button" id="confirmCoinShopPurchase" type="button">确认购买</button>
+      </div>
+    </dialog>
+
+    <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
+
+    <script src="vendor/lucide-0.468.0.min.js"></script>
+    <script src="vendor/supabase-2.111.0.min.js"></script>
+    <script src="vendor/pinyin-pro-3.26.0.min.js"></script>
+    <script src="vendor/mammoth-1.8.0.min.js"></script>
+    <script src="vendor/pdfjs/pdf.min.js"></script>
+    <script src="vendor/tesseract/tesseract.min.js"></script>
+    <script src="app.js?v=20260905-2"></script>
+  </body>
+</html>

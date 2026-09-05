@@ -1,0 +1,7 @@
+exclude:
+  - .qa
+  - handoff
+  - supabase
+  - tools
+  - wechat-miniprogram
+  - course-schedule-wechat-mini-program.zip
