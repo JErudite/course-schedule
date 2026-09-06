@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260903-1" />
+    <link rel="stylesheet" href="styles.css?v=20260906-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -128,6 +128,7 @@
           </div>
         </div>
 
+        <div id="courseEndDates" class="course-end-dates" aria-label="课程预计结束日期" hidden></div>
         <div class="calendar-view-toolbar">
           <div class="calendar-toolbar-controls">
             <div class="schedule-view-switcher" id="scheduleViewSwitcher" role="group" aria-label="课程表视图">
@@ -232,7 +233,37 @@
             <span id="adminQuestionCount">读取题库</span>
             <i data-lucide="chevron-right"></i>
           </button>
+          <button class="admin-feature-button" id="openCourseHoliday" type="button" hidden>
+            <span class="admin-feature-icon is-attendance"><i data-lucide="calendar-off"></i></span>
+            <strong>假期停课与顺延</strong>
+            <span>批量预览、确认与撤销</span>
+            <i data-lucide="chevron-right"></i>
+          </button>
         </div>
+      </section>
+
+      <section class="admin-page" id="courseHolidayPage" aria-labelledby="courseHolidayTitle" hidden>
+        <div class="admin-page-header">
+          <div><p class="eyebrow">课程安排</p><h2 id="courseHolidayTitle">假期停课与批量顺延</h2></div>
+          <button class="secondary-button" id="closeCourseHoliday" type="button" aria-label="返回管理后台"><i data-lucide="arrow-left"></i><span>返回管理后台</span></button>
+        </div>
+        <form id="courseHolidayForm" class="holiday-form">
+          <label class="form-field"><span>停课开始日期</span><input id="holidayStartDate" type="date" required /></label>
+          <label class="form-field"><span>停课结束日期（含当天）</span><input id="holidayEndDate" type="date" required /></label>
+          <label class="form-field form-field-wide"><span>处理方式</span>
+            <select id="holidayMode"><option value="postpone">停课并顺延：保留总上课次数</option><option value="cancel">仅取消假期内课次：不补到后面</option></select>
+          </label>
+          <p class="holiday-help form-field-wide">顺延按原重复周期恢复；单次课程移至假期结束次日。不会修改课时余额或打卡记录。请先预览受影响的课程和预计结束日期。</p>
+          <fieldset class="form-field-wide"><legend>选择课程</legend>
+            <label class="holiday-select-all"><input id="holidaySelectAll" type="checkbox" checked />全选课程</label>
+            <div id="holidayCourseList" class="holiday-course-list"></div>
+          </fieldset>
+          <button class="secondary-button" id="previewCourseHoliday" type="submit">预览影响</button>
+        </form>
+        <div id="holidayPreview" class="holiday-preview" aria-live="polite" hidden></div>
+        <p id="holidayStatus" role="status"></p>
+        <button class="primary-button" id="applyCourseHoliday" type="button" hidden>确认应用本次停课</button>
+        <section class="holiday-history"><h3>最近处理记录</h3><p class="holiday-help">课程后续被编辑或涉及已有打卡时，撤销会被阻止，避免覆盖新记录。</p><div id="holidayHistoryList"></div></section>
       </section>
 
       <section class="admin-page" id="studentManagementPage" aria-labelledby="studentManagementTitle" hidden>
@@ -661,6 +692,10 @@
           </button>
         </div>
         <section class="challenge-start-panel" id="challengeStartPanel">
+          <div class="challenge-tabs" role="group" aria-label="学习模式">
+            <button class="challenge-tab is-active" id="showRegularChallenge" type="button" aria-pressed="true">题目挑战</button>
+            <button class="challenge-tab" id="showMistakeReview" type="button" aria-pressed="false" hidden><i data-lucide="book-open-check"></i><span>错题复习</span></button>
+          </div>
           <div class="challenge-tabs" role="tablist" aria-label="挑战类型">
             <button class="challenge-tab is-active" id="showChoiceChallenge" type="button" role="tab" aria-selected="true">
               <i data-lucide="list-checks"></i><span>选择题</span>
@@ -674,11 +709,11 @@
             <select id="studentChallengeBank"></select>
           </label>
           <p class="challenge-session-rule-note">
-            中途退出后，继续原题库会接着上次进度且不重复计次；更换级别或题型会新计 1 轮。
+            中途退出后，继续原题库会接着上次进度且不重复计次；更换级别或题型会新计 1 轮。错题复习与题目挑战共用每日 5 轮、50 题额度，切换学习模式也新计 1 轮；错题不足 10 道时按实际数量成轮。
           </p>
           <div class="challenge-start-copy">
             <div>
-              <strong>每轮 10 题</strong>
+              <strong id="challengeRoundSize">每轮 10 题</strong>
               <span>每天最多挑战 5 轮，每题答对得 1 金币</span>
             </div>
             <button class="primary-button challenge-start-button" id="startChallengeSession" type="button">
@@ -906,6 +941,7 @@
         <p><i data-lucide="clock-3"></i><span id="dialogTime"></span></p>
         <p><i data-lucide="users-round"></i><span id="dialogStudents"></span></p>
         <p><i data-lucide="repeat-2"></i><span id="dialogRepeat"></span></p>
+        <p id="dialogExpectedEndRow" hidden><i data-lucide="calendar-check"></i><span id="dialogExpectedEnd"></span></p>
         <div class="dialog-notes">
           <i data-lucide="notebook-pen"></i>
           <div>
@@ -973,6 +1009,7 @@
           <span>截止日期（含当天）</span>
           <input id="courseRepeatEndDateInput" name="repeatEndDate" type="date" />
         </label>
+        <p class="course-expected-end-preview form-field-wide" id="courseExpectedEndPreview" aria-live="polite" hidden></p>
         <label class="form-field">
           <span>开始时间</span>
           <input id="courseStartTimeInput" name="startTime" type="time" min="06:00" max="23:50" step="600" required />
@@ -1074,6 +1111,6 @@
     <script src="vendor/mammoth-1.8.0.min.js"></script>
     <script src="vendor/pdfjs/pdf.min.js"></script>
     <script src="vendor/tesseract/tesseract.min.js"></script>
-    <script src="app.js?v=20260905-2"></script>
+    <script src="app.js?v=20260906-1"></script>
   </body>
 </html>

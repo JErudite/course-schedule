@@ -137,9 +137,13 @@ let challengeRecords = [];
 let questionBank = [];
 let questionBanks = [];
 let availableChallengeBanks = [];
+let holidayPreview = null;
+let holidayBusy = false;
 let importedQuestions = [];
 let questionImportFileName = "";
 let challengeState = {
+  reviewMode: false,
+  sessionLimit: 10,
   type: "choice",
   bankId: "",
   bankName: "",
@@ -698,6 +702,49 @@ function getCourseOccurrenceDate(course, index) {
   return addDays(startDate, Math.floor(index / offsets.length) * 7 + offsets[index % offsets.length]);
 }
 
+function getCourseExpectedEndDate(course) {
+  if (!course.startDate || !Number.isInteger(course.repeatCount) || course.repeatCount < 1) return null;
+  return getCourseOccurrenceDate(course, course.repeatCount - 1);
+}
+
+function getCourseSeriesEndDate(course) {
+  const parts = course.holidaySeriesId ? schedule.filter((item) => item.holidaySeriesId === course.holidaySeriesId) : [course];
+  const dates = parts.map(getCourseExpectedEndDate);
+  if (dates.some((date) => !date)) return null;
+  return dates.reduce((latest, date) => date > latest ? date : latest, dates[0]);
+}
+
+function countCourseSlotsThrough(course, date) {
+  const start = parseISODate(course.startDate);
+  if (date < start) return 0;
+  if (course.repeatIntervalDays === null) return 1;
+  return normalizeRepeatWeekdays(course.repeatWeekdays).length
+    ? countWeekdayOccurrences(start, date, course.repeatWeekdays)
+    : Math.floor(daysBetween(start, date) / course.repeatIntervalDays) + 1;
+}
+
+function planCourseHoliday(course, startDate, endDate, mode) {
+  const limit = course.repeatCount ?? Infinity;
+  const beforeCount = Math.min(limit, countCourseSlotsThrough(course, addDays(parseISODate(startDate), -1)));
+  const afterIndex = countCourseSlotsThrough(course, parseISODate(endDate));
+  const pausedCount = Math.min(limit, afterIndex) - beforeCount;
+  if (pausedCount <= 0) return null;
+  const parts = [];
+  if (beforeCount > 0) {
+    parts.push({ ...course, repeatCount: beforeCount,
+      repeatEndDate: course.repeatEndDate ? toISODate(getCourseOccurrenceDate(course, beforeCount - 1)) : null });
+  }
+  const remaining = limit === Infinity ? null : limit - (mode === "postpone" ? beforeCount : afterIndex);
+  if (remaining === null || remaining > 0) {
+    const nextDate = course.repeatIntervalDays === null
+      ? addDays(parseISODate(endDate), 1) : getCourseOccurrenceDate(course, afterIndex);
+    const following = { ...course, startDate: toISODate(nextDate), repeatCount: remaining, repeatEndDate: null };
+    if (course.repeatEndDate) following.repeatEndDate = toISODate(getCourseExpectedEndDate(following));
+    parts.push(following);
+  }
+  return { course, pausedCount, parts, expectedEnd: parts.length ? getCourseExpectedEndDate(parts[parts.length - 1]) : null };
+}
+
 function occurrenceIndexForDate(course, date) {
   const difference = daysBetween(parseISODate(course.startDate), date);
   if (difference < 0) return -1;
@@ -815,6 +862,7 @@ function mapCourse(row) {
   const repeatIntervalDays = row.repeat_interval_days === null ? null : Number(row.repeat_interval_days);
   return {
     id: row.id,
+    holidaySeriesId: row.holiday_series_id || null,
     startDate: row.start_date,
     repeatIntervalDays,
     repeatCount: repeatIntervalDays === null ? 1 : row.repeat_count == null ? null : Number(row.repeat_count),
@@ -2460,7 +2508,7 @@ function renderChallengeSummary(summary) {
   document.querySelector("#challengeBonusState").textContent = summary.completion_bonus_claimed
     ? "今日满题奖励已领取 · 点击进入商城"
     : "满 50 题奖励 10 金币 · 点击进入商城";
-  if (challengeState.sessionId) document.querySelector("#challengeQuestionProgress").textContent = `本轮第 ${challengeState.sessionAnswered + 1} / 10 题 · 今日剩余 ${Math.max(0, 50 - totalAttempts)} 题`;
+  if (challengeState.sessionId) document.querySelector("#challengeQuestionProgress").textContent = `本轮第 ${Math.min(challengeState.sessionLimit, challengeState.sessionAnswered + (challengeState.answered ? 0 : 1))} / ${challengeState.sessionLimit} 题 · 今日剩余 ${Math.max(0, 50 - totalAttempts)} 题`;
 }
 
 async function loadChallengeSummary() {
@@ -2475,6 +2523,7 @@ async function loadChallengeSummary() {
 }
 
 function setChallengeType(type) {
+  if (challengeState.starting) return;
   challengeState.type = type;
   challengeState.attemptId = null;
   challengeState.sessionId = null;
@@ -2493,6 +2542,21 @@ function setChallengeType(type) {
   renderAvailableChallengeBanks();
 }
 
+async function setChallengeMode(reviewMode) {
+  if (challengeState.starting) return;
+  challengeState.reviewMode = reviewMode;
+  setChallengeType(challengeState.type);
+  document.querySelector("#showRegularChallenge").classList.toggle("is-active", !reviewMode);
+  document.querySelector("#showRegularChallenge").setAttribute("aria-pressed", String(!reviewMode));
+  document.querySelector("#showMistakeReview").classList.toggle("is-active", reviewMode);
+  document.querySelector("#showMistakeReview").setAttribute("aria-pressed", String(reviewMode));
+  document.querySelector("#challengeRoundSize").textContent = reviewMode ? "错题每轮最多 10 题" : "每轮 10 题";
+  document.querySelector("#startChallengeSession span").textContent = reviewMode ? "开始本轮复习" : "开始本轮挑战";
+  availableChallengeBanks = [];
+  renderAvailableChallengeBanks();
+  await loadAvailableChallengeBanks();
+}
+
 function renderChallengeQuestion(question) {
   challengeState.attemptId = Number(question.attempt_id);
   challengeState.sessionAnswered = Math.max(0, Number(question.session_question_number) - 1);
@@ -2501,7 +2565,10 @@ function renderChallengeQuestion(question) {
   challengeState.dailyRemaining = Number(question.daily_remaining) || 0;
   challengeState.choiceStreak = Number(question.choice_streak) || 0;
   challengeState.answered = false;
-  document.querySelector("#challengeQuestionType").textContent = question.challenge_type === "choice" ? "选择题挑战" : "单词挑战";
+  document.querySelector("#challengeQuestionType").textContent = `${challengeState.reviewMode ? "错题复习 · " : ""}${question.challenge_type === "choice" ? "选择题挑战" : "单词挑战"}`;
+  document.querySelector("#choiceChallengeOptions").hidden = question.challenge_type !== "choice";
+  document.querySelector("#wordChallengeForm").hidden = question.challenge_type !== "word";
+  document.querySelector("#wordChallengeAnswer").value = "";
   document.querySelector("#challengePrompt").textContent = question.prompt;
   document.querySelector("#challengeResult").hidden = true;
   document.querySelector("#nextChallengeQuestion").hidden = true;
@@ -2526,7 +2593,7 @@ async function loadNextChallengeQuestion() {
   questionCard.classList.remove("is-loading");
   if (error) {
     document.querySelector("#challengePrompt").textContent = error.message?.includes("session completed")
-      ? "本轮 10 题已完成"
+      ? "本轮题目已完成"
       : (error.message?.includes("limit") ? "今日挑战次数已用完，明天再来吧" : "当前没有可用题目，请稍后再试");
     document.querySelector("#choiceChallengeOptions").replaceChildren();
     document.querySelector("#wordChallengeForm").hidden = true;
@@ -2581,12 +2648,151 @@ async function submitChallengeAnswer(answer, clickedButton = null) {
   if (!result) return;
   currentUser.pet_experience = Number(result.total_experience) || currentUser.pet_experience;
   currentUser.pet_coins = Number(result.total_coins) || currentUser.pet_coins;
-  challengeState.sessionAnswered = 10 - Number(result.session_remaining || 0);
+  challengeState.sessionAnswered = Number(result.session_answered) || 0;
   renderChallengeResult(result);
   await loadChallengeSummary();
   if (!petDetailPage.hidden) renderPetDetail();
   updateVisitorPet();
   showStatus(result.is_correct ? `答对了，获得 ${result.gained_experience} 经验` : "答错了，继续加油");
+}
+
+function invalidateHolidayPreview() {
+  holidayPreview = null;
+  document.querySelector("#holidayPreview").hidden = true;
+  document.querySelector("#applyCourseHoliday").hidden = true;
+}
+
+async function showCourseHoliday() {
+  if (!canEdit) return;
+  await loadSchedule({ quiet: true });
+  hideAdminPages();
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
+  document.querySelector("#courseHolidayPage").hidden = false;
+  document.body.classList.add("is-admin-view");
+  const tomorrow = toISODate(addDays(getScheduleToday(), 1));
+  for (const id of ["#holidayStartDate", "#holidayEndDate"]) {
+    const input = document.querySelector(id);
+    input.min = toISODate(getScheduleToday());
+    if (!input.value || input.value < input.min) input.value = tomorrow;
+  }
+  document.querySelector("#holidayStatus").textContent = "";
+  document.querySelector("#holidaySelectAll").checked = true;
+  const today = getScheduleToday();
+  document.querySelector("#holidayCourseList").replaceChildren(...schedule
+    .filter((course) => !getCourseExpectedEndDate(course) || getCourseExpectedEndDate(course) >= today)
+    .map((course) => {
+      const label = createElement("label", "holiday-course-option");
+      const input = document.createElement("input");
+      input.type = "checkbox"; input.value = course.id; input.checked = true;
+      label.append(input, createElement("span", "", `${course.name} · ${formatTime(course.startTime)} · 首次 ${course.startDate}`));
+      return label;
+    }));
+  invalidateHolidayPreview();
+  await loadCourseHolidayHistory();
+}
+
+function previewCourseHoliday(event) {
+  event.preventDefault();
+  if (!canEdit || holidayBusy) return;
+  invalidateHolidayPreview();
+  const startDate = document.querySelector("#holidayStartDate").value;
+  const endDate = document.querySelector("#holidayEndDate").value;
+  const mode = document.querySelector("#holidayMode").value;
+  const message = document.querySelector("#holidayStatus");
+  if (!startDate || !endDate || startDate < toISODate(getScheduleToday()) || endDate < startDate
+      || daysBetween(parseISODate(startDate), parseISODate(endDate)) > 365) {
+    message.textContent = "请选择从今天起、长度不超过 366 天的停课日期范围。"; return;
+  }
+  const ids = new Set(Array.from(document.querySelectorAll('#holidayCourseList input:checked'), (input) => input.value));
+  const plans = schedule.filter((course) => ids.has(course.id))
+    .map((course) => planCourseHoliday(course, startDate, endDate, mode)).filter(Boolean);
+  if (!plans.length) { message.textContent = "选中的课程在这段日期内没有安排，无需修改。"; return; }
+  if (plans.length > 200) { message.textContent = "每批最多处理 200 门课程，请分批选择。"; return; }
+  const affectedIds = new Set(plans.map((plan) => plan.course.id));
+  const candidates = plans.flatMap((plan) => plan.parts);
+  const comparison = [...schedule.filter((course) => !affectedIds.has(course.id)), ...candidates];
+  const conflicts = new Set();
+  candidates.forEach((candidate) => comparison.forEach((other) => {
+    if (candidate === other || !candidate.studentIds.some((id) => other.studentIds.includes(id))) return;
+    if (candidate.startTime < getCourseEnd(other) && getCourseEnd(candidate) > other.startTime && seriesShareADate(candidate, other)) {
+      conflicts.add(`${candidate.name} / ${other.name}`);
+    }
+  }));
+  const panel = document.querySelector("#holidayPreview");
+  panel.replaceChildren(createElement("h3", "", `将处理 ${plans.length} 门课程 · 假期内 ${plans.reduce((n, plan) => n + plan.pausedCount, 0)} 次课`));
+  plans.forEach((plan) => {
+    const originalEnd = getCourseExpectedEndDate(plan.course);
+    const row = createElement("article", "holiday-preview-row");
+    row.append(createElement("strong", "", plan.course.name),
+      createElement("span", "", `假期内 ${plan.pausedCount} 次 · ${mode === "postpone" ? "保留次数，按原周期顺延" : "取消这些课次"}`),
+      createElement("small", "", `预计结束：${originalEnd ? formatFullDate(originalEnd) : "持续重复"} → ${plan.parts.length === 0 ? "全部取消" : plan.expectedEnd ? formatFullDate(plan.expectedEnd) : "持续重复"}`));
+    panel.append(row);
+  });
+  if (conflicts.size) {
+    panel.append(createElement("p", "holiday-conflicts", `存在时间重叠：${[...conflicts].join("；")}`));
+    const label = createElement("label", "holiday-select-all");
+    const input = document.createElement("input"); input.type = "checkbox"; input.id = "holidayAllowConflict";
+    label.append(input, createElement("span", "", "我已核对上述冲突，仍确认保留重叠安排")); panel.append(label);
+  }
+  holidayPreview = { startDate, endDate, mode, plans, requestId: window.crypto.randomUUID() };
+  panel.hidden = false;
+  document.querySelector("#applyCourseHoliday").hidden = false;
+  message.textContent = "预览尚未修改课程。确认后整批保存，任何一门失败都会撤回整批操作。";
+}
+
+function describeHolidayError(error) {
+  const text = String(error.message || "").toLowerCase();
+  if (text.includes("stale") || text.includes("changed")) return "课程已被其他操作修改，请重新打开本页并预览。";
+  if (text.includes("attendance") || text.includes("past")) return "涉及已开始课程或已有打卡记录，不能批量修改，请调整日期范围。";
+  if (error.code === "23P01" || text.includes("conflict")) return "存在课程冲突，请重新预览并核对。";
+  if (error.code === "PGRST202") return "假期功能的数据库更新尚未启用，请稍后再试。";
+  return "操作未确认成功，请检查连接后重试；同一预览重试不会重复处理。";
+}
+
+async function applyCourseHoliday() {
+  if (!canEdit || !holidayPreview || holidayBusy) return;
+  const confirmation = document.querySelector("#holidayAllowConflict");
+  if (confirmation && !confirmation.checked) { document.querySelector("#holidayStatus").textContent = "请先核对并确认时间冲突。"; return; }
+  const plan = holidayPreview;
+  holidayBusy = true;
+  const button = document.querySelector("#applyCourseHoliday"); button.disabled = true;
+  const { error } = await supabaseClient.rpc("apply_course_holiday", {
+    p_request_id: plan.requestId, p_start_date: plan.startDate, p_end_date: plan.endDate, p_mode: plan.mode,
+    p_courses: plan.plans.map((item) => ({ id: item.course.id, version: item.course.version })),
+    p_allow_conflict: Boolean(confirmation?.checked),
+  });
+  holidayBusy = false; button.disabled = false;
+  if (error) { document.querySelector("#holidayStatus").textContent = describeHolidayError(error); return; }
+  await showCourseHoliday();
+  document.querySelector("#holidayStatus").textContent = "假期安排已保存并同步，课时余额和打卡记录保持不变。";
+}
+
+async function loadCourseHolidayHistory() {
+  if (!canEdit) return;
+  const { data, error } = await supabaseClient.rpc("get_course_holiday_batches");
+  const list = document.querySelector("#holidayHistoryList");
+  list.replaceChildren();
+  if (error) { list.textContent = error.code === "PGRST202" ? "假期功能的数据库更新尚未启用。" : "处理记录读取失败，请稍后重试。"; return; }
+  if (!data?.length) { list.textContent = "暂无处理记录"; return; }
+  data.forEach((batch) => {
+    const row = createElement("article", "holiday-history-row");
+    row.append(createElement("span", "", `${batch.start_date} 至 ${batch.end_date} · ${batch.mode === "postpone" ? "停课顺延" : "取消课次"} · ${batch.affected_count} 门课程`));
+    if (batch.undone_at) row.append(createElement("small", "", "已撤销"));
+    else {
+      const button = createElement("button", "secondary-button", "撤销本次处理"); button.type = "button";
+      button.addEventListener("click", async () => {
+        if (holidayBusy || !canEdit || !window.confirm("确认撤销这批假期安排？仅在课程没有后续变更且不涉及已上课程时才能恢复。")) return;
+        holidayBusy = true; button.disabled = true;
+        const result = await supabaseClient.rpc("undo_course_holiday", { p_batch_id: batch.id });
+        holidayBusy = false; button.disabled = false;
+        if (result.error) document.querySelector("#holidayStatus").textContent = describeHolidayError(result.error);
+        else { await showCourseHoliday(); document.querySelector("#holidayStatus").textContent = "本次假期安排已撤销。"; }
+      });
+      row.append(button);
+    }
+    list.append(row);
+  });
 }
 
 function renderAvailableChallengeBanks() {
@@ -2595,6 +2801,9 @@ function renderAvailableChallengeBanks() {
   select.replaceChildren(...banks.map((bank) => new Option(`${bank.bank_name} · ${bank.question_count} 题`, bank.bank_id)));
   select.disabled = banks.length === 0;
   document.querySelector("#challengeBankEmpty").hidden = banks.length > 0;
+  document.querySelector("#challengeBankEmpty").textContent = challengeState.reviewMode
+    ? "该类型暂无待复习错题。答对的错题会移出待复习队列。"
+    : "该类型暂无至少包含 10 道启用题目的子题库";
   document.querySelector("#startChallengeSession").disabled = banks.length === 0;
   challengeState.bankId = banks[0]?.bank_id || "";
   challengeState.bankName = banks[0]?.bank_name || "";
@@ -2602,7 +2811,9 @@ function renderAvailableChallengeBanks() {
 }
 
 async function loadAvailableChallengeBanks() {
-  const { data, error } = await supabaseClient.rpc("get_available_pet_challenge_banks");
+  const reviewMode = challengeState.reviewMode;
+  const { data, error } = await supabaseClient.rpc(reviewMode ? "get_available_pet_review_banks" : "get_available_pet_challenge_banks");
+  if (reviewMode !== challengeState.reviewMode) return false;
   if (error) { availableChallengeBanks = []; renderAvailableChallengeBanks(); showStatus("子题库读取失败，请稍后重试"); return false; }
   availableChallengeBanks = (data || []).map((bank) => ({ ...bank, question_count: Number(bank.question_count) || 0 }));
   renderAvailableChallengeBanks();
@@ -2610,21 +2821,24 @@ async function loadAvailableChallengeBanks() {
 }
 
 async function startChallengeSession() {
-  if (canEdit || !currentUser) return;
+  if (canEdit || !currentUser || challengeState.starting) return;
   const select = document.querySelector("#studentChallengeBank");
   challengeState.bankId = select.value;
   if (!challengeState.bankId) { showStatus("请先选择一个子题库"); return; }
   const button = document.querySelector("#startChallengeSession"); button.disabled = true;
-  const { data, error } = await supabaseClient.rpc("start_pet_challenge_session", {
+  challengeState.starting = true;
+  const { data, error } = await supabaseClient.rpc(challengeState.reviewMode ? "start_pet_review_session" : "start_pet_challenge_session", {
     p_challenge_type: challengeState.type,
     p_bank_id: challengeState.bankId,
   });
   button.disabled = false;
+  challengeState.starting = false;
   if (error) { showStatus(error.message?.includes("limit") ? "今日最多挑战 5 轮" : "挑战轮次开始失败，请重试"); return; }
   const session = Array.isArray(data) ? data[0] : data;
   if (!session) return;
   challengeState.sessionId = Number(session.session_id);
   challengeState.sessionAnswered = Number(session.session_answered) || 0;
+  challengeState.sessionLimit = challengeState.sessionAnswered + Number(session.session_remaining || 0);
   document.querySelector("#challengeStartPanel").hidden = true;
   document.querySelector("#challengeQuestionCard").hidden = false;
   await loadNextChallengeQuestion();
@@ -2677,7 +2891,12 @@ async function showStudentChallenge() {
   setChallengeType("choice");
   document.querySelector("#challengeStartPanel").hidden = false;
   document.querySelector("#challengeQuestionCard").hidden = true;
-  await Promise.all([loadChallengeSummary(), loadAvailableChallengeBanks()]);
+  document.querySelector("#showMistakeReview").hidden = true;
+  const [, , reviewAvailability] = await Promise.all([
+    loadChallengeSummary(), loadAvailableChallengeBanks(), supabaseClient.rpc("get_available_pet_review_banks"),
+  ]);
+  document.querySelector("#showMistakeReview").hidden = Boolean(reviewAvailability.error);
+  if (reviewAvailability.error && challengeState.reviewMode) await setChallengeMode(false);
   document.querySelector("#showChoiceChallenge").focus();
 }
 
@@ -2693,6 +2912,7 @@ async function showChallengeRecords() {
 }
 
 function hideAdminPages() {
+  document.querySelector("#courseHolidayPage").hidden = true;
   adminHub.hidden = true;
   studentManagementPage.hidden = true;
   attendanceManagementPage.hidden = true;
@@ -2725,7 +2945,12 @@ function renderAdminHubCounts() {
 
 async function showAdminHub() {
   if (!canEdit) return;
-  await Promise.all([loadStudents(), loadQuestionBank({ quiet: true }), loadCoinShopProducts({ quiet: true })]);
+  document.querySelector("#openCourseHoliday").hidden = true;
+  const [, , , holidayAvailability] = await Promise.all([
+    loadStudents(), loadQuestionBank({ quiet: true }), loadCoinShopProducts({ quiet: true }),
+    supabaseClient.rpc("get_course_holiday_batches"),
+  ]);
+  document.querySelector("#openCourseHoliday").hidden = Boolean(holidayAvailability.error);
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
   hideAdminPages();
@@ -3232,6 +3457,7 @@ function renderYearSchedule() {
 }
 
 function renderSchedule() {
+  renderCourseEndDates();
   updateScheduleViewControls();
   if (scheduleView === "month") {
     renderMonthSchedule();
@@ -3242,6 +3468,28 @@ function renderSchedule() {
     return;
   }
   renderWeekSchedule();
+}
+
+function renderCourseEndDates() {
+  const panel = document.querySelector("#courseEndDates");
+  if (!panel) return;
+  const today = getScheduleToday();
+  const groups = new Map();
+  schedule.filter((course) => course.repeatIntervalDays !== null && !course.repeatEndDate)
+    .forEach((course) => groups.set(course.holidaySeriesId || course.id, course));
+  const finiteCourses = [...groups.values()]
+    .map((course) => ({ course, endDate: getCourseSeriesEndDate(course) }))
+    .filter((item) => item.endDate && item.endDate >= today)
+    .sort((a, b) => a.endDate - b.endDate);
+  panel.hidden = canEdit || !currentUser || finiteCourses.length === 0;
+  panel.replaceChildren(...finiteCourses.map(({ course, endDate }) => {
+    const item = createElement("button", "course-end-date-item");
+    item.type = "button";
+    item.append(createElement("strong", "", course.name),
+      createElement("span", "", `预计上课结束：${formatFullDate(endDate)}`));
+    item.addEventListener("click", () => showCourse(course.id, course.startDate));
+    return item;
+  }));
 }
 
 function placeCourseCard(card, dayIndex, startTime, duration) {
@@ -3516,6 +3764,9 @@ function showCourseDetails(course) {
     ? `上课学生：${assignedNames.join("、")}`
     : "尚未分配学生";
   document.querySelector("#dialogRepeat").textContent = `${getRepeatDescription(course.repeatIntervalDays, course.repeatCount, course.repeatEndDate, course.repeatWeekdays)} · 首次 ${formatFullDate(parseISODate(course.startDate))}`;
+  const expectedEnd = getCourseSeriesEndDate(course);
+  document.querySelector("#dialogExpectedEndRow").hidden = !expectedEnd || course.repeatIntervalDays === null;
+  document.querySelector("#dialogExpectedEnd").textContent = expectedEnd ? `预计上课结束：${formatFullDate(expectedEnd)}` : "";
   const notes = document.querySelector("#dialogNotes");
   notes.textContent = course.notes || "暂无备注";
   notes.classList.toggle("is-empty", !course.notes);
@@ -3558,6 +3809,23 @@ function updateRepeatFields() {
   repeatCountField.hidden = !isRepeating || repeatStopInput.value !== "count";
   repeatEndDateField.hidden = !isRepeating || repeatStopInput.value !== "date";
   repeatEndDateInput.min = dayStartInput.value;
+  updateCourseEndDatePreview();
+}
+
+function updateCourseEndDatePreview() {
+  const output = document.querySelector("#courseExpectedEndPreview");
+  const interval = readRepeatInterval();
+  const count = Number(repeatCountInput.value);
+  const weekdays = readRepeatWeekdays();
+  const valid = interval !== null && interval >= 1 && interval <= 365
+    && repeatStopInput.value === "count" && dayStartInput.value
+    && Number.isInteger(count) && count >= 1 && count <= 10000
+    && (repeatInput.value !== "weekdays" || weekdays.includes(getISOWeekday(parseISODate(dayStartInput.value))));
+  output.hidden = !valid;
+  if (!valid) { output.textContent = ""; return; }
+  const date = getCourseExpectedEndDate({ startDate: dayStartInput.value, repeatIntervalDays: interval,
+    repeatCount: count, repeatWeekdays: weekdays });
+  output.textContent = `预计上课结束：${formatFullDate(date)}（共 ${count} 次，含首次）`;
 }
 
 function getDefaultRepeatEndDate(interval) {
@@ -5248,6 +5516,19 @@ async function handleLoginSubmit(event) {
 }
 
 function bindEvents() {
+  courseForm.addEventListener("input", updateCourseEndDatePreview);
+  courseForm.addEventListener("change", updateCourseEndDatePreview);
+  document.querySelector("#openCourseHoliday").addEventListener("click", showCourseHoliday);
+  document.querySelector("#closeCourseHoliday").addEventListener("click", showAdminHub);
+  document.querySelector("#courseHolidayForm").addEventListener("submit", previewCourseHoliday);
+  document.querySelector("#courseHolidayForm").addEventListener("input", invalidateHolidayPreview);
+  document.querySelector("#holidaySelectAll").addEventListener("change", (event) => {
+    document.querySelectorAll('#holidayCourseList input[type="checkbox"]').forEach((input) => { input.checked = event.target.checked; });
+    invalidateHolidayPreview();
+  });
+  document.querySelector("#applyCourseHoliday").addEventListener("click", applyCourseHoliday);
+  document.querySelector("#showRegularChallenge").addEventListener("click", () => setChallengeMode(false));
+  document.querySelector("#showMistakeReview").addEventListener("click", () => setChallengeMode(true));
   document.querySelector("#previousWeek").addEventListener("click", () => shiftSelectedSchedulePeriod(-1));
   document.querySelector("#nextWeek").addEventListener("click", () => shiftSelectedSchedulePeriod(1));
   document.querySelector("#currentWeek").addEventListener("click", openSchedulePeriodOverview);
