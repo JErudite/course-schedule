@@ -18,6 +18,46 @@
   --page-font-scale: 1;
 }
 
+.operations-nav, .operations-inline, .operations-chips, .operations-tiles {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+}
+.operations-nav { margin: 16px 0; }
+.operations-content, .operations-list { display: grid; gap: 16px; min-width: 0; }
+.operations-dashboard, .operations-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px; min-width: 0; overflow-wrap: anywhere;
+}
+.operations-dashboard { margin-bottom: 24px; display: grid; gap: 16px; }
+.operations-dashboard h3, .operations-card h3 { margin: 0 0 10px; font-size: 18px; }
+.operations-card > button { margin: 8px 8px 0 0; }
+.operations-hint { color: var(--muted); font-size: 13px; line-height: 1.65; margin: 8px 0; }
+.operations-card .form-field { margin: 12px 0; }
+.operations-page input, .operations-page select, .operations-dashboard input, #operationsClassPicker select {
+  min-width: 0; width: 100%; min-height: 42px; padding: 9px 12px; border: 1px solid var(--line);
+  border-radius: 6px; background: white; color: var(--ink); font: inherit;
+}
+.operations-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.operations-inline .form-field { flex: 1 1 180px; }
+.operations-members { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: 10px; max-height: 300px; overflow: auto; padding: 12px 0; }
+.operations-members label { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.operations-members input { width: 18px; height: 18px; min-height: 0; padding: 0; }
+.operations-card details { margin-top: 16px; }
+.operations-card summary { cursor: pointer; color: var(--green); }
+.operations-card pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; max-height: 400px; overflow: auto; }
+.operations-balance-button { background: transparent; border: 0; text-decoration: underline dotted; cursor: pointer; }
+.operations-attendance-summary { color: var(--muted); line-height: 1.6; font-size: 13px; }
+.coin-shop-product-card > .form-field, .coin-shop-product-card > .operations-hint { margin: 12px; }
+.coin-shop-product-card > .secondary-button { margin: 0 12px 12px; }
+@media (max-width: 600px) {
+  .operations-nav { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .operations-nav button { padding: 10px 8px; min-width: 0; font-size: 13px; white-space: normal; }
+  .operations-form { grid-template-columns: 1fr; }
+  .operations-card, .operations-dashboard { padding: 14px; }
+  .operations-page .admin-page-header { flex-wrap: wrap; gap: 12px; }
+  .operations-page .admin-page-header .secondary-button { width: auto; min-width: 112px; padding: 10px 14px; white-space: nowrap; }
+  .operations-card > button { max-width: 100%; white-space: normal; }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1219,6 +1259,15 @@ h1 {
   background: var(--surface);
 }
 .attendance-record-marker.is-complete { color: var(--green); background: var(--green-soft); }
+.student-name-link { padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-align: left; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 4px; }
+.student-name-link:hover, .student-name-link:focus-visible { color: var(--green); }
+.student-attendance-record { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--line-soft); border-radius: 10px; background: white; }
+.student-attendance-record > div { min-width: 0; overflow-wrap: anywhere; }
+.student-attendance-status { flex-shrink: 0; border-radius: 6px; padding: 5px 10px; font-size: 13px; }
+.student-attendance-status.is-present { color: var(--green); background: var(--green-soft); }
+.student-attendance-status.is-makeup { color: var(--blue); background: var(--blue-soft); }
+.student-attendance-status.is-leave { color: var(--coral); background: var(--coral-soft); }
+.student-attendance-year { margin: 6px 0; font-size: 18px; }
 
 .attendance-current-count {
   color: var(--muted);
@@ -3728,7 +3777,6 @@ body.is-selecting-course {
   font-weight: 700;
   text-align: center;
 }
-
 .student-remaining-count.is-empty { color: #c62828; }
 
 .admin-page .student-row-actions {

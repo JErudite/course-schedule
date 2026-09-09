@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260909-1" />
+    <link rel="stylesheet" href="styles.css?v=20260909-2" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -185,7 +185,7 @@
             <p class="eyebrow">功能管理</p>
             <h2 id="adminHubTitle">管理后台</h2>
           </div>
-          <button class="secondary-button" id="closeAdminHub" type="button">
+          <button class="secondary-button" id="closeAdminHub" type="button" aria-label="返回课程表">
             <i data-lucide="arrow-left"></i>
             <span>返回课程表</span>
           </button>
@@ -272,7 +272,7 @@
             <p class="eyebrow">学生与访问权限</p>
             <h2 id="studentManagementTitle">学生管理</h2>
           </div>
-          <button class="secondary-button" id="closeStudentManagement" type="button">
+          <button class="secondary-button" id="closeStudentManagement" type="button" aria-label="返回管理后台">
             <i data-lucide="arrow-left"></i>
             <span>返回管理后台</span>
           </button>
@@ -336,7 +336,7 @@
             <p class="eyebrow">每日课程记录</p>
             <h2 id="attendanceManagementTitle">上课打卡</h2>
           </div>
-          <button class="secondary-button" id="closeAttendanceManagement" type="button">
+          <button class="secondary-button" id="closeAttendanceManagement" type="button" aria-label="返回管理后台">
             <i data-lucide="arrow-left"></i>
             <span>返回管理后台</span>
           </button>
@@ -1066,11 +1066,11 @@
 
     <dialog class="confirm-dialog" id="deleteStudentDialog">
       <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="user-minus"></i></div>
-      <h3>删除访客账号</h3>
-      <p>删除“<strong id="deleteStudentName"></strong>”后，该账号将失去课程查看权限，已有课程分配也会一并移除。</p>
+      <h3>停用访客账号</h3>
+      <p>停用“<strong id="deleteStudentName"></strong>”后，该账号不能登录，但课程分配、课时和挑战历史均会保留。可在“账号与安全”中恢复。</p>
       <div class="confirm-actions">
         <button class="secondary-button" id="cancelDeleteStudent" type="button">取消</button>
-        <button class="danger-button" id="confirmDeleteStudent" type="button">确认删除</button>
+        <button class="danger-button" id="confirmDeleteStudent" type="button">确认停用</button>
       </div>
     </dialog>
 
@@ -1112,6 +1112,7 @@
     <script src="vendor/mammoth-1.8.0.min.js"></script>
     <script src="vendor/pdfjs/pdf.min.js"></script>
     <script src="vendor/tesseract/tesseract.min.js"></script>
-    <script src="app.js?v=20260909-1"></script>
+    <script src="app.js?v=20260909-2"></script>
+    <script src="assets/operations.js?v=20260909-2"></script>
   </body>
 </html>
