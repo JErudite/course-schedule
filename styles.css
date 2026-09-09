@@ -1207,6 +1207,19 @@ h1 {
   grid-column: 2;
 }
 
+.attendance-row.is-recorded .attendance-identity > strong { color: var(--muted); }
+.attendance-record-marker {
+  grid-column: 2;
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--surface);
+}
+.attendance-record-marker.is-complete { color: var(--green); background: var(--green-soft); }
+
 .attendance-current-count {
   color: var(--muted);
   font-size: 11px;
@@ -2533,7 +2546,7 @@ h1 {
 }
 
 .grid-cell.is-today {
-  background: #fafcf9;
+  background: #e3efe8;
 }
 
 .can-edit .grid-cell {
@@ -3479,11 +3492,15 @@ body.is-selecting-course {
 
 .student-sort-toolbar {
   display: flex;
+  flex-wrap: wrap;
   min-height: 54px;
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid var(--line);
 }
+
+.student-search-input { width: 220px; max-width: 100%; min-height: 34px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; }
+.student-search-input:focus { outline: 2px solid var(--green-soft); border-color: var(--green); }
 
 .student-sort-toolbar > div {
   display: flex;
@@ -3706,11 +3723,13 @@ body.is-selecting-course {
 }
 
 .student-remaining-count {
-  color: var(--coral);
+  color: #111111;
   font-size: 13px;
   font-weight: 700;
   text-align: center;
 }
+
+.student-remaining-count.is-empty { color: #c62828; }
 
 .admin-page .student-row-actions {
   justify-content: flex-end;

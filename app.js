@@ -161,6 +161,8 @@ let petSortMode = "manual";
 let pageFontSize = defaultPageFontSize;
 let draggedStudentId = null;
 let attendanceRecords = [];
+let todayAttendanceSummary = null;
+let todayAttendanceRequest = 0;
 let attendanceHistory = [];
 let selectedAttendanceDate = "";
 let attendanceBusy = false;
@@ -2938,7 +2940,7 @@ function showScheduleView() {
 function renderAdminHubCounts() {
   document.querySelector("#adminStudentCount").textContent = `${students.length} 人`;
   document.querySelector("#assignedPetCount").textContent = `${students.filter((student) => student.pet).length} 人已分配`;
-  document.querySelector("#adminAttendanceCount").textContent = `${getTodayAttendanceStudentIds().length} 人待打卡`;
+  renderTodayAttendanceCount();
   document.querySelector("#adminCoinShopCount").textContent = `${coinShopProducts.length} 件商品`;
   if (questionBank.length) renderQuestionBankSummary();
 }
@@ -2949,6 +2951,7 @@ async function showAdminHub() {
   const [, , , holidayAvailability] = await Promise.all([
     loadStudents(), loadQuestionBank({ quiet: true }), loadCoinShopProducts({ quiet: true }),
     supabaseClient.rpc("get_course_holiday_batches"),
+    loadTodayAttendanceSummary(),
   ]);
   document.querySelector("#openCourseHoliday").hidden = Boolean(holidayAvailability.error);
   scheduleSection.hidden = true;
@@ -4162,6 +4165,7 @@ async function loadSchedule({ quiet = false } = {}) {
   renderSchedule();
   if (canEdit && studentSortMode === "class") renderStudentList();
   if (canEdit) renderAdminHubCounts();
+  if (canEdit && !adminHub.hidden) await loadTodayAttendanceSummary();
   if (!attendanceManagementPage.hidden && canEdit) {
     await loadAttendance();
   }
@@ -4254,6 +4258,8 @@ function subscribeToCourses() {
     .on("postgres_changes", { event: "*", schema: "public", table: "student_attendance" }, async () => {
       if (canEdit && !attendanceManagementPage.hidden) {
         await Promise.all([loadAttendance(), loadAttendanceHistory({ quiet: true })]);
+      } else if (canEdit && !adminHub.hidden) {
+        await loadTodayAttendanceSummary();
       }
     })
     .subscribe();
@@ -4299,6 +4305,43 @@ const attendanceStatusOptions = [
   { value: "leave", label: "请假", icon: "calendar-off", className: "is-leave" },
 ];
 
+function getAttendanceCompletion(records) {
+  const pending = new Set(records.filter(record => !attendanceStatusOptions.some(option => option.value === record.status)).map(record => record.student_id));
+  return { pending: pending.size, total: new Set(records.map(record => record.student_id)).size };
+}
+
+function renderTodayAttendanceCount() {
+  const label = document.querySelector("#adminAttendanceCount");
+  if (!label) return;
+  if (todayAttendanceSummary?.date !== toISODate(getScheduleToday())) {
+    label.textContent = "正在读取今日打卡";
+    return;
+  }
+  const { pending, total, failed } = todayAttendanceSummary;
+  label.textContent = failed ? "打卡状态读取失败，点击重试" : pending > 0 ? `${pending} 人待打卡` : total ? "今日打卡已完成" : "今日暂无课程";
+}
+
+function cacheTodayAttendance(records, date, request) {
+  if (!canEdit || date !== toISODate(getScheduleToday()) || request !== todayAttendanceRequest) return;
+  todayAttendanceSummary = { date, ...getAttendanceCompletion(records) };
+  renderTodayAttendanceCount();
+}
+
+async function loadTodayAttendanceSummary() {
+  if (!canEdit) return false;
+  const date = toISODate(getScheduleToday());
+  const request = ++todayAttendanceRequest;
+  const { data, error } = await supabaseClient.rpc("get_attendance_for_date_v2", { p_attendance_date: date });
+  if (request !== todayAttendanceRequest || !canEdit) return false;
+  if (error) {
+    todayAttendanceSummary = { date, failed: true };
+    renderTodayAttendanceCount();
+    return false;
+  }
+  cacheTodayAttendance(data || [], date, request);
+  return true;
+}
+
 function formatAttendanceDay(value, includeYear = false) {
   const date = parseISODate(value);
   return `${includeYear ? `${date.getFullYear()} 年 ` : ""}${date.getMonth() + 1} 月 ${date.getDate()} 日`;
@@ -4307,11 +4350,15 @@ function formatAttendanceDay(value, includeYear = false) {
 async function loadAttendance() {
   if (!canEdit) return false;
   selectedAttendanceDate ||= toISODate(getScheduleToday());
+  const date = selectedAttendanceDate;
+  const todayRequest = date === toISODate(getScheduleToday()) ? ++todayAttendanceRequest : null;
   const { data, error } = await supabaseClient.rpc("get_attendance_for_date_v2", {
-    p_attendance_date: selectedAttendanceDate,
+    p_attendance_date: date,
   });
+  if (!canEdit || date !== selectedAttendanceDate) return false;
   if (error) {
     attendanceRecords = [];
+    if (todayRequest === todayAttendanceRequest) { todayAttendanceSummary = { date, failed: true }; renderTodayAttendanceCount(); }
     renderAttendance();
     showStatus("所选日期的打卡记录读取失败，请稍后重试");
     return false;
@@ -4322,6 +4369,7 @@ async function loadAttendance() {
     status: record.status || "",
     course_names: record.course_names || "",
   }));
+  cacheTodayAttendance(attendanceRecords, date, todayRequest);
   renderAttendance();
   return true;
 }
@@ -4371,19 +4419,23 @@ function renderAttendance() {
   document.querySelector("#showTodayAttendance").disabled = selectedAttendanceDate === todayIso || attendanceBusy;
   list.replaceChildren();
   attendanceRecords.forEach((record) => {
-    const row = createElement("article", "attendance-row");
+    const selectedStatus = attendanceStatusOptions.find(option => option.value === record.status);
+    const row = createElement("article", `attendance-row${selectedStatus ? " is-recorded" : ""}`);
     const identity = createElement("div", "attendance-identity");
     const color = createElement("i", "student-color-indicator");
     const student = students.find((item) => item.id === record.student_id);
     color.style.setProperty("--student-color", student?.color || defaultCourseColor);
     identity.append(color, createElement("strong", "", record.username || student?.username || "学生"));
     identity.append(createElement("small", "", record.course_names || "今日课程"));
+    const marker = createElement("span", `attendance-record-marker${selectedStatus ? " is-complete" : ""}`, selectedStatus ? `✓ 已打卡 · ${selectedStatus.label}` : "待打卡");
+    identity.append(marker);
     const progress = createElement("span", "attendance-current-count", `当前已上 ${record.current_lesson_count} 次`);
     const controls = createElement("div", "attendance-status-controls");
     attendanceStatusOptions.forEach(({ value, label, icon, className }) => {
       const button = createElement("button", `secondary-button attendance-status-button ${className}${record.status === value ? " is-selected" : ""}`);
       button.type = "button";
       button.disabled = attendanceBusy;
+      button.setAttribute("aria-pressed", String(record.status === value));
       button.innerHTML = `<i data-lucide="${icon}"></i><span>${label}</span>`;
       button.addEventListener("click", () => setAttendanceStatus(record.student_id, value));
       controls.append(button);
@@ -4393,7 +4445,7 @@ function renderAttendance() {
   });
   document.querySelector("#attendanceEmpty").hidden = attendanceRecords.length > 0;
   document.querySelector("#markAllPresent").disabled = attendanceBusy || attendanceRecords.length === 0;
-  if (selectedAttendanceDate === todayIso) document.querySelector("#adminAttendanceCount").textContent = `${pendingCount} 人待打卡`;
+  renderTodayAttendanceCount();
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -4701,15 +4753,24 @@ function setStudentAutoSaveState(element, state, studentName) {
   element.setAttribute("aria-label", `${studentName}${labels[state]}`);
 }
 
+function filterStudentSections(sections, keyword) {
+  const query = keyword.trim().toLocaleLowerCase();
+  if (!query) return sections;
+  return sections.map(section => ({...section, students: section.students.filter(student => student.username.toLocaleLowerCase().includes(query))})).filter(section => section.students.length > 0);
+}
+
 function renderStudentList() {
   const list = document.querySelector("#studentList");
+  const search = document.querySelector("#studentSearchInput")?.value || "";
+  const sections = filterStudentSections(getStudentListSections(), search);
+  const manualDrag = studentSortMode === "manual" && !search.trim();
   list.replaceChildren();
-  getStudentListSections().forEach((section) => {
+  sections.forEach((section) => {
     if (studentSortMode === "class") list.append(createStudentClassDivider(section));
     section.students.forEach((student) => {
-    const row = createElement("div", `student-row${studentSortMode === "manual" ? " is-draggable" : ""}`);
+    const row = createElement("div", `student-row${manualDrag ? " is-draggable" : ""}`);
     row.dataset.studentId = student.id;
-    row.draggable = studentSortMode === "manual";
+    row.draggable = manualDrag;
     let selectedColor = student.color || "";
     let requestAutoSave = () => {};
 
@@ -4746,7 +4807,9 @@ function renderStudentList() {
     const updateRemaining = () => {
       const current = Number(currentField.input.value) || 0;
       const required = Number(requiredField.input.value) || 0;
-      remaining.textContent = `${Math.max(required - current, 0)} 次`;
+      const balance = Math.max(required - current, 0);
+      remaining.textContent = `${balance} 次`;
+      remaining.classList.toggle("is-empty", balance === 0);
     };
     updateRemaining();
 
@@ -4841,12 +4904,15 @@ function renderStudentList() {
     const actions = createElement("div", "student-row-actions");
     actions.append(autoSaveState, removeButton);
     row.append(identity, currentField.label, requiredField.label, remaining, actions);
-    if (studentSortMode === "manual") bindStudentRowDrag(row, student.id);
+    if (manualDrag) bindStudentRowDrag(row, student.id);
     list.append(row);
     });
   });
-  document.querySelector("#studentCount").textContent = `${students.length} 人`;
-  document.querySelector("#studentListEmpty").hidden = students.length > 0;
+  const visibleCount = new Set(sections.flatMap(section => section.students.map(student => student.id))).size;
+  document.querySelector("#studentCount").textContent = search.trim() ? `找到 ${visibleCount} / ${students.length} 人` : `${students.length} 人`;
+  document.querySelector("#studentListEmpty").hidden = visibleCount > 0;
+  document.querySelector("#studentListEmpty").textContent = search.trim() ? "没有找到匹配的学生，请修改或清空搜索词" : "暂无访客账号";
+  document.querySelector("#studentDragHint").hidden = !manualDrag;
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -5368,6 +5434,8 @@ async function applySession(session) {
     realtimeAttendanceChannel = null;
     realtimeCoinShopChannel = null;
     attendanceRecords = [];
+    todayAttendanceSummary = null;
+    todayAttendanceRequest++;
     attendanceHistory = [];
     selectedAttendanceDate = "";
     petBattleHistory = [];
@@ -5763,6 +5831,7 @@ function bindEvents() {
     setStudentSortMode(event.target.value);
     window.localStorage.setItem("student-sort-mode", studentSortMode);
   });
+  document.querySelector("#studentSearchInput").addEventListener("input", renderStudentList);
   document.querySelector("#petSortMode").addEventListener("change", (event) => {
     setPetSortMode(event.target.value);
     window.localStorage.setItem("pet-sort-mode", petSortMode);

@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260906-1" />
+    <link rel="stylesheet" href="styles.css?v=20260909-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -73,7 +73,7 @@
             <i data-lucide="calendar-days"></i>
             <span>返回本周</span>
           </button>
-          <button class="today-button student-manager-button" id="studentManagerButton" type="button" hidden>
+          <button class="today-button student-manager-button" id="studentManagerButton" type="button" aria-label="管理后台" hidden>
             <i data-lucide="settings-2"></i>
             <span>管理后台</span>
           </button>
@@ -308,6 +308,7 @@
             <option value="remaining-desc">剩余次数从多到少</option>
             <option value="class">按班级分配</option>
           </select>
+          <input class="student-search-input" id="studentSearchInput" type="search" placeholder="搜索学生姓名" aria-label="搜索学生姓名" autocomplete="off">
           <span id="studentDragHint">拖动学生行可调整顺序</span>
         </div>
 
@@ -1111,6 +1112,6 @@
     <script src="vendor/mammoth-1.8.0.min.js"></script>
     <script src="vendor/pdfjs/pdf.min.js"></script>
     <script src="vendor/tesseract/tesseract.min.js"></script>
-    <script src="app.js?v=20260906-1"></script>
+    <script src="app.js?v=20260909-1"></script>
   </body>
 </html>
