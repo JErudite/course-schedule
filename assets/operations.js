@@ -1,6 +1,7 @@
 /* Operations pages share the existing authenticated client and visual system. */
 window.CourseOperations = (() => {
   let ready = false;
+  let canDeleteStudents = false;
   let classes = [];
   let members = [];
   let activeRoute = "";
@@ -9,6 +10,7 @@ window.CourseOperations = (() => {
   let threshold = 3;
   let summaryToken = 0;
   let sessionToken = 0;
+  let dashboardRequest = 0;
   const el = (tag, text = "", className = "") => createElement(tag, className, text);
   const page = el("section", "", "admin-page operations-page");
   page.id = "operationsPage"; page.hidden = true;
@@ -57,13 +59,13 @@ window.CourseOperations = (() => {
   }
   async function open(route,id) {
     if(!ready || !currentUser)return;
-    const titles={ledger:["课时明细","每一笔调整均保留前后余额；上线前余额仅作快照，不虚构旧流水。"],accounts:["账号与安全","停用不会删除学生历史记录；恢复后可继续登录。"],classes:["班级管理","一个学生可在多个独立班级中。按班选课时复制成员，不追改历史课程。"],orders:[canEdit?"商城订单与核销":"我的兑换记录","待领取订单由曾老师核销；取消订单会退回金币。"],notifications:["课程通知",canEdit?"查看每位学生的通知与已读回执。":"这里只显示分配给你的课程变更。"],recycle:["课程回收站","恢复被删除的课程或时段，不恢复重复系列中未被删除的其他日期。"],audit:["操作日志","保留管理员操作时间与修改前后值，不记录密码。"],learning:["学习周报与任务","按真实答题记录统计；学习任务仍遵守每日挑战次数和金币规则。"]};
+    const titles={ledger:["课时明细","每一笔调整均保留前后余额；上线前余额仅作快照，不虚构旧流水。"],accounts:["账号与安全","停用可以恢复；删除账号及其学习记录不可恢复，请谨慎操作。"],classes:["班级管理","一个学生可在多个独立班级中。按班选课时复制成员，不追改历史课程。"],orders:[canEdit?"商城订单与核销":"我的兑换记录","待领取订单由曾老师核销；取消订单会退回金币。"],notifications:["课程通知",canEdit?"查看每位学生的通知与已读回执。":"这里只显示分配给你的课程变更。"],recycle:["课程回收站","恢复被删除的课程或时段，不恢复重复系列中未被删除的其他日期。"],learning:["学习周报与任务","按真实答题记录统计；学习任务仍遵守每日挑战次数和金币规则。"]};
     if(!canEdit)titles.accounts[1]="仅可修改自己的登录密码，请勿向他人透露密码。";
     titles.attendance=[`${name(id)} · 打卡记录`,"全部已登记的到课、补课、请假记录，按日期从近到远排列。"];
-    if(!titles[route] || (!canEdit && ["classes","recycle","audit","attendance"].includes(route)))return;
+    if(!titles[route] || (!canEdit && ["classes","recycle","attendance"].includes(route)))return;
     pageHeading(...titles[route],route==="attendance"); activeRoute=route; const token=++pageToken;
     const body=el("div","","operations-content");page.append(body);
-    try{ await ({attendance:()=>renderStudentAttendance(body,id),ledger:()=>renderLedger(body,id||currentUser.id),accounts:()=>renderAccounts(body),classes:()=>renderClasses(body),orders:()=>renderOrders(body),notifications:()=>renderNotifications(body),recycle:()=>renderRecycle(body),audit:()=>renderAudit(body),learning:()=>renderLearning(body)})[route](); }
+    try{ await ({attendance:()=>renderStudentAttendance(body,id),ledger:()=>renderLedger(body,id||currentUser.id),accounts:()=>renderAccounts(body),classes:()=>renderClasses(body),orders:()=>renderOrders(body),notifications:()=>renderNotifications(body),recycle:()=>renderRecycle(body),learning:()=>renderLearning(body)})[route](); }
     catch(error){if(token===pageToken) body.append(hint(errorText(error)),button("重新加载",()=>open(route,id)));}
   }
   function hide(){page.hidden=true;activeRoute="";pageToken++;}
@@ -85,13 +87,13 @@ window.CourseOperations = (() => {
   }
   async function sessionChanged(){
     const token=++sessionToken;
-    ready=false;hide();nav.hidden=true;dashboard.hidden=true;summary.hidden=true;
+    ready=false;canDeleteStudents=false;hide();nav.hidden=true;dashboard.hidden=true;summary.hidden=true;
     if(realtime){await supabaseClient.removeChannel(realtime);realtime=null;}
     if(!currentUser)return;
     const userId=currentUser.id;
     try{
       const status=await rpc("get_operations_status"); if(currentUser?.id!==userId||token!==sessionToken)return;
-      ready=status.version===1; threshold=Number(status.low_lesson_threshold)||0; if(!ready)return;
+      ready=status.version===1; canDeleteStudents=canEdit&&status.student_account_deletion_enabled===true; threshold=Number(status.low_lesson_threshold)||0; if(!ready)return;
       await loadClasses(); if(currentUser?.id!==userId||token!==sessionToken)return; buildNavigation(status.unread);
       realtime=supabaseClient.channel(`operations-${userId}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"student_notifications",filter:`student_id=eq.${userId}`},()=>refreshUnread())
@@ -106,7 +108,7 @@ window.CourseOperations = (() => {
     nav.append(button("学习周报 / 任务",()=>open("learning")),button("兑换记录",()=>open("orders")),button("账号与安全",()=>open("accounts")));
     if(!canEdit)nav.append(button("我的课时明细",()=>open("ledger",currentUser.id)));
     const grid=document.querySelector("#adminHub .admin-feature-grid");grid.querySelectorAll("[data-operations-route]").forEach(node=>node.remove());
-    if(canEdit)for(const [route,title,subtitle,icon] of [["classes","班级管理","独立班级与成员","users-round"],["learning","学习周报与任务","按班布置挑战与查看完成情况","notebook-pen"],["accounts","账号与安全","停用恢复、密码管理","shield-check"],["orders","订单核销","待领取、已领取与退款","package-check"],["notifications","课程通知","变更与已读回执","bell"],["recycle","课程回收站","恢复误删的课程","archive-restore"],["audit","操作日志","修改追踪","history"]]){
+    if(canEdit)for(const [route,title,subtitle,icon] of [["classes","班级管理","独立班级与成员","users-round"],["learning","学习周报与任务","按班布置挑战与查看完成情况","notebook-pen"],["accounts","账号与安全","停用恢复、删除与密码管理","shield-check"],["orders","订单核销","待领取、已领取与退款","package-check"],["notifications","课程通知","变更与已读回执","bell"],["recycle","课程回收站","恢复误删的课程","archive-restore"]]){
       const b=button("",()=>open(route));b.className="admin-feature-button";b.dataset.operationsRoute=route;
       const mark=el("span","","admin-feature-icon is-student"); const i=el("i");i.dataset.lucide=icon;mark.append(i);
       b.append(mark,el("strong",title),el("span",subtitle));grid.append(b);
@@ -116,10 +118,13 @@ window.CourseOperations = (() => {
   async function refreshUnread(){if(!ready)return;try{const status=await rpc("get_operations_status");const b=document.querySelector("#operationsNotifications");if(b)b.textContent=`课程通知${status.unread?`（${status.unread} 未读）`:""}`;}catch{}}
   async function refreshDashboard(){
     if(!ready||!canEdit)return;dashboard.hidden=false;dashboard.replaceChildren(hint("正在读取今日待办…"));
+    const request=++dashboardRequest,userId=currentUser.id,attendanceRequest=todayAttendanceRequest;
     try{
-      await loadClasses();const today=toISODate(getScheduleToday());
+      const today=toISODate(getScheduleToday());
       const [attendance,orders]=await Promise.all([rpc("get_attendance_for_date_v3",{p_attendance_date:today}),supabaseClient.from("coin_shop_purchases").select("id",{count:"exact",head:true}).eq("status","pending")]);
       if(orders.error)throw orders.error;
+      if(!canEdit||currentUser?.id!==userId||request!==dashboardRequest)return;
+      cacheTodayAttendance(attendance,today,attendanceRequest);
       dashboard.replaceChildren(el("h3","今日待办")); const tiles=el("div","","operations-tiles");
       const pending=attendance.filter(a=>!a.status).length;
       tiles.append(button(`${new Set(attendance.map(a=>a.course_id||a.student_id)).size} 节今日课程 · ${pending} 课次待打卡`,()=>showAttendanceManagement()),button(`${orders.count||0} 笔订单待领取`,()=>open("orders")));
@@ -128,7 +133,7 @@ window.CourseOperations = (() => {
       const settings=el("div","","operations-inline");const level=input("低课时预警阈值（次）","number",threshold);level.control.min=0;level.control.max=100;
       settings.append(level.field,button("保存预警设置",async()=>{const n=Number(level.control.value);if(!Number.isInteger(n)||n<0||n>100)throw new Error("请输入 0–100 的整数");await query(supabaseClient.from("operations_settings").update({low_lesson_threshold:n}).eq("id",true));threshold=n;await refreshDashboard();}));dashboard.append(settings);
       const warnings=el("div","","operations-chips");for(const s of low)warnings.append(button(`${s.username} · 剩 ${getStudentRemainingCount(s)} 次`,()=>open("ledger",s.id)));dashboard.append(low.length?warnings:hint("当前没有低课时预警。"));
-    }catch(error){dashboard.replaceChildren(hint(errorText(error)),button("重新读取待办",refreshDashboard));}
+    }catch(error){if(currentUser?.id===userId&&request===dashboardRequest)dashboard.replaceChildren(hint(errorText(error)),button("重新读取待办",refreshDashboard));}
   }
   async function renderLedger(body,id){
     const student=canEdit?students.find(s=>s.id===id):currentUser;if(!student)throw new Error("学生不存在");
@@ -184,7 +189,8 @@ window.CourseOperations = (() => {
       actions.append(button(s.disabled_at?"恢复账号":"停用账号",async()=>{
         if(!await confirmAction(`${s.disabled_at?"恢复":"停用"}${s.username}的账号？`,"历史课时、课程分配、订单和挑战记录都会保留。"))return;
         await rpc("set_student_account_enabled",{p_student_id:s.id,p_enabled:Boolean(s.disabled_at)});await loadStudents();await open("accounts");
-      }));box.append(actions);
+      }));
+      if(canDeleteStudents){const remove=button("删除账号",()=>deleteStudent(s.id));remove.classList.add("danger-button");actions.append(remove);}box.append(actions);
       const reset=el("details");reset.append(el("summary","重置该学生密码"));const password=input(`为${s.username}设置新密码`,"password");password.control.autocomplete="new-password";password.control.maxLength=72;
       reset.append(password.field,button("确认重置密码",async()=>{await rpc("admin_reset_student_password",{p_student_id:s.id,p_password:password.control.value});password.control.value="";reset.open=false;showStatus("学生密码已重置，旧登录会话已注销");}),hint("至少 10 位并包含字母和数字；请通过私密渠道告知学生。"));box.append(reset);roster.append(box);
     }if(!visible.length)roster.append(hint("没有匹配的账号"));}search.control.addEventListener("input",render);render();
@@ -246,9 +252,34 @@ window.CourseOperations = (() => {
       if(!row.restored_at)item.append(button("恢复该课程",async()=>{if(!await confirmAction("恢复这段课程安排？","恢复前会检查与现有课程是否冲突。"))return;try{await rpc("restore_deleted_course",{p_id:row.id});}catch(e){if(e.code!=="23P01")throw e;if(!await confirmAction("恢复的课程与现有课程重叠", "仍要恢复吗？请确认这不是已经手动补建的课程。"))return;await rpc("restore_deleted_course",{p_id:row.id,p_allow_conflict:true});}await loadSchedule();await open("recycle");showStatus("课程已恢复");}));records.append(item);}offset+=data.length;more.hidden=data.length<50;}
     await load();
   }
-  async function renderAudit(body){
-    const records=list();body.append(records);let offset=0;const more=button("加载更多操作日志",load);body.append(more);
-    async function load(){const data=await query(supabaseClient.from("admin_audit_log").select("id,action,entity,entity_id,changes,created_at").order("id",{ascending:false}).range(offset,offset+49));if(!offset&&data.length)records.replaceChildren();for(const r of data){const item=card(`${r.entity} · ${r.action}`,fmt(r.created_at));const details=el("details"),pre=el("pre",JSON.stringify(r.changes,null,2));details.append(el("summary","查看修改前后值"),pre);item.append(details);records.append(item);}offset+=data.length;more.hidden=data.length<50;}await load();
+  function deleteStudent(id){
+    const student=students.find(s=>s.id===id);
+    if(!canDeleteStudents||!canEdit||!student||student.is_admin||document.querySelector("#permanentStudentDeleteDialog"))return;
+    const dialog=el("dialog","","confirm-dialog");dialog.id="permanentStudentDeleteDialog";
+    const title=el("h3",`删除“${student.username}”的账号？`);title.id="permanentStudentDeleteTitle";dialog.setAttribute("aria-labelledby",title.id);
+    dialog.append(title,hint("删除后不能恢复：该账号无法再登录，其课时、打卡、宠物、对战、挑战、已处理订单和课程分配记录将删除。课程本身、其他学生的课时与金币不会删除。若只想暂时禁止登录，请取消并使用停用。"));
+    const check=input("输入学生完整姓名确认删除");check.control.autocomplete="off";check.control.placeholder=student.username;
+    const feedback=hint("");feedback.setAttribute("role","status");
+    const actions=el("div","","confirm-actions"),cancel=button("取消",()=>dialog.close());
+    let saving=false;
+    const confirm=button("永久删除账号",async()=>{
+      if(check.control.value.trim()!==student.username)return;
+      saving=true;cancel.disabled=true;check.control.disabled=true;feedback.textContent="正在删除，请勿重复提交…";
+      try{
+        await rpc("permanently_delete_student_account",{p_student_id:id,p_expected_username:check.control.value.trim()});
+        dialog.close();students=students.filter(s=>s.id!==id);copiedCourse=null;selectedStudentId=null;
+        renderStudentList();renderAdminHubCounts();
+        await Promise.all([loadStudents(),loadSchedule({quiet:true}),loadClasses()]);
+        if(activeRoute==="accounts")await open("accounts");
+        showStatus(`已删除“${student.username}”的账号及关联记录，无法恢复`);
+      }catch(error){feedback.textContent=errorText(error);}
+      finally{saving=false;cancel.disabled=false;check.control.disabled=false;}
+    });
+    confirm.className="danger-button";confirm.disabled=true;
+    check.control.addEventListener("input",()=>{confirm.disabled=check.control.value.trim()!==student.username;});
+    dialog.addEventListener("cancel",event=>{if(saving)event.preventDefault();});
+    dialog.addEventListener("close",()=>dialog.remove(),{once:true});
+    actions.append(cancel,confirm);dialog.append(check.field,feedback,actions);appShell.append(dialog);dialog.showModal();cancel.focus();
   }
   async function renderLearning(body){
     const week=input("周报起始日期","date",toISODate(startOfWeek(getScheduleToday())));const report=list();body.append(week.field,report);
@@ -270,6 +301,6 @@ window.CourseOperations = (() => {
     if(scheduleView==="week"){start=new Date(selectedWeekStart);end=addDays(start,6);}else if(scheduleView==="month"){start=new Date(selectedCalendarDate.getFullYear(),selectedCalendarDate.getMonth(),1);end=new Date(start.getFullYear(),start.getMonth()+1,0);}else{start=new Date(selectedCalendarDate.getFullYear(),0,1);end=new Date(start.getFullYear(),11,31);}
     try{const data=await rpc("get_attendance_summary",{p_start:toISODate(start),p_end:toISODate(end)});if(token!==summaryToken)return;summary.hidden=false;summary.textContent=`本视图实际打卡：到课 ${data.present}${canEdit?" 人次":" 次"} · 补课 ${data.makeup} · 请假 ${data.leave}。排课数含未来课程，不等于实际到课${data.legacy?`；含 ${data.legacy} 条旧版按日记录`:""}。`;}catch{if(token===summaryToken){summary.hidden=false;summary.textContent="实际打卡统计暂未读到，请检查网络后刷新。";}}
   }
-  return {get ready(){return ready;},sessionChanged,hide,open,refreshDashboard,fillClassPicker,classGroups,productStock,shopRequestId,finishShopRequest,scheduleSummary};
+  return {get ready(){return ready;},get canDeleteStudents(){return canDeleteStudents;},sessionChanged,hide,open,deleteStudent,refreshDashboard,fillClassPicker,classGroups,productStock,shopRequestId,finishShopRequest,scheduleSummary};
 })();
 if (currentUser) void window.CourseOperations.sessionChanged();

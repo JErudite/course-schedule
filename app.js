@@ -2938,7 +2938,7 @@ function showScheduleView() {
   pageFooter.hidden = false;
   hideAdminPages();
   document.body.classList.remove("is-admin-view");
-  renderSchedule();
+  if (scheduleRenderPending) renderSchedule();
 }
 
 function renderAdminHubCounts() {
@@ -2951,28 +2951,46 @@ function renderAdminHubCounts() {
 
 async function showAdminHub() {
   if (!canEdit) return;
-  document.querySelector("#openCourseHoliday").hidden = true;
-  const [, , , holidayAvailability] = await Promise.all([
-    loadStudents(), loadQuestionBank({ quiet: true }), loadCoinShopProducts({ quiet: true }),
-    supabaseClient.rpc("get_course_holiday_batches"),
-    loadTodayAttendanceSummary(),
-  ]);
-  document.querySelector("#openCourseHoliday").hidden = Boolean(holidayAvailability.error);
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
   hideAdminPages();
   adminHub.hidden = false;
   document.body.classList.add("is-admin-view");
   document.querySelector("#openStudentManagement").focus();
-  void window.CourseOperations?.refreshDashboard();
+  renderAdminHubCounts();
+  await refreshAdminHubData();
+}
+
+let adminHubRefresh = null;
+function refreshAdminHubData() {
+  // Repeated Back clicks share one refresh; never download all questions here.
+  if (adminHubRefresh) return adminHubRefresh;
+  const userId = currentUser?.id;
+  adminHubRefresh = (async () => {
+    const [, banks, products, holidayAvailability] = await Promise.all([
+      loadStudents(), supabaseClient.rpc("get_admin_pet_challenge_banks"),
+      supabaseClient.from("coin_shop_products").select("id", { count: "exact", head: true }),
+      window.CourseOperations?.ready ? Promise.resolve({ error: null }) : supabaseClient.rpc("get_course_holiday_batches"),
+      window.CourseOperations?.ready ? window.CourseOperations.refreshDashboard() : loadTodayAttendanceSummary(),
+    ]);
+    if (!canEdit || currentUser?.id !== userId) return;
+    document.querySelector("#openCourseHoliday").hidden = Boolean(holidayAvailability.error);
+    if (!banks.error) document.querySelector("#adminQuestionCount").textContent = `${(banks.data || []).reduce((n, bank) => n + Number(bank.active_question_count || 0), 0)} 道启用`;
+    if (!products.error) document.querySelector("#adminCoinShopCount").textContent = `${products.count || 0} 件商品`;
+  })().catch(() => showStatus("后台数据刷新失败，可返回重试；已显示的数据仍可查看")).finally(() => { adminHubRefresh = null; });
+  return adminHubRefresh;
 }
 
 async function showStudentManagement() {
   if (!canEdit) return;
-  await loadStudents();
   hideAdminPages();
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
   studentManagementPage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  renderStudentList();
   document.querySelector("#studentUsernameInput").focus();
+  await loadStudents();
 }
 
 async function showAttendanceManagement() {
@@ -2991,11 +3009,14 @@ async function showAttendanceManagement() {
 
 async function showPetManagement() {
   if (!canEdit) return;
-  await loadStudents();
-  await loadPetBattleHistory();
   hideAdminPages();
+  scheduleSection.hidden = true;
+  pageFooter.hidden = true;
   petManagementPage.hidden = false;
+  document.body.classList.add("is-admin-view");
+  renderPetStudentList();
   document.querySelector("#petStudentList")?.querySelector("button")?.focus();
+  await Promise.all([loadStudents(), loadPetBattleHistory()]);
 }
 
 function renderFullPetBattleHistory() {
@@ -3465,7 +3486,12 @@ function renderYearSchedule() {
   renderScheduleSummary(occurrences, year === scheduleToday.getFullYear() ? "今年" : `${year}年`);
 }
 
+let scheduleRenderPending = true;
 function renderSchedule() {
+  // Hidden calendars need one rebuild on return, not one per background query.
+  scheduleRenderPending = true;
+  if (scheduleSection.hidden && currentUser) return;
+  scheduleRenderPending = false;
   renderCourseEndDates();
   updateScheduleViewControls();
   if (scheduleView === "month") {
@@ -4155,6 +4181,7 @@ async function deleteSelectedCourse(mode = "all") {
 }
 
 async function loadSchedule({ quiet = false } = {}) {
+  const requestUserId = currentUser?.id;
   if (!quiet) setSyncState("connecting", "正在读取课程");
   const { data, error } = await supabaseClient
     .from("courses")
@@ -4162,14 +4189,18 @@ async function loadSchedule({ quiet = false } = {}) {
     .order("start_date", { ascending: true })
     .order("start_time", { ascending: true });
 
+  if (currentUser?.id !== requestUserId) return false;
   if (error) {
     setSyncState("offline", "连接中断");
     showStatus("无法读取云端课程，请稍后刷新页面");
     return false;
   }
 
-  schedule = data.map(mapCourse);
-  renderSchedule();
+  const nextSchedule = data.map(mapCourse);
+  if (JSON.stringify(nextSchedule) !== JSON.stringify(schedule)) {
+    schedule = nextSchedule;
+    renderSchedule();
+  }
   if (canEdit && studentSortMode === "class") renderStudentList();
   if (canEdit) renderAdminHubCounts();
   if (canEdit && !adminHub.hidden) await loadTodayAttendanceSummary();
@@ -4281,17 +4312,19 @@ async function loadStudents() {
     students = [];
     return true;
   }
+  const requestUserId = currentUser?.id;
   const { data, error } = await supabaseClient
     .from("students")
     .select("id, username, is_admin, lesson_count, current_lesson_count, required_lesson_count, color, pet, pet_name, pet_experience, pet_coins, pet_checkin_date, pet_checkin_streak, sort_order, created_at, disabled_at")
     .eq("is_admin", false)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
+  if (!canEdit || currentUser?.id !== requestUserId) return false;
   if (error) {
     showStatus("无法读取访客账号，请稍后重试");
     return false;
   }
-  students = data.map((student) => normalizePetFields({
+  const nextStudents = data.map((student) => normalizePetFields({
     ...student,
     lesson_count: Number(student.lesson_count) || 0,
     current_lesson_count: Number(student.current_lesson_count) || 0,
@@ -4299,8 +4332,10 @@ async function loadStudents() {
     color: student.color || "",
     sort_order: Number(student.sort_order) || 0,
   }));
-  renderStudentList();
-  renderPetStudentList();
+  if (JSON.stringify(nextStudents) === JSON.stringify(students)) return true;
+  students = nextStudents;
+  if (!studentManagementPage.hidden) renderStudentList();
+  if (!petManagementPage.hidden) renderPetStudentList();
   renderAdminHubCounts();
   renderSchedule();
   return true;
@@ -4920,7 +4955,14 @@ function renderStudentList() {
       deleteStudentDialog.showModal();
     });
     const actions = createElement("div", "student-row-actions");
-    actions.append(autoSaveState, removeButton);
+    const deleteButton = createElement("button", "icon-button delete-student");
+    deleteButton.type = "button";
+    deleteButton.hidden = !window.CourseOperations?.canDeleteStudents;
+    deleteButton.title = `删除${student.username}的账号`;
+    deleteButton.setAttribute("aria-label", deleteButton.title);
+    deleteButton.innerHTML = '<i data-lucide="trash-2"></i>';
+    deleteButton.addEventListener("click", () => window.CourseOperations?.deleteStudent(student.id));
+    actions.append(autoSaveState, removeButton, deleteButton);
     row.append(identity, currentField.label, requiredField.label, remaining, actions);
     if (manualDrag) bindStudentRowDrag(row, student.id);
     list.append(row);
