@@ -115,6 +115,21 @@ let schedule = [];
 let students = [];
 let currentUser = null;
 let canEdit = false;
+let touchTimelineEditing = false;
+
+function allowsTimelineGesture(event) {
+  return canEdit && (event.pointerType === "mouse" || touchTimelineEditing);
+}
+
+function setTouchTimelineEditing(enabled) {
+  touchTimelineEditing = Boolean(enabled && canEdit);
+  document.body.classList.toggle("touch-timeline-editing", touchTimelineEditing);
+  const button = document.querySelector("#toggleTouchTimelineEditing");
+  if (button) {
+    button.setAttribute("aria-pressed", String(touchTimelineEditing));
+    button.textContent = touchTimelineEditing ? "结束排课编辑，恢复滑动" : "开启排课编辑";
+  }
+}
 let realtimeChannel = null;
 let realtimeAssignmentChannel = null;
 let realtimeStudentChannel = null;
@@ -164,6 +179,9 @@ let attendanceRecords = [];
 let todayAttendanceSummary = null;
 let todayAttendanceRequest = 0;
 let attendanceHistory = [];
+let expandedAttendanceDate = null;
+let attendanceLoading = false;
+let attendanceLoadRequest = 0;
 let selectedAttendanceDate = "";
 let attendanceBusy = false;
 let courseConflictResolver = null;
@@ -2917,6 +2935,7 @@ async function showChallengeRecords() {
 }
 
 function hideAdminPages() {
+  setTouchTimelineEditing(false);
   window.CourseOperations?.hide();
   document.querySelector("#courseHolidayPage").hidden = true;
   adminHub.hidden = true;
@@ -2955,6 +2974,7 @@ async function showAdminHub() {
   pageFooter.hidden = true;
   hideAdminPages();
   adminHub.hidden = false;
+  window.AdminLayout?.refresh();
   document.body.classList.add("is-admin-view");
   document.querySelector("#openStudentManagement").focus();
   renderAdminHubCounts();
@@ -2975,6 +2995,7 @@ function refreshAdminHubData() {
     ]);
     if (!canEdit || currentUser?.id !== userId) return;
     document.querySelector("#openCourseHoliday").hidden = Boolean(holidayAvailability.error);
+    window.AdminLayout?.refresh();
     if (!banks.error) document.querySelector("#adminQuestionCount").textContent = `${(banks.data || []).reduce((n, bank) => n + Number(bank.active_question_count || 0), 0)} 道启用`;
     if (!products.error) document.querySelector("#adminCoinShopCount").textContent = `${products.count || 0} 件商品`;
   })().catch(() => showStatus("后台数据刷新失败，可返回重试；已显示的数据仍可查看")).finally(() => { adminHubRefresh = null; });
@@ -3121,6 +3142,7 @@ function clearCopyMode() {
 }
 
 function updatePermissionUI() {
+  setTouchTimelineEditing(false);
   document.body.classList.toggle("can-edit", canEdit);
   document.querySelector("#addCourse").hidden = !canEdit;
   document.querySelector("#studentManagerButton").hidden = !canEdit;
@@ -3189,6 +3211,8 @@ function renderScheduleSummary(occurrences, periodLabel) {
 }
 
 function updateScheduleViewControls() {
+  document.querySelector("#touchTimelineControls").hidden = !canEdit || scheduleView !== "week";
+  if (scheduleView !== "week") setTouchTimelineEditing(false);
   scheduleViewSwitcher.querySelectorAll("[data-schedule-view]").forEach((button) => {
     const isActive = button.dataset.scheduleView === scheduleView;
     button.classList.toggle("is-active", isActive);
@@ -3540,13 +3564,14 @@ function enableCourseInteraction(card, course, occurrence) {
 
   if (canEdit) {
     card.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || !allowsTimelineGesture(event)) return;
       const gridRect = grid.getBoundingClientRect();
       const firstCell = grid.querySelector(".grid-cell");
       const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 12;
       const timeColumnWidth = parseFloat(getComputedStyle(grid).gridTemplateColumns.split(" ")[0]);
       dragState = {
         pointerId: event.pointerId,
+        isTouch: event.pointerType !== "mouse",
         originX: event.clientX,
         originY: event.clientY,
         originScrollLeft: scheduleScroll.scrollLeft,
@@ -3572,7 +3597,7 @@ function enableCourseInteraction(card, course, occurrence) {
 
       const deltaX = event.clientX - dragState.originX + scheduleScroll.scrollLeft - dragState.originScrollLeft;
       const deltaY = event.clientY - dragState.originY + scheduleScroll.scrollTop - dragState.originScrollTop;
-      if (!dragState.moved && Math.hypot(deltaX, deltaY) < 5) return;
+      if (!dragState.moved && Math.hypot(deltaX, deltaY) < (dragState.isTouch ? 12 : 5)) return;
 
       event.preventDefault();
       dragState.moved = true;
@@ -3590,6 +3615,7 @@ function enableCourseInteraction(card, course, occurrence) {
 
     card.addEventListener("pointerup", async (event) => {
       if (!dragState || event.pointerId !== dragState.pointerId) return;
+      if (!canEdit || (dragState.isTouch && !touchTimelineEditing)) { dragState = null; renderSchedule(); return; }
       if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
       if (!dragState.moved) {
         dragState = null;
@@ -3597,6 +3623,7 @@ function enableCourseInteraction(card, course, occurrence) {
       }
 
       suppressClick = true;
+      const touchMove = dragState.isTouch;
       const dayShift = dragState.nextDayIndex - dragState.originalDayIndex;
       const candidate = {
         ...course,
@@ -3611,6 +3638,12 @@ function enableCourseInteraction(card, course, occurrence) {
       card.classList.remove("is-dragging");
       card.removeAttribute("aria-grabbed");
 
+      if (candidate.startDate === course.startDate && candidate.startTime === course.startTime) { renderSchedule(); return; }
+      if (touchMove && !window.confirm(`确认移动“${course.name}”吗？本次课程将改到 ${formatAttendanceDay(toISODate(addDays(occurrence.date, dayShift)), true)} ${formatTime(candidate.startTime)}，整个重复系列也会相应移动。`)) {
+        renderSchedule();
+        return;
+      }
+
       const conflicts = getSeriesConflicts(candidate, course.id);
       if (conflicts.length && !await requestCourseConflictConfirmation(candidate, conflicts)) {
         showStatus("已取消移动，课程恢复原位置");
@@ -3624,6 +3657,7 @@ function enableCourseInteraction(card, course, occurrence) {
     });
 
     card.addEventListener("pointercancel", () => {
+      if (!dragState) return;
       dragState = null;
       renderSchedule();
     });
@@ -3674,7 +3708,7 @@ function enableTimelineCreation() {
   }
 
   grid.addEventListener("pointerdown", (event) => {
-    if (!canEdit || event.button !== 0 || dialog.open) return;
+    if (!allowsTimelineGesture(event) || event.button !== 0 || dialog.open) return;
     const cell = event.target.closest(".grid-cell");
     if (!cell) return;
 
@@ -3716,6 +3750,7 @@ function enableTimelineCreation() {
 
   grid.addEventListener("pointerup", (event) => {
     if (!selection || event.pointerId !== selection.pointerId) return;
+    if (!allowsTimelineGesture(event)) { clearSelection(); return; }
     const preset = {
       startDate: toISODate(addDays(selectedWeekStart, selection.dayIndex)),
       startTime: selection.startTime,
@@ -4391,13 +4426,18 @@ function formatAttendanceDay(value, includeYear = false) {
 
 async function loadAttendance() {
   if (!canEdit) return false;
+  const request = ++attendanceLoadRequest;
+  attendanceLoading = true;
+  attendanceRecords = [];
+  renderAttendance();
   selectedAttendanceDate ||= toISODate(getScheduleToday());
   const date = selectedAttendanceDate;
   const todayRequest = date === toISODate(getScheduleToday()) ? ++todayAttendanceRequest : null;
   const { data, error } = await supabaseClient.rpc("get_attendance_for_date_v3", {
     p_attendance_date: date,
   });
-  if (!canEdit || date !== selectedAttendanceDate) return false;
+  if (!canEdit || date !== selectedAttendanceDate || request !== attendanceLoadRequest) return false;
+  attendanceLoading = false;
   if (error) {
     attendanceRecords = [];
     if (todayRequest === todayAttendanceRequest) { todayAttendanceSummary = { date, failed: true }; renderTodayAttendanceCount(); }
@@ -4459,8 +4499,17 @@ function renderAttendance() {
   datePicker.max = todayIso;
   datePicker.value = selectedAttendanceDate;
   document.querySelector("#showTodayAttendance").disabled = selectedAttendanceDate === todayIso || attendanceBusy;
-  list.replaceChildren();
-  attendanceRecords.forEach((record) => {
+  list.replaceChildren(...attendanceRecords.map(createAttendanceRow));
+  document.querySelector("#attendanceEmpty").hidden = attendanceRecords.length > 0;
+  document.querySelector("#attendanceEmpty").textContent = attendanceLoading ? "正在读取当天打卡记录…" : "所选日期没有分配学生的课程或打卡记录";
+  document.querySelector("#markAllPresent").disabled = attendanceBusy || attendanceLoading || attendanceRecords.length === 0;
+  datePicker.disabled = attendanceBusy;
+  renderAttendanceHistory();
+  renderTodayAttendanceCount();
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function createAttendanceRow(record) {
     const selectedStatus = attendanceStatusOptions.find(option => option.value === record.status);
     const row = createElement("article", `attendance-row${selectedStatus ? " is-recorded" : ""}`);
     const identity = createElement("div", "attendance-identity");
@@ -4476,19 +4525,14 @@ function renderAttendance() {
     attendanceStatusOptions.forEach(({ value, label, icon, className }) => {
       const button = createElement("button", `secondary-button attendance-status-button ${className}${record.status === value ? " is-selected" : ""}`);
       button.type = "button";
-      button.disabled = attendanceBusy;
+      button.disabled = attendanceBusy || attendanceLoading;
       button.setAttribute("aria-pressed", String(record.status === value));
       button.innerHTML = `<i data-lucide="${icon}"></i><span>${label}</span>`;
       button.addEventListener("click", () => setAttendanceStatus(record.student_id, value, record.course_id));
       controls.append(button);
     });
     row.append(identity, progress, controls);
-    list.append(row);
-  });
-  document.querySelector("#attendanceEmpty").hidden = attendanceRecords.length > 0;
-  document.querySelector("#markAllPresent").disabled = attendanceBusy || attendanceRecords.length === 0;
-  renderTodayAttendanceCount();
-  if (window.lucide) window.lucide.createIcons();
+    return row;
 }
 
 function renderAttendanceHistory() {
@@ -4505,7 +4549,22 @@ function renderAttendanceHistory() {
     const dateButton = createElement("button", "attendance-history-date");
     dateButton.type = "button";
     dateButton.textContent = formatAttendanceDay(date, parseISODate(date).getFullYear() !== getScheduleToday().getFullYear());
-    dateButton.addEventListener("click", () => selectAttendanceDate(date));
+    const expanded = expandedAttendanceDate === date && selectedAttendanceDate === date;
+    dateButton.setAttribute("aria-expanded", String(expanded));
+    dateButton.setAttribute("aria-controls", `attendance-detail-${date}`);
+    dateButton.disabled = attendanceBusy;
+    dateButton.textContent += expanded ? " · 收起详情" : " · 展开 / 修改";
+    const toggle = async () => {
+      if (attendanceBusy) return;
+      if (expanded) { expandedAttendanceDate = null; renderAttendanceHistory(); return; }
+      expandedAttendanceDate = date;
+      await selectAttendanceDate(date);
+    };
+    dateButton.addEventListener("click", toggle);
+    article.addEventListener("click", event => {
+      if (event.target.closest("button, .attendance-history-detail")) return;
+      void toggle();
+    });
     const summary = createElement("span", "", attendanceStatusOptions
       .map(({ value, label }) => `${label} ${records.filter((record) => record.status === value).length}`)
       .join(" · "));
@@ -4528,6 +4587,15 @@ function renderAttendanceHistory() {
       statusGrid.append(statusGroup);
     });
     article.append(heading, statusGrid);
+    if (expanded) {
+      const detail = createElement("div", "attendance-history-detail");
+      detail.id = `attendance-detail-${date}`;
+      detail.append(createElement("p", "attendance-edit-hint", "可直接修改：只有到课扣一次课时；到课改补课或请假会退回课时。修改后自动同步。"));
+      if (attendanceLoading) detail.append(createElement("p", "", "正在读取当天打卡记录…"));
+      else if (!attendanceRecords.length) detail.append(createElement("p", "", "未读取到详情，请收起后重试。"));
+      else detail.append(...attendanceRecords.map(createAttendanceRow));
+      article.append(detail);
+    }
     return article;
   }));
   document.querySelector("#attendanceHistoryEmpty").hidden = attendanceHistory.length > 0;
@@ -4535,7 +4603,7 @@ function renderAttendanceHistory() {
 }
 
 async function setAttendanceStatus(studentId, status, courseId = null) {
-  if (!canEdit || attendanceBusy) return;
+  if (!canEdit || attendanceBusy || attendanceLoading) return;
   const record = attendanceRecords.find((item) => item.student_id === studentId && (item.course_id || null) === (courseId || null));
   const student = students.find((item) => item.id === studentId);
   const remainingLessons = Math.max(
@@ -5648,6 +5716,8 @@ async function handleLoginSubmit(event) {
 }
 
 function bindEvents() {
+  document.querySelector("#toggleTouchTimelineEditing").addEventListener("click", () => setTouchTimelineEditing(!touchTimelineEditing));
+  document.addEventListener("visibilitychange", () => { if (document.hidden) setTouchTimelineEditing(false); });
   courseForm.addEventListener("input", updateCourseEndDatePreview);
   courseForm.addEventListener("change", updateCourseEndDatePreview);
   document.querySelector("#openCourseHoliday").addEventListener("click", showCourseHoliday);

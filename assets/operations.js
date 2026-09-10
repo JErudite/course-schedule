@@ -113,6 +113,7 @@ window.CourseOperations = (() => {
       const mark=el("span","","admin-feature-icon is-student"); const i=el("i");i.dataset.lucide=icon;mark.append(i);
       b.append(mark,el("strong",title),el("span",subtitle));grid.append(b);
     }
+    window.AdminLayout?.refresh();
     window.lucide?.createIcons();
   }
   async function refreshUnread(){if(!ready)return;try{const status=await rpc("get_operations_status");const b=document.querySelector("#operationsNotifications");if(b)b.textContent=`课程通知${status.unread?`（${status.unread} 未读）`:""}`;}catch{}}

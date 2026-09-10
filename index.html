@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260910-1" />
+    <link rel="stylesheet" href="styles.css?v=20260910-2" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -129,6 +129,10 @@
         </div>
 
         <div id="courseEndDates" class="course-end-dates" aria-label="课程预计结束日期" hidden></div>
+        <div class="touch-timeline-controls" id="touchTimelineControls" hidden>
+          <button class="secondary-button" id="toggleTouchTimelineEditing" type="button" aria-pressed="false">开启排课编辑</button>
+          <small>默认滑动只浏览；开启后才可触屏拖动、框选新课或粘贴。点课程仍可查看详情。</small>
+        </div>
         <div class="calendar-view-toolbar">
           <div class="calendar-toolbar-controls">
             <div class="schedule-view-switcher" id="scheduleViewSwitcher" role="group" aria-label="课程表视图">
@@ -190,6 +194,7 @@
             <span>返回课程表</span>
           </button>
         </div>
+        <p class="admin-layout-hint">按住板块右侧 ⠿ 拖动调整位置，松手自动保存；也可聚焦手柄后用方向键调整。排序保存在当前浏览器。</p>
         <div class="admin-feature-grid">
           <button class="admin-feature-button" id="openStudentManagement" type="button">
             <span class="admin-feature-icon is-student"><i data-lucide="users-round"></i></span>
@@ -1112,7 +1117,8 @@
     <script src="vendor/mammoth-1.8.0.min.js"></script>
     <script src="vendor/pdfjs/pdf.min.js"></script>
     <script src="vendor/tesseract/tesseract.min.js"></script>
-    <script src="app.js?v=20260910-1"></script>
-    <script src="assets/operations.js?v=20260910-1"></script>
+    <script src="app.js?v=20260910-2"></script>
+    <script src="assets/operations.js?v=20260910-2"></script>
+    <script src="assets/admin-layout.js?v=20260910-2"></script>
   </body>
 </html>
