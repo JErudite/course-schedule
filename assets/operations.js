@@ -31,10 +31,11 @@ window.CourseOperations = (() => {
   async function query(request) { const result=await request; if(result.error) throw result.error; return result.data || []; }
   function errorText(error) {
     const text=String(error?.message || "");
+    if (/invalid lesson adjustment/.test(text)) return "请输入 0–1000000 的整数课次，调整原因不能超过 300 字。";
     if (/stale|刷新/.test(text)) return "记录已更新，请刷新此页后重试。";
     if (/42501|permission|administrator|authentication/.test(`${error?.code} ${text}`)) return "权限不足或登录已失效，请重新登录。";
     if (/[\u3400-\u9fff]/.test(text)) return text;
-    return "操作未完成，请检查网络后重试；不要重复提交新的订单。";
+    return "操作结果暂未确认，请刷新查看是否已保存后再重试。";
   }
   function button(text,action,primary=false) {
     const b=el("button",text,primary?"primary-button":"secondary-button"); b.type="button";
@@ -144,14 +145,23 @@ window.CourseOperations = (() => {
       const warnings=el("div","","operations-chips");for(const s of low)warnings.append(button(`${s.username} · 剩 ${getStudentRemainingCount(s)} 次`,()=>open("ledger",s.id)));dashboard.append(low.length?warnings:hint("当前没有低课时预警。"));
     }catch(error){if(canEdit&&currentUser?.id===userId&&request===dashboardRequest&&session===sessionToken)dashboard.replaceChildren(el("h3","今日待办"),hint(errorText(error)),button("重新读取待办",refreshDashboard));}
   }
+  function lessonAdjustmentValues(current,required,reason) {
+    const values=[current,required].map(value=>String(value).trim());
+    if(values.some(value=>!/^\d+$/.test(value)||Number(value)>1000000))throw new Error("当前已上和当前应上须填写 0–1000000 的整数，不能留空。");
+    const note=String(reason||"").trim()||"管理员手动调整课时";
+    if([...note].length>300)throw new Error("调整原因不能超过 300 字。");
+    return {p_current:Number(values[0]),p_required:Number(values[1]),p_reason:note};
+  }
   async function renderLedger(body,id){
     const student=canEdit?students.find(s=>s.id===id):currentUser;if(!student)throw new Error("学生不存在");
     const title=card(`${student.username} · 剩余 ${getStudentRemainingCount(student)} 次`,`当前已上 ${student.current_lesson_count} 次 / 当前应上 ${student.required_lesson_count} 次`);body.append(title);
     if(canEdit){
-      const current=input("当前已上","number",student.current_lesson_count),required=input("当前应上（续课后总额）","number",student.required_lesson_count),reason=input("调整原因");
-      current.control.min=0;required.control.min=0;reason.control.maxLength=300;reason.control.placeholder="例如：本次续费增加 24 次";
+      const current=input("当前已上","number",student.current_lesson_count),required=input("当前应上（续课后总额）","number",student.required_lesson_count),reason=input("调整原因（选填）");
+      for(const control of [current.control,required.control]){control.min=0;control.max=1000000;control.step=1;control.required=true;}
+      reason.control.maxLength=300;reason.control.placeholder="可留空，默认记录为管理员手动调整课时";
       const form=el("div","","operations-form");form.append(current.field,required.field,reason.field,button("记录课时调整",async()=>{
-        await rpc("adjust_student_lessons",{p_student_id:id,p_current:Number(current.control.value),p_required:Number(required.control.value),p_reason:reason.control.value,p_expected_current:student.current_lesson_count,p_expected_required:student.required_lesson_count});await loadStudents();await open("ledger",id);showStatus("课时调整和流水已保存");
+        const values=lessonAdjustmentValues(current.control.value,required.control.value,reason.control.value);
+        await rpc("adjust_student_lessons",{p_student_id:id,...values,p_expected_current:student.current_lesson_count,p_expected_required:student.required_lesson_count});await loadStudents();await open("ledger",id);showStatus("课时调整和流水已保存");
       },true));title.append(form);
     }
     const records=list();body.append(records);let offset=0;
