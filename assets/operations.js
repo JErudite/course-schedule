@@ -10,6 +10,7 @@ window.CourseOperations = (() => {
   let threshold = 3;
   let summaryToken = 0;
   let sessionToken = 0;
+  let operationsUserId = null;
   let dashboardRequest = 0;
   const el = (tag, text = "", className = "") => createElement(tag, className, text);
   const page = el("section", "", "admin-page operations-page");
@@ -87,13 +88,18 @@ window.CourseOperations = (() => {
   }
   async function sessionChanged(){
     const token=++sessionToken;
-    ready=false;canDeleteStudents=false;hide();nav.hidden=true;dashboard.hidden=true;summary.hidden=true;
-    if(realtime){await supabaseClient.removeChannel(realtime);realtime=null;}
-    if(!currentUser)return;
-    const userId=currentUser.id;
+    const userId=currentUser?.id || null;
+    const sameAdmin=canEdit&&userId!==null&&operationsUserId===userId;
+    operationsUserId=userId;
+    ready=false;canDeleteStudents=false;
+    if(!sameAdmin){hide();nav.hidden=true;dashboard.hidden=true;summary.hidden=true;dashboard.replaceChildren();}
+    if(canEdit){dashboard.hidden=false;if(!sameAdmin)dashboard.replaceChildren(el("h3","今日待办"),hint("正在读取今日待办…"));}
+    const previousRealtime=realtime;realtime=null;
     try{
+      if(previousRealtime)await supabaseClient.removeChannel(previousRealtime);
+      if(!userId||currentUser?.id!==userId||token!==sessionToken)return;
       const status=await rpc("get_operations_status"); if(currentUser?.id!==userId||token!==sessionToken)return;
-      ready=status.version===1; canDeleteStudents=canEdit&&status.student_account_deletion_enabled===true; threshold=Number(status.low_lesson_threshold)||0; if(!ready)return;
+      ready=status.version===1; canDeleteStudents=canEdit&&status.student_account_deletion_enabled===true; threshold=Number(status.low_lesson_threshold)||0; if(!ready)throw new Error("服务功能暂未就绪，请重试");
       await loadClasses(); if(currentUser?.id!==userId||token!==sessionToken)return; buildNavigation(status.unread);
       realtime=supabaseClient.channel(`operations-${userId}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"student_notifications",filter:`student_id=eq.${userId}`},()=>refreshUnread())
@@ -101,7 +107,8 @@ window.CourseOperations = (() => {
         .on("postgres_changes",{event:"*",schema:"public",table:"teaching_classes"},()=>loadClasses())
         .on("postgres_changes",{event:"*",schema:"public",table:"class_students"},()=>loadClasses()).subscribe();
       renderSchedule(); if(canEdit)renderStudentList();
-    }catch(error){if(token===sessionToken){ready=false;showStatus("服务功能暂未加载，请检查网络后刷新；课程表仍可继续查看。");}}
+      if(canEdit&&!adminHub.hidden)await refreshDashboard();
+    }catch(error){if(token===sessionToken){ready=false;if(canEdit&&currentUser?.id===userId){dashboard.hidden=false;dashboard.replaceChildren(el("h3","今日待办"),hint("今日待办暂未更新，请检查网络后重试。"),button("重新读取待办",sessionChanged));}showStatus("服务功能暂未加载，请检查网络后刷新；课程表仍可继续查看。");}}
   }
   function buildNavigation(unread=0){
     nav.hidden=false;nav.replaceChildren();const notes=button(`课程通知${unread?`（${unread} 未读）`:""}`,()=>open("notifications"));notes.id="operationsNotifications";nav.append(notes);
@@ -118,13 +125,14 @@ window.CourseOperations = (() => {
   }
   async function refreshUnread(){if(!ready)return;try{const status=await rpc("get_operations_status");const b=document.querySelector("#operationsNotifications");if(b)b.textContent=`课程通知${status.unread?`（${status.unread} 未读）`:""}`;}catch{}}
   async function refreshDashboard(){
-    if(!ready||!canEdit)return;dashboard.hidden=false;dashboard.replaceChildren(hint("正在读取今日待办…"));
-    const request=++dashboardRequest,userId=currentUser.id,attendanceRequest=todayAttendanceRequest;
+    if(!ready||!canEdit)return;dashboard.hidden=false;
+    if(!dashboard.childElementCount)dashboard.replaceChildren(el("h3","今日待办"),hint("正在读取今日待办…"));
+    const request=++dashboardRequest,userId=currentUser.id,attendanceRequest=todayAttendanceRequest,session=sessionToken;
     try{
       const today=toISODate(getScheduleToday());
       const [attendance,orders]=await Promise.all([rpc("get_attendance_for_date_v3",{p_attendance_date:today}),supabaseClient.from("coin_shop_purchases").select("id",{count:"exact",head:true}).eq("status","pending")]);
       if(orders.error)throw orders.error;
-      if(!canEdit||currentUser?.id!==userId||request!==dashboardRequest)return;
+      if(!canEdit||currentUser?.id!==userId||request!==dashboardRequest||session!==sessionToken)return;
       cacheTodayAttendance(attendance,today,attendanceRequest);
       dashboard.replaceChildren(el("h3","今日待办")); const tiles=el("div","","operations-tiles");
       const pending=attendance.filter(a=>!a.status).length;
@@ -134,7 +142,7 @@ window.CourseOperations = (() => {
       const settings=el("div","","operations-inline");const level=input("低课时预警阈值（次）","number",threshold);level.control.min=0;level.control.max=100;
       settings.append(level.field,button("保存预警设置",async()=>{const n=Number(level.control.value);if(!Number.isInteger(n)||n<0||n>100)throw new Error("请输入 0–100 的整数");await query(supabaseClient.from("operations_settings").update({low_lesson_threshold:n}).eq("id",true));threshold=n;await refreshDashboard();}));dashboard.append(settings);
       const warnings=el("div","","operations-chips");for(const s of low)warnings.append(button(`${s.username} · 剩 ${getStudentRemainingCount(s)} 次`,()=>open("ledger",s.id)));dashboard.append(low.length?warnings:hint("当前没有低课时预警。"));
-    }catch(error){if(currentUser?.id===userId&&request===dashboardRequest)dashboard.replaceChildren(hint(errorText(error)),button("重新读取待办",refreshDashboard));}
+    }catch(error){if(canEdit&&currentUser?.id===userId&&request===dashboardRequest&&session===sessionToken)dashboard.replaceChildren(el("h3","今日待办"),hint(errorText(error)),button("重新读取待办",refreshDashboard));}
   }
   async function renderLedger(body,id){
     const student=canEdit?students.find(s=>s.id===id):currentUser;if(!student)throw new Error("学生不存在");

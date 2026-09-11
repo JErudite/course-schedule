@@ -2669,16 +2669,14 @@ body.is-selecting-course {
   touch-action: none;
 }
 
-/* Browsing is always safe for touch, including hybrid touch/mouse devices. */
-body:not(.touch-timeline-editing) .grid-cell,
-body:not(.touch-timeline-editing) .course-card.is-editable { touch-action: pan-x pan-y pinch-zoom; }
+/* Only phones require unlocking; tablets and computers retain direct editing. */
+body.phone-timeline:not(.touch-timeline-editing) .grid-cell,
+body.phone-timeline:not(.touch-timeline-editing) .course-card.is-editable { touch-action: pan-x pan-y pinch-zoom; }
 .touch-timeline-controls { display: none; }
-@media (any-pointer: coarse), (max-width: 700px) {
-  .touch-timeline-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0 16px; }
-  .touch-timeline-controls small { color: var(--muted); font-size: 12px; flex: 1 1 200px; }
-  .touch-timeline-controls button { min-height: 44px; }
-  .touch-timeline-controls button[aria-pressed="true"] { background: var(--green-soft); border-color: var(--green); }
-}
+body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0 16px; }
+.touch-timeline-controls small { color: var(--muted); font-size: 12px; flex: 1 1 200px; }
+.touch-timeline-controls button { min-height: 44px; }
+.touch-timeline-controls button[aria-pressed="true"] { background: var(--green-soft); border-color: var(--green); }
 
 .course-card.is-saving {
   cursor: wait;

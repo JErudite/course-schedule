@@ -117,12 +117,22 @@ let currentUser = null;
 let canEdit = false;
 let touchTimelineEditing = false;
 
+function isPhoneTimelineDevice() {
+  const ua = navigator.userAgent || "";
+  // iPadOS can identify as a Mac; touch support alone is not a phone signal.
+  if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return false;
+  if (/iPhone|iPod|Windows Phone/i.test(ua)) return true;
+  if (/Android/i.test(ua)) return /Mobile/i.test(ua);
+  return navigator.userAgentData?.mobile === true;
+}
+
 function allowsTimelineGesture(event) {
-  return canEdit && (event.pointerType === "mouse" || touchTimelineEditing);
+  return canEdit && (!isPhoneTimelineDevice() || touchTimelineEditing);
 }
 
 function setTouchTimelineEditing(enabled) {
-  touchTimelineEditing = Boolean(enabled && canEdit);
+  touchTimelineEditing = Boolean(enabled && canEdit && isPhoneTimelineDevice());
+  document.body.classList.toggle("phone-timeline", isPhoneTimelineDevice());
   document.body.classList.toggle("touch-timeline-editing", touchTimelineEditing);
   const button = document.querySelector("#toggleTouchTimelineEditing");
   if (button) {
@@ -3211,7 +3221,8 @@ function renderScheduleSummary(occurrences, periodLabel) {
 }
 
 function updateScheduleViewControls() {
-  document.querySelector("#touchTimelineControls").hidden = !canEdit || scheduleView !== "week";
+  document.body.classList.toggle("phone-timeline", isPhoneTimelineDevice());
+  document.querySelector("#touchTimelineControls").hidden = !canEdit || scheduleView !== "week" || !isPhoneTimelineDevice();
   if (scheduleView !== "week") setTouchTimelineEditing(false);
   scheduleViewSwitcher.querySelectorAll("[data-schedule-view]").forEach((button) => {
     const isActive = button.dataset.scheduleView === scheduleView;
@@ -3560,11 +3571,17 @@ function placeCourseCard(card, dayIndex, startTime, duration) {
 
 function enableCourseInteraction(card, course, occurrence) {
   let dragState = null;
+  let lockedPointer = null;
   let suppressClick = false;
 
   if (canEdit) {
     card.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || !allowsTimelineGesture(event)) return;
+      if (event.button !== 0) return;
+      suppressClick = false;
+      if (!allowsTimelineGesture(event)) {
+        if (canEdit && isPhoneTimelineDevice()) lockedPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        return;
+      }
       const gridRect = grid.getBoundingClientRect();
       const firstCell = grid.querySelector(".grid-cell");
       const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 12;
@@ -3588,6 +3605,11 @@ function enableCourseInteraction(card, course, occurrence) {
     });
 
     card.addEventListener("pointermove", (event) => {
+      if (lockedPointer?.id === event.pointerId && Math.hypot(event.clientX - lockedPointer.x, event.clientY - lockedPointer.y) >= 12) {
+        lockedPointer = null;
+        suppressClick = true;
+        showStatus("请开启编辑模式");
+      }
       if (!dragState || event.pointerId !== dragState.pointerId) return;
       const scrollRect = scheduleScroll.getBoundingClientRect();
       if (event.clientX < scrollRect.left + 36) scheduleScroll.scrollLeft -= 10;
@@ -3614,8 +3636,16 @@ function enableCourseInteraction(card, course, occurrence) {
     });
 
     card.addEventListener("pointerup", async (event) => {
+      lockedPointer = null;
       if (!dragState || event.pointerId !== dragState.pointerId) return;
-      if (!canEdit || (dragState.isTouch && !touchTimelineEditing)) { dragState = null; renderSchedule(); return; }
+      if (!allowsTimelineGesture(event)) {
+        if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
+        suppressClick = dragState.moved;
+        dragState = null;
+        renderSchedule();
+        if (canEdit && isPhoneTimelineDevice()) showStatus("请开启编辑模式");
+        return;
+      }
       if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
       if (!dragState.moved) {
         dragState = null;
@@ -3623,7 +3653,7 @@ function enableCourseInteraction(card, course, occurrence) {
       }
 
       suppressClick = true;
-      const touchMove = dragState.isTouch;
+      const touchMove = isPhoneTimelineDevice();
       const dayShift = dragState.nextDayIndex - dragState.originalDayIndex;
       const candidate = {
         ...course,
@@ -3657,6 +3687,7 @@ function enableCourseInteraction(card, course, occurrence) {
     });
 
     card.addEventListener("pointercancel", () => {
+      lockedPointer = null;
       if (!dragState) return;
       dragState = null;
       renderSchedule();
