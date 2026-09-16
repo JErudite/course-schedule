@@ -4533,7 +4533,7 @@ function renderAttendance() {
   list.replaceChildren(...attendanceRecords.map(createAttendanceRow));
   document.querySelector("#attendanceEmpty").hidden = attendanceRecords.length > 0;
   document.querySelector("#attendanceEmpty").textContent = attendanceLoading ? "正在读取当天打卡记录…" : "所选日期没有分配学生的课程或打卡记录";
-  document.querySelector("#markAllPresent").disabled = attendanceBusy || attendanceLoading || attendanceRecords.length === 0;
+  document.querySelector("#markAllPresent").disabled = attendanceBusy || attendanceLoading || pendingCount === 0;
   datePicker.disabled = attendanceBusy;
   renderAttendanceHistory();
   renderTodayAttendanceCount();
@@ -4673,27 +4673,43 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
 }
 
 async function markAllStudentsPresent() {
-  if (!canEdit || attendanceBusy || attendanceRecords.length === 0) return;
+  if (!canEdit || attendanceBusy || attendanceLoading) return;
+  const pendingRecords = attendanceRecords.filter((record) => !record.status);
+  if (pendingRecords.length === 0) return;
   attendanceBusy = true;
   renderAttendance();
-  const { data, error } = await supabaseClient.rpc("mark_all_attendance_present_v3", {
-    p_attendance_date: selectedAttendanceDate,
-  });
-  attendanceBusy = false;
-  if (error) {
-    showStatus("一键到课失败，请稍后重试");
+  const attendanceDate = selectedAttendanceDate;
+  let checkedInCount = 0;
+  const skippedNames = [];
+  let failedCount = 0;
+  try {
+    for (const record of pendingRecords) {
+      const { data, error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
+        p_student_id: record.student_id,
+        p_course_id: record.course_id || null,
+        p_attendance_date: attendanceDate,
+        p_status: "present",
+      });
+      if (error) {
+        if (String(error.message || "").includes("课程次数不足")) skippedNames.push(record.username);
+        else failedCount += 1;
+      } else if (data) {
+        checkedInCount += 1;
+      }
+    }
+  } catch {
+    failedCount += 1;
+  } finally {
+    attendanceBusy = false;
+    await Promise.all([loadStudents(), loadAttendance(), loadAttendanceHistory({ quiet: true })]);
     renderAttendance();
-    return;
   }
-  await Promise.all([loadStudents(), loadAttendance(), loadAttendanceHistory({ quiet: true })]);
-  const checkedInCount = Number(data?.changed) || 0;
-  const skippedNames = [...new Set((data?.insufficient || []).map(item => item.student))];
   const successMessage = checkedInCount > 0
-    ? `已新增 ${formatAttendanceDay(selectedAttendanceDate)} ${checkedInCount} 课次到课记录`
+    ? `已新增 ${formatAttendanceDay(attendanceDate)} ${checkedInCount} 课次到课记录`
     : "没有可新增的到课记录";
-  showStatus(skippedNames.length
-    ? `${successMessage}；${skippedNames.join("、")}无法进行打卡，课程次数不足`
-    : successMessage);
+  showStatus(`${successMessage}；已设置的到课、补课、请假保持不变`
+    + (skippedNames.length ? `；${[...new Set(skippedNames)].join("、")}无法进行打卡，课程次数不足` : "")
+    + (failedCount ? "；部分记录未能保存，请刷新后重试" : ""));
 }
 
 async function loadPetFoods() {
