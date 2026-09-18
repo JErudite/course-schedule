@@ -4845,6 +4845,11 @@ body.is-admin-view #studentManagerButton {
   font-size: 10px;
 }
 
+.course-change-scope-actions {
+  display: grid;
+  gap: 10px;
+}
+
 .confirm-dialog {
   width: min(390px, calc(100% - 32px));
   padding: 26px;

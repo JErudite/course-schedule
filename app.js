@@ -3305,7 +3305,7 @@ function renderWeekSchedule() {
     placeCourseCard(card, dayIndex, course.startTime, course.duration);
     applyCourseColor(card, getEffectiveCourseColor(course));
     card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)} 至 ${formatTime(getCourseEnd(course))}`);
-    card.title = canEdit ? "拖动将移动整个课程系列，点击可编辑详情" : "点击查看课程详情";
+    card.title = canEdit ? "拖动调整时间；重复课程可选择仅本次或本次及后续，点击可编辑详情" : "点击查看课程详情";
     card.append(
       createElement("strong", "", course.name),
       createElement("span", "course-time", `${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`),
@@ -3582,6 +3582,7 @@ function enableCourseInteraction(card, course, occurrence) {
         if (canEdit && isPhoneTimelineDevice()) lockedPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
         return;
       }
+      if (card.classList.contains("is-saving")) return;
       const gridRect = grid.getBoundingClientRect();
       const firstCell = grid.querySelector(".grid-cell");
       const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 12;
@@ -3653,7 +3654,6 @@ function enableCourseInteraction(card, course, occurrence) {
       }
 
       suppressClick = true;
-      const touchMove = isPhoneTimelineDevice();
       const dayShift = dragState.nextDayIndex - dragState.originalDayIndex;
       const candidate = {
         ...course,
@@ -3669,8 +3669,9 @@ function enableCourseInteraction(card, course, occurrence) {
       card.removeAttribute("aria-grabbed");
 
       if (candidate.startDate === course.startDate && candidate.startTime === course.startTime) { renderSchedule(); return; }
-      if (touchMove && !window.confirm(`确认移动“${course.name}”吗？本次课程将改到 ${formatAttendanceDay(toISODate(addDays(occurrence.date, dayShift)), true)} ${formatTime(candidate.startTime)}，整个重复系列也会相应移动。`)) {
-        renderSchedule();
+      if (course.repeatIntervalDays !== null) {
+        card.classList.add("is-saving");
+        await persistScopedCourseChange(course, toISODate(occurrence.date), { start_time: candidate.startTime, day_shift: dayShift });
         return;
       }
 
@@ -3682,8 +3683,8 @@ function enableCourseInteraction(card, course, occurrence) {
       }
 
       card.classList.add("is-saving");
-      showStatus("正在移动整个课程系列…");
-      await persistCourseUpdate(course, candidate, "课程系列已移动并实时同步", conflicts.length > 0);
+      showStatus("正在移动课程…");
+      await persistCourseUpdate(course, candidate, "课程已移动并实时同步", conflicts.length > 0);
     });
 
     card.addEventListener("pointercancel", () => {
@@ -4197,6 +4198,61 @@ async function persistCourseUpdate(original, candidate, successMessage, allowCon
   refreshOpenDialog();
   showStatus(successMessage);
   return true;
+}
+
+function requestCourseChangeScope(course, occurrenceDate, patch) {
+  const scopeDialog = document.querySelector("#courseChangeScopeDialog");
+  const action = Object.hasOwn(patch, "start_time") ? "调整时间" : "标注颜色";
+  document.querySelector("#courseChangeScopeText").textContent = `“${course.name}”是重复课程。${formatAttendanceDay(occurrenceDate, true)}的${action}要应用到哪里？本次之前的课程保持不变。`;
+  return new Promise((resolve) => {
+    const finish = (value) => {
+      scopeDialog.removeEventListener("click", click);
+      scopeDialog.removeEventListener("cancel", cancel);
+      scopeDialog.removeEventListener("close", cancel);
+      scopeDialog.close();
+      resolve(value);
+    };
+    const click = (event) => {
+      const value = event.target.closest("[data-change-scope]")?.dataset.changeScope;
+      if (value) finish(value === "cancel" ? null : value);
+    };
+    const cancel = (event) => { event.preventDefault(); finish(null); };
+    scopeDialog.addEventListener("click", click);
+    scopeDialog.addEventListener("cancel", cancel);
+    scopeDialog.addEventListener("close", cancel);
+    scopeDialog.showModal();
+    scopeDialog.querySelector('[data-change-scope="cancel"]').focus();
+  });
+}
+
+async function persistScopedCourseChange(course, occurrenceDate, patch) {
+  const mode = await requestCourseChangeScope(course, occurrenceDate, patch);
+  if (!mode) { renderSchedule(); return false; }
+  if (!canEdit) { renderSchedule(); return false; }
+  const params = { p_course_id: course.id, p_occurrence_date: occurrenceDate, p_mode: mode,
+    p_expected_version: course.version, p_patch: patch, p_allow_conflict: false };
+  try {
+    showStatus("正在保存所选范围…");
+    let response = await supabaseClient.rpc("change_course_occurrences", params);
+    if (response.error?.code === "23P01") {
+      if (!await requestCourseConflictConfirmation(course, [])) { renderSchedule(); return false; }
+      response = await supabaseClient.rpc("change_course_occurrences", { ...params, p_allow_conflict: true });
+    }
+    if (response.error) {
+      showStatus(response.error.message?.includes("legacy attendance") ? "该日期有旧版合并打卡记录，不能跨日期移动；可以调整当天时间或颜色" : describeSaveError(response.error));
+      await loadSchedule({ quiet: true });
+      return false;
+    }
+    selectedCourseId = response.data;
+    selectedOccurrenceDate = toISODate(addDays(parseISODate(occurrenceDate), patch.day_shift || 0));
+    await loadSchedule({ quiet: true });
+    showStatus(mode === "single" ? "仅本次课程已更新，其他课次保持不变" : "本次及后续重复课程已更新，之前课次保持不变");
+    return true;
+  } catch {
+    showStatus("暂时无法确认保存结果，请刷新后核对，勿重复提交");
+    await loadSchedule({ quiet: true });
+    return false;
+  }
 }
 
 function setCourseDeleteButtonsDisabled(disabled) {
@@ -5713,6 +5769,26 @@ async function handleCourseSubmit(event) {
   if (candidate.repeatIntervalDays !== null && candidate.repeatCount !== null
     && (!Number.isInteger(candidate.repeatCount) || candidate.repeatCount < 1 || candidate.repeatCount > 10000)) {
     showStatus("重复次数需为 1 - 10000 的整数，并包含首次课程");
+    return;
+  }
+  if (existing?.repeatIntervalDays !== null && existing && candidate.color !== existing.color) {
+    // Keep recurrence/name/student edits separate from an occurrence-only color change.
+    const comparable = (course) => JSON.stringify(toSaveCourseParams({ ...course, color: "", startTime: 0, studentIds: [...course.studentIds].sort() }, null));
+    if (comparable(candidate) !== comparable(existing)) {
+      showStatus("修改颜色时，请保持其他课程信息不变；其他信息可单独保存");
+      return;
+    }
+    const patch = { color: candidate.color || null };
+    if (candidate.startTime !== existing.startTime) patch.start_time = candidate.startTime;
+    saveCourseButton.disabled = true;
+    try {
+      const saved = await persistScopedCourseChange(existing, selectedOccurrenceDate || existing.startDate, patch);
+      if (saved) {
+        formMode = "view";
+        const updated = schedule.find((item) => item.id === selectedCourseId);
+        if (updated) showCourseDetails(updated);
+      }
+    } finally { saveCourseButton.disabled = false; }
     return;
   }
   const conflicts = getSeriesConflicts(candidate, existing?.id);

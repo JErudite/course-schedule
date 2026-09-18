@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260918-1" />
+    <link rel="stylesheet" href="styles.css?v=20260918-2" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -1079,6 +1079,16 @@
       </div>
     </dialog>
 
+    <dialog class="confirm-dialog" id="courseChangeScopeDialog" aria-labelledby="courseChangeScopeTitle">
+      <h3 id="courseChangeScopeTitle">修改重复课程</h3>
+      <p id="courseChangeScopeText"></p>
+      <div class="course-change-scope-actions">
+        <button class="primary-button" type="button" data-change-scope="single">仅本次课程</button>
+        <button class="primary-button" type="button" data-change-scope="future">本次及后续重复课程</button>
+        <button class="secondary-button" type="button" data-change-scope="cancel">取消，不修改</button>
+      </div>
+    </dialog>
+
     <dialog class="confirm-dialog course-conflict-dialog" id="courseConflictDialog">
       <div class="confirm-dialog-icon is-warning" aria-hidden="true"><i data-lucide="triangle-alert"></i></div>
       <h3>课程时间重叠</h3>
@@ -1117,7 +1127,7 @@
     <script src="vendor/mammoth-1.8.0.min.js"></script>
     <script src="vendor/pdfjs/pdf.min.js"></script>
     <script src="vendor/tesseract/tesseract.min.js"></script>
-    <script src="app.js?v=20260916-1"></script>
+    <script src="app.js?v=20260918-2"></script>
     <script src="assets/operations.js?v=20260911-2"></script>
     <script src="assets/admin-layout.js?v=20260910-2"></script>
   </body>
