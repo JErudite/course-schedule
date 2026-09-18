@@ -67,7 +67,7 @@
 }
 
 html {
-  min-width: 320px;
+  min-width: 0;
   background: var(--background);
 }
 
@@ -139,8 +139,8 @@ button:focus-visible,
 }
 
 .topbar {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto max-content;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 24px;
   padding-bottom: 28px;
@@ -149,6 +149,7 @@ button:focus-visible,
 
 .brand {
   display: flex;
+  flex: 1 1 220px;
   align-items: center;
   gap: 14px;
   min-width: 0;
@@ -460,6 +461,8 @@ h1 {
 
 .topbar-actions {
   display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
@@ -572,6 +575,7 @@ h1 {
 
 .section-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 20px;
@@ -590,6 +594,9 @@ h1 {
 
 .section-actions {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: 10px;
 }
@@ -2091,8 +2098,10 @@ h1 {
 
 .lesson-summary {
   display: grid;
-  min-width: 420px;
-  grid-template-columns: repeat(4, minmax(78px, 1fr));
+  width: 420px;
+  max-width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 0;
   border-left: 1px solid var(--line);
@@ -4045,14 +4054,6 @@ body.is-admin-view #studentManagerButton {
   display: none;
 }
 
-body.is-admin-view .topbar {
-  grid-template-columns: minmax(220px, 1fr) max-content;
-}
-
-body.is-admin-view .topbar-actions {
-  grid-column: 2;
-}
-
 .admin-feature-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4982,13 +4983,13 @@ body.is-admin-view .topbar-actions {
   }
 
   .topbar {
-    grid-template-columns: 1fr auto;
     gap: 18px;
   }
 
   .week-controls {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    order: 1;
+    flex-basis: 100%;
+    min-width: 0;
     justify-content: center;
   }
 
@@ -5158,10 +5159,6 @@ body.is-admin-view .topbar-actions {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
   }
-
-  body.is-admin-view .topbar {
-    grid-template-columns: 1fr auto;
-  }
 }
 
 @media (max-width: 560px) {
@@ -5206,7 +5203,9 @@ body.is-admin-view .topbar-actions {
   }
 
   .week-picker {
-    min-width: 168px;
+    min-width: 0;
+    max-width: 168px;
+    flex: 1;
   }
 
   .week-overview-dialog {
@@ -5235,15 +5234,18 @@ body.is-admin-view .topbar-actions {
   .calendar-view-toolbar {
     align-items: stretch;
     flex-direction: column;
+    flex-wrap: nowrap;
   }
 
   .calendar-toolbar-controls {
     align-items: stretch;
     flex-direction: column;
+    flex-wrap: nowrap;
   }
 
   .schedule-view-switcher {
     width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .schedule-view-switcher button {
@@ -5253,6 +5255,7 @@ body.is-admin-view .topbar-actions {
 
   .page-font-control {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .page-font-control input[type="range"] {
@@ -5276,7 +5279,7 @@ body.is-admin-view .topbar-actions {
 
   .lesson-summary {
     width: 100%;
-    min-width: 296px;
+    min-width: 0;
     border: 1px solid var(--line);
     border-radius: 6px;
     background: var(--surface);
