@@ -4691,7 +4691,8 @@ function renderAttendanceHistory() {
     groups.get(record.attendance_date).push(record);
   });
   list.replaceChildren(...[...groups.entries()].map(([date, records]) => {
-    const article = createElement("article", `attendance-history-day${date === selectedAttendanceDate ? " is-selected" : ""}`);
+    const hasPendingAttendance = records.some((record) => !record.status);
+    const article = createElement("article", `attendance-history-day${hasPendingAttendance ? " has-pending" : ""}${date === selectedAttendanceDate ? " is-selected" : ""}`);
     const heading = createElement("div", "attendance-history-day-heading");
     const dateButton = createElement("button", "attendance-history-date");
     dateButton.type = "button";

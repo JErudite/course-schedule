@@ -1357,9 +1357,19 @@ h1 {
   background: var(--surface);
 }
 
+.attendance-history-day.has-pending {
+  border-color: #e7b9b9;
+  background: #fff0f0;
+}
+
 .attendance-history-day.is-selected {
   border-color: #9db8a7;
   box-shadow: inset 3px 0 0 var(--green);
+}
+
+.attendance-history-day.has-pending.is-selected {
+  border-color: #d99c9c;
+  box-shadow: inset 3px 0 0 #c85f5f;
 }
 
 .attendance-history-date {
