@@ -11,7 +11,7 @@
     />
     <title>我的课程表</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260918-2" />
+    <link rel="stylesheet" href="styles.css?v=20260922-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -372,12 +372,13 @@
           <div class="attendance-history-heading">
             <div>
               <strong id="attendanceHistoryTitle">每日打卡记录</strong>
-              <span>最近 30 个有记录的日期，点击日期可查看或修正详情</span>
+              <span>最近 30 个有课程或打卡记录的日期，点击日期可查看、补录或修正详情</span>
             </div>
             <button class="icon-button" id="refreshAttendanceHistory" type="button" aria-label="刷新打卡记录" title="刷新打卡记录">
               <i data-lucide="refresh-cw"></i>
             </button>
           </div>
+          <p class="attendance-overdue-alert" id="overdueAttendanceAlert" hidden></p>
           <div class="attendance-history-list" id="attendanceHistoryList"></div>
           <p class="empty-list-hint" id="attendanceHistoryEmpty">暂时没有历史打卡记录</p>
         </section>
@@ -1127,7 +1128,7 @@
     <script src="vendor/mammoth-1.8.0.min.js"></script>
     <script src="vendor/pdfjs/pdf.min.js"></script>
     <script src="vendor/tesseract/tesseract.min.js"></script>
-    <script src="app.js?v=20260918-2"></script>
+    <script src="app.js?v=20260922-1"></script>
     <script src="assets/operations.js?v=20260911-2"></script>
     <script src="assets/admin-layout.js?v=20260910-2"></script>
   </body>

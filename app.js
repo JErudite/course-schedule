@@ -3001,7 +3001,9 @@ function refreshAdminHubData() {
       loadStudents(), supabaseClient.rpc("get_admin_pet_challenge_banks"),
       supabaseClient.from("coin_shop_products").select("id", { count: "exact", head: true }),
       window.CourseOperations?.ready ? Promise.resolve({ error: null }) : supabaseClient.rpc("get_course_holiday_batches"),
-      window.CourseOperations?.ready ? window.CourseOperations.refreshDashboard() : loadTodayAttendanceSummary(),
+      window.CourseOperations?.ready
+        ? Promise.all([window.CourseOperations.refreshDashboard(), loadAttendanceHistory({ quiet: true })])
+        : Promise.all([loadTodayAttendanceSummary(), loadAttendanceHistory({ quiet: true })]),
     ]);
     if (!canEdit || currentUser?.id !== userId) return;
     document.querySelector("#openCourseHoliday").hidden = Boolean(holidayAvailability.error);
@@ -4469,6 +4471,11 @@ const attendanceStatusOptions = [
   { value: "leave", label: "请假", icon: "calendar-off", className: "is-leave" },
 ];
 
+const attendanceHistoryStatusOptions = [
+  ...attendanceStatusOptions,
+  { value: "", label: "待打卡", icon: "clock-alert", className: "is-pending" },
+];
+
 function getAttendanceCompletion(records) {
   const pending = new Set(records.filter(record => !attendanceStatusOptions.some(option => option.value === record.status)).map(record => record.student_id));
   return { pending: pending.size, total: new Set(records.map(record => record.student_id)).size };
@@ -4482,7 +4489,15 @@ function renderTodayAttendanceCount() {
     return;
   }
   const { pending, total, failed } = todayAttendanceSummary;
-  label.textContent = failed ? "打卡状态读取失败，点击重试" : pending > 0 ? `${pending} 人待打卡` : total ? "今日打卡已完成" : "今日暂无课程";
+  const today = toISODate(getScheduleToday());
+  const overdue = attendanceHistory.filter(record => record.attendance_date < today && !record.status);
+  const overdueDates = new Set(overdue.map(record => record.attendance_date)).size;
+  const todayText = pending > 0 ? `${pending} 人今日待打卡` : total ? "今日打卡已完成" : "今日暂无课程";
+  label.textContent = failed
+    ? "打卡状态读取失败，点击重试"
+    : overdue.length
+      ? `${todayText} · ${overdueDates} 天共 ${overdue.length} 课次待补打卡`
+      : todayText;
 }
 
 function cacheTodayAttendance(records, date, request) {
@@ -4552,14 +4567,59 @@ async function loadAttendanceHistory({ quiet = false } = {}) {
     if (!quiet) showStatus("历史打卡记录读取失败，请稍后重试");
     return false;
   }
-  attendanceHistory = (data || []).map((record) => ({
+  attendanceHistory = mergeScheduledAttendanceHistory((data || []).map((record) => ({
     ...record,
     attendance_date: record.attendance_date || "",
     status: record.status || "",
     course_names: record.course_names || "历史课程",
-  }));
+  })));
   renderAttendanceHistory();
+  renderTodayAttendanceCount();
   return true;
+}
+
+function mergeScheduledAttendanceHistory(records, limit = 30) {
+  const combined = [...records];
+  const existingCourseKeys = new Set(records
+    .filter(record => record.course_id)
+    .map(record => `${record.attendance_date}|${record.student_id}|${record.course_id}`));
+  const legacyStudentDates = new Set(records
+    .filter(record => record.is_legacy || !record.course_id)
+    .map(record => `${record.attendance_date}|${record.student_id}`));
+  const studentsById = new Map(students.map(student => [student.id, student]));
+  const today = getScheduleToday();
+
+  for (let offset = 1; offset <= 365; offset += 1) {
+    const date = addDays(today, -offset);
+    const attendanceDate = toISODate(date);
+    getOccurrencesForDate(date).forEach(course => {
+      course.studentIds.forEach(studentId => {
+        const courseKey = `${attendanceDate}|${studentId}|${course.id}`;
+        if (existingCourseKeys.has(courseKey) || legacyStudentDates.has(`${attendanceDate}|${studentId}`)) return;
+        const student = studentsById.get(studentId);
+        if (!student) return;
+        existingCourseKeys.add(courseKey);
+        combined.push({
+          student_id: studentId,
+          username: student.username,
+          attendance_date: attendanceDate,
+          status: "",
+          course_names: course.name || "历史课程",
+          updated_at: null,
+          course_id: course.id,
+          start_time: course.startTime,
+          is_legacy: false,
+        });
+      });
+    });
+  }
+
+  const latestDates = new Set([...new Set(combined.map(record => record.attendance_date))]
+    .filter(Boolean).sort().reverse().slice(0, limit));
+  return combined.filter(record => latestDates.has(record.attendance_date))
+    .sort((first, second) => second.attendance_date.localeCompare(first.attendance_date)
+      || (Number(first.start_time) || 0) - (Number(second.start_time) || 0)
+      || String(first.username || "").localeCompare(String(second.username || ""), "zh-CN"));
 }
 
 async function selectAttendanceDate(value) {
@@ -4652,12 +4712,12 @@ function renderAttendanceHistory() {
       if (event.target.closest("button, .attendance-history-detail")) return;
       void toggle();
     });
-    const summary = createElement("span", "", attendanceStatusOptions
+    const summary = createElement("span", "", attendanceHistoryStatusOptions
       .map(({ value, label }) => `${label} ${records.filter((record) => record.status === value).length}`)
       .join(" · "));
     heading.append(dateButton, summary);
     const statusGrid = createElement("div", "attendance-history-status-grid");
-    attendanceStatusOptions.forEach(({ value, label, icon, className }) => {
+    attendanceHistoryStatusOptions.forEach(({ value, label, icon, className }) => {
       const statusGroup = createElement("div", `attendance-history-status ${className}`);
       const title = createElement("strong", "", "");
       title.innerHTML = `<i data-lucide="${icon}"></i><span>${label}</span>`;
@@ -4685,6 +4745,13 @@ function renderAttendanceHistory() {
     }
     return article;
   }));
+  const today = toISODate(getScheduleToday());
+  const overdue = attendanceHistory.filter(record => record.attendance_date < today && !record.status);
+  const alert = document.querySelector("#overdueAttendanceAlert");
+  alert.hidden = overdue.length === 0;
+  alert.textContent = overdue.length
+    ? `提醒：${new Set(overdue.map(record => record.attendance_date)).size} 天共有 ${overdue.length} 课次尚未打卡，可点击对应日期补录。`
+    : "";
   document.querySelector("#attendanceHistoryEmpty").hidden = attendanceHistory.length > 0;
   if (window.lucide) window.lucide.createIcons();
 }

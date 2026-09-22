@@ -1339,6 +1339,17 @@ h1 {
   padding-top: 12px;
 }
 
+.attendance-overdue-alert {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #e4d18a;
+  border-radius: 7px;
+  background: var(--yellow-soft);
+  color: #684f0e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .attendance-history-day {
   padding: 14px;
   border: 1px solid var(--line);
@@ -1368,7 +1379,7 @@ h1 {
 
 .attendance-history-status-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-top: 13px;
   padding-top: 12px;
@@ -1393,6 +1404,16 @@ h1 {
 
 .attendance-history-status.is-leave > strong {
   color: var(--coral);
+}
+
+.attendance-history-status.is-pending > strong {
+  color: var(--yellow);
+}
+
+.attendance-history-status.is-pending .attendance-history-names span {
+  border-color: #e4d18a;
+  background: var(--yellow-soft);
+  color: #684f0e;
 }
 
 .attendance-history-status svg {
