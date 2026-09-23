@@ -157,7 +157,7 @@ window.CourseOperations = (() => {
     const title=card(`${student.username} · 剩余 ${getStudentRemainingCount(student)} 次`,`当前已上 ${student.current_lesson_count} 次 / 当前应上 ${student.required_lesson_count} 次`);body.append(title);
     if(canEdit){
       const current=input("当前已上","number",student.current_lesson_count),required=input("当前应上（续课后总额）","number",student.required_lesson_count),reason=input("调整原因（选填）");
-      for(const control of [current.control,required.control]){control.min=0;control.max=1000000;control.step=1;control.required=true;}
+      for(const control of [current.control,required.control]){control.min=0;control.max=1000000;control.step=1;control.required=true;control.addEventListener("wheel",()=>{if(document.activeElement===control)control.blur();},{passive:true});}
       reason.control.maxLength=300;reason.control.placeholder="可留空，默认记录为管理员手动调整课时";
       const form=el("div","","operations-form");form.append(current.field,required.field,reason.field,button("记录课时调整",async()=>{
         const values=lessonAdjustmentValues(current.control.value,required.control.value,reason.control.value);

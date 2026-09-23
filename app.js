@@ -4897,6 +4897,9 @@ function createStudentCountField(labelText, value) {
   input.step = "1";
   input.value = String(value);
   input.setAttribute("aria-label", labelText);
+  input.addEventListener("wheel", () => {
+    if (document.activeElement === input) input.blur();
+  }, { passive: true });
   label.append(caption, input);
   return { label, input };
 }
@@ -5086,7 +5089,7 @@ function renderStudentList() {
     const requiredField = createStudentCountField(`${student.username}当前应上`, student.required_lesson_count);
     const remaining = createElement("button", "student-remaining-count operations-balance-button");
     remaining.type = "button";
-    remaining.title = "查看课时明细";
+    remaining.title = "查看课时调整记录";
     remaining.addEventListener("click", () => window.CourseOperations?.open("ledger", student.id));
     const updateRemaining = () => {
       const current = Number(currentField.input.value) || 0;
