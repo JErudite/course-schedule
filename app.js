@@ -2285,7 +2285,36 @@ function updateQuestionImportProgress(message) {
   document.querySelector("#questionImportStatus").textContent = message;
 }
 
+const lazyVendorScripts = {
+  mammoth: { src: "vendor/mammoth-1.8.0.min.js", global: "mammoth" },
+  pdfjs: { src: "vendor/pdfjs/pdf.min.js", global: "pdfjsLib" },
+  tesseract: { src: "vendor/tesseract/tesseract.min.js", global: "Tesseract" },
+  pinyin: { src: "vendor/pinyin-pro-3.26.0.min.js", global: "pinyinPro" },
+};
+const lazyVendorLoads = new Map();
+
+function loadVendorScript(name) {
+  const entry = lazyVendorScripts[name];
+  if (!entry) return Promise.reject(new Error(`未知组件：${name}`));
+  if (window[entry.global]) return Promise.resolve(window[entry.global]);
+  if (lazyVendorLoads.has(name)) return lazyVendorLoads.get(name);
+  const request = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = entry.src;
+    script.async = true;
+    script.onload = () => (window[entry.global] ? resolve(window[entry.global]) : reject(new Error("组件加载失败")));
+    script.onerror = () => reject(new Error("组件加载失败"));
+    document.head.append(script);
+  }).catch((error) => {
+    lazyVendorLoads.delete(name);
+    throw error;
+  });
+  lazyVendorLoads.set(name, request);
+  return request;
+}
+
 async function extractDocxQuestionContent(file) {
+  await loadVendorScript("mammoth").catch(() => null);
   if (!window.mammoth) throw new Error("Word 识别组件加载失败");
   const arrayBuffer = await file.arrayBuffer();
   const [rawResult, htmlResult] = await Promise.all([
@@ -2310,6 +2339,7 @@ function extractPdfTextItems(textContent) {
 }
 
 async function createQuestionOcrWorker(fileName) {
+  await loadVendorScript("tesseract").catch(() => null);
   if (!window.Tesseract) throw new Error("图片识别组件加载失败");
   return window.Tesseract.createWorker("chi_sim+eng", 1, {
     workerPath: "vendor/tesseract/worker.min.js",
@@ -2372,6 +2402,7 @@ async function renderPdfPageForOcr(page) {
 }
 
 async function extractPdfQuestionContent(file) {
+  await loadVendorScript("pdfjs").catch(() => null);
   if (!window.pdfjsLib) throw new Error("PDF 识别组件加载失败");
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdfjs/pdf.worker.min.js";
   const pdf = await window.pdfjsLib.getDocument({
@@ -2508,6 +2539,9 @@ function getStudentInitialPassword(username) {
 
 function updateStudentPasswordPreview() {
   const username = document.querySelector("#studentUsernameInput").value;
+  if (!window.pinyinPro && username.trim()) {
+    loadVendorScript("pinyin").then(updateStudentPasswordPreview).catch(() => {});
+  }
   document.querySelector("#studentPasswordInput").value = getStudentInitialPassword(username);
 }
 
@@ -4304,14 +4338,19 @@ async function deleteSelectedCourse(mode = "all") {
   else showStatus("课程已删除");
 }
 
-async function loadSchedule({ quiet = false } = {}) {
-  const requestUserId = currentUser?.id;
-  if (!quiet) setSyncState("connecting", "正在读取课程");
-  const { data, error } = await supabaseClient
+function fetchScheduleRows() {
+  return supabaseClient
     .from("courses")
     .select("*, course_students(student_id)")
     .order("start_date", { ascending: true })
-    .order("start_time", { ascending: true });
+    .order("start_time", { ascending: true })
+    .then((result) => result);
+}
+
+async function loadSchedule({ quiet = false, prefetched = null } = {}) {
+  const requestUserId = currentUser?.id;
+  if (!quiet) setSyncState("connecting", "正在读取课程");
+  const { data, error } = await (prefetched || fetchScheduleRows());
 
   if (currentUser?.id !== requestUserId) return false;
   if (error) {
@@ -5674,6 +5713,10 @@ async function handleStudentSubmit(event) {
   event.preventDefault();
   if (!canEdit) return;
   const username = document.querySelector("#studentUsernameInput").value.trim();
+  if (username && !window.pinyinPro) {
+    await loadVendorScript("pinyin").catch(() => null);
+    updateStudentPasswordPreview();
+  }
   const password = document.querySelector("#studentPasswordInput").value;
   if (!username || !password) {
     showStatus("无法生成姓名首字母密码，请检查学生姓名");
@@ -5779,16 +5822,20 @@ async function applySession(session) {
     color: profile.color || "",
   });
   canEdit = profile.is_admin === true;
-  if (canEdit) await loadStudents();
-  else await loadAdminPetComparison();
-  await loadPetFoods();
+  const prefetchedCourses = fetchScheduleRows();
+  await Promise.all([
+    canEdit ? loadStudents() : loadAdminPetComparison(),
+    loadPetFoods(),
+  ]);
   appShell.hidden = false;
   loginScreen.hidden = true;
   loginError.textContent = "";
   updatePermissionUI();
-  await loadSchedule();
   document.querySelector("#openStudentChallenge").hidden = canEdit || !currentUser;
-  await window.CourseOperations?.sessionChanged();
+  await Promise.all([
+    loadSchedule({ prefetched: prefetchedCourses }),
+    window.CourseOperations?.sessionChanged(),
+  ]);
   subscribeToCourses();
 }
 
@@ -6169,6 +6216,7 @@ function bindEvents() {
   document.querySelector("#showTodayAttendance").addEventListener("click", () => selectAttendanceDate(toISODate(getScheduleToday())));
   document.querySelector("#refreshAttendanceHistory").addEventListener("click", () => Promise.all([loadAttendance(), loadAttendanceHistory()]));
   document.querySelector("#studentUsernameInput").addEventListener("input", updateStudentPasswordPreview);
+  document.querySelector("#studentUsernameInput").addEventListener("focus", () => loadVendorScript("pinyin").catch(() => {}), { once: true });
   studentForm.addEventListener("submit", handleStudentSubmit);
   document.querySelector("#cancelDeleteStudent").addEventListener("click", () => deleteStudentDialog.close());
   confirmDeleteStudentButton.addEventListener("click", deleteSelectedStudent);
