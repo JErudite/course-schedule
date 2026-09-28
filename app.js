@@ -186,6 +186,8 @@ let petSortMode = "manual";
 let pageFontSize = defaultPageFontSize;
 let draggedStudentId = null;
 let attendanceRecords = [];
+const attendanceCache = new Map();
+let attendanceHistoryRows = null;
 let todayAttendanceSummary = null;
 let todayAttendanceRequest = 0;
 let attendanceHistory = [];
@@ -3063,8 +3065,10 @@ async function showStudentManagement() {
 async function showAttendanceManagement() {
   if (!canEdit) return;
   selectedAttendanceDate = toISODate(getScheduleToday());
-  await loadSchedule({ quiet: true });
-  await Promise.all([loadAttendance(), loadAttendanceHistory({ quiet: true })]);
+  // Open the page at once with whatever is already known, then refresh in the background.
+  const cached = attendanceCache.get(selectedAttendanceDate);
+  attendanceRecords = cached || [];
+  attendanceLoading = !cached;
   hideAdminPages();
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
@@ -3072,6 +3076,9 @@ async function showAttendanceManagement() {
   document.body.classList.add("is-admin-view");
   renderAttendance();
   document.querySelector("#markAllPresent").focus();
+  const scheduleRefresh = loadSchedule({ quiet: true });
+  await Promise.all([loadAttendance(), loadAttendanceHistory({ quiet: true }), scheduleRefresh]);
+  remergeAttendanceHistory();
 }
 
 async function showPetManagement() {
@@ -4541,6 +4548,7 @@ function renderTodayAttendanceCount() {
 
 function cacheTodayAttendance(records, date, request) {
   if (!canEdit || date !== toISODate(getScheduleToday()) || request !== todayAttendanceRequest) return;
+  attendanceCache.set(date, normalizeAttendanceRecords(records));
   todayAttendanceSummary = { date, ...getAttendanceCompletion(records) };
   renderTodayAttendanceCount();
 }
@@ -4568,11 +4576,12 @@ function formatAttendanceDay(value, includeYear = false) {
 async function loadAttendance() {
   if (!canEdit) return false;
   const request = ++attendanceLoadRequest;
-  attendanceLoading = true;
-  attendanceRecords = [];
-  renderAttendance();
   selectedAttendanceDate ||= toISODate(getScheduleToday());
   const date = selectedAttendanceDate;
+  const cached = attendanceCache.get(date);
+  attendanceLoading = !cached;
+  attendanceRecords = cached || [];
+  renderAttendance();
   const todayRequest = date === toISODate(getScheduleToday()) ? ++todayAttendanceRequest : null;
   const { data, error } = await supabaseClient.rpc("get_attendance_for_date_v3", {
     p_attendance_date: date,
@@ -4586,15 +4595,27 @@ async function loadAttendance() {
     showStatus("所选日期的打卡记录读取失败，请稍后重试");
     return false;
   }
-  attendanceRecords = (data || []).map((record) => ({
+  attendanceRecords = normalizeAttendanceRecords(data);
+  attendanceCache.set(date, attendanceRecords);
+  cacheTodayAttendance(attendanceRecords, date, todayRequest);
+  renderAttendance();
+  return true;
+}
+
+function normalizeAttendanceRecords(data) {
+  return (data || []).map((record) => ({
     ...record,
     current_lesson_count: Number(record.current_lesson_count) || 0,
     status: record.status || "",
     course_names: record.course_names || "",
   }));
-  cacheTodayAttendance(attendanceRecords, date, todayRequest);
-  renderAttendance();
-  return true;
+}
+
+function remergeAttendanceHistory() {
+  if (!canEdit || !attendanceHistoryRows) return;
+  attendanceHistory = mergeScheduledAttendanceHistory(attendanceHistoryRows);
+  renderAttendanceHistory();
+  renderTodayAttendanceCount();
 }
 
 async function loadAttendanceHistory({ quiet = false } = {}) {
@@ -4606,12 +4627,13 @@ async function loadAttendanceHistory({ quiet = false } = {}) {
     if (!quiet) showStatus("历史打卡记录读取失败，请稍后重试");
     return false;
   }
-  attendanceHistory = mergeScheduledAttendanceHistory((data || []).map((record) => ({
+  attendanceHistoryRows = (data || []).map((record) => ({
     ...record,
     attendance_date: record.attendance_date || "",
     status: record.status || "",
     course_names: record.course_names || "历史课程",
-  })));
+  }));
+  attendanceHistory = mergeScheduledAttendanceHistory(attendanceHistoryRows);
   renderAttendanceHistory();
   renderTodayAttendanceCount();
   return true;
@@ -4808,6 +4830,8 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
     showStatus(`${record?.username || student?.username || "该学生"}无法进行打卡，课程次数不足`);
     return;
   }
+  const previousStatus = record?.status ?? "";
+  if (record) record.status = status;
   attendanceBusy = true;
   renderAttendance();
   const { error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
@@ -4818,6 +4842,7 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
   });
   attendanceBusy = false;
   if (error) {
+    if (record) record.status = previousStatus;
     if (String(error.message || "").includes("课程次数不足")) {
       showStatus(error.message);
     } else {
@@ -4826,7 +4851,8 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
     renderAttendance();
     return;
   }
-  await Promise.all([loadStudents(), loadAttendance(), loadAttendanceHistory({ quiet: true })]);
+  renderAttendance();
+  void Promise.all([loadStudents(), loadAttendance(), loadAttendanceHistory({ quiet: true })]);
   const messages = {
     present: "已登记到课；只有到课计入当前已上次数",
     makeup: "已登记补课，不扣课时；若原为到课，已返还对应课时",
@@ -5757,6 +5783,8 @@ async function deleteSelectedStudent() {
 async function applySession(session) {
   currentUser = null;
   canEdit = false;
+  attendanceCache.clear();
+  attendanceHistoryRows = null;
 
   if (!session) {
     void window.CourseOperations?.sessionChanged();
