@@ -23,6 +23,9 @@ window.CourseOperations = (() => {
   const summary = el("p", "", "operations-attendance-summary"); summary.hidden = true;
   document.querySelector("#calendarOverview").before(summary);
   const messages = {pending:"待领取",fulfilled:"已领取",cancelled:"已取消 / 已退款"};
+  // 管理员暂不使用的功能（2026-10-08 起隐藏）。要恢复某项，从这里删掉它即可；学生端入口不受影响。
+  const adminHiddenRoutes = new Set(["classes","learning","accounts","orders","notifications","recycle"]);
+  const isHidden = route => canEdit && adminHiddenRoutes.has(route);
   const fmt = value => value ? new Date(value).toLocaleString("zh-CN", {timeZone:scheduleTimeZone,hour12:false}) : "—";
   const name = id => students.find(student => student.id === id)?.username || (currentUser?.id === id ? currentUser.username : "学生");
   const hint = text => el("p",text,"operations-hint");
@@ -64,7 +67,7 @@ window.CourseOperations = (() => {
     const titles={ledger:["课时明细","每一笔调整均保留前后余额；上线前余额仅作快照，不虚构旧流水。"],accounts:["账号与安全","停用可以恢复；删除账号及其学习记录不可恢复，请谨慎操作。"],classes:["班级管理","一个学生可在多个独立班级中。按班选课时复制成员，不追改历史课程。"],orders:[canEdit?"商城订单与核销":"我的兑换记录","待领取订单由曾老师核销；取消订单会退回金币。"],notifications:["课程通知",canEdit?"查看每位学生的通知与已读回执。":"这里只显示分配给你的课程变更。"],recycle:["课程回收站","恢复被删除的课程或时段，不恢复重复系列中未被删除的其他日期。"],learning:["学习周报与任务","按真实答题记录统计；学习任务仍遵守每日挑战次数和金币规则。"]};
     if(!canEdit)titles.accounts[1]="仅可修改自己的登录密码，请勿向他人透露密码。";
     titles.attendance=[`${name(id)} · 打卡记录`,"全部已登记的到课、补课、请假记录，按日期从近到远排列。"];
-    if(!titles[route] || (!canEdit && ["classes","recycle","attendance"].includes(route)))return;
+    if(!titles[route] || isHidden(route) || (!canEdit && ["classes","recycle","attendance"].includes(route)))return;
     pageHeading(...titles[route],route==="attendance"); activeRoute=route; const token=++pageToken;
     const body=el("div","","operations-content");page.append(body);
     try{ await ({attendance:()=>renderStudentAttendance(body,id),ledger:()=>renderLedger(body,id||currentUser.id),accounts:()=>renderAccounts(body),classes:()=>renderClasses(body),orders:()=>renderOrders(body),notifications:()=>renderNotifications(body),recycle:()=>renderRecycle(body),learning:()=>renderLearning(body)})[route](); }
@@ -112,11 +115,13 @@ window.CourseOperations = (() => {
     }catch(error){if(token===sessionToken){ready=false;if(canEdit&&currentUser?.id===userId){dashboard.hidden=false;dashboard.replaceChildren(el("h3","今日待办"),hint("今日待办暂未更新，请检查网络后重试。"),button("重新读取待办",sessionChanged));}showStatus("服务功能暂未加载，请检查网络后刷新；课程表仍可继续查看。");}}
   }
   function buildNavigation(unread=0){
-    nav.hidden=false;nav.replaceChildren();const notes=button(`课程通知${unread?`（${unread} 未读）`:""}`,()=>open("notifications"));notes.id="operationsNotifications";nav.append(notes);
-    nav.append(button("学习周报 / 任务",()=>open("learning")),button("兑换记录",()=>open("orders")),button("账号与安全",()=>open("accounts")));
+    nav.replaceChildren();const notes=button(`课程通知${unread?`（${unread} 未读）`:""}`,()=>open("notifications"));notes.id="operationsNotifications";
+    for(const [route,link] of [["notifications",notes],["learning",button("学习周报 / 任务",()=>open("learning"))],["orders",button("兑换记录",()=>open("orders"))],["accounts",button("账号与安全",()=>open("accounts"))]])if(!isHidden(route))nav.append(link);
     if(!canEdit)nav.append(button("我的课时明细",()=>open("ledger",currentUser.id)));
+    nav.hidden=!nav.childElementCount;
     const grid=document.querySelector("#adminHub .admin-feature-grid");grid.querySelectorAll("[data-operations-route]").forEach(node=>node.remove());
     if(canEdit)for(const [route,title,subtitle,icon] of [["classes","班级管理","独立班级与成员","users-round"],["learning","学习周报与任务","按班布置挑战与查看完成情况","notebook-pen"],["accounts","账号与安全","停用恢复、删除与密码管理","shield-check"],["orders","订单核销","待领取、已领取与退款","package-check"],["notifications","课程通知","变更与已读回执","bell"],["recycle","课程回收站","恢复误删的课程","archive-restore"]]){
+      if(isHidden(route))continue;
       const b=button("",()=>open(route));b.className="admin-feature-button";b.dataset.operationsRoute=route;
       const mark=el("span","","admin-feature-icon is-student"); const i=el("i");i.dataset.lucide=icon;mark.append(i);
       b.append(mark,el("strong",title),el("span",subtitle));grid.append(b);
@@ -137,7 +142,8 @@ window.CourseOperations = (() => {
       cacheTodayAttendance(attendance,today,attendanceRequest);
       dashboard.replaceChildren(el("h3","今日待办")); const tiles=el("div","","operations-tiles");
       const pending=attendance.filter(a=>!a.status).length;
-      tiles.append(button(`${new Set(attendance.map(a=>a.course_id||a.student_id)).size} 节今日课程 · ${pending} 课次待打卡`,()=>showAttendanceManagement()),button(`${orders.count||0} 笔订单待领取`,()=>open("orders")));
+      tiles.append(button(`${new Set(attendance.map(a=>a.course_id||a.student_id)).size} 节今日课程 · ${pending} 课次待打卡`,()=>showAttendanceManagement()));
+      if(!isHidden("orders"))tiles.append(button(`${orders.count||0} 笔订单待领取`,()=>open("orders")));
       dashboard.append(tiles);
       const low=students.filter(s=>!s.disabled_at&&getStudentRemainingCount(s)<=threshold).sort((a,b)=>getStudentRemainingCount(a)-getStudentRemainingCount(b));
       const settings=el("div","","operations-inline");const level=input("低课时预警阈值（次）","number",threshold);level.control.min=0;level.control.max=100;

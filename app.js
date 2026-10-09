@@ -5777,7 +5777,7 @@ async function deleteSelectedStudent() {
   deleteStudentDialog.close();
   renderStudentList();
   await loadSchedule({ quiet: true });
-  showStatus(`已停用“${student.username}”，历史数据保留，可在账号与安全中恢复`);
+  showStatus(`已停用“${student.username}”，历史数据保留`);
 }
 
 async function applySession(session) {
