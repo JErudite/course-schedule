@@ -118,11 +118,12 @@ let canEdit = false;
 let touchTimelineEditing = false;
 
 function isPhoneTimelineDevice() {
+  // Phones and tablets browse the timeline by swiping, so dragging courses there needs the
+  // explicit edit switch (iPad included since 2026-10-09). Computers, even with a touch
+  // screen, keep direct dragging. iPadOS can identify as a Mac with touch points.
   const ua = navigator.userAgent || "";
-  // iPadOS can identify as a Mac; touch support alone is not a phone signal.
-  if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return false;
-  if (/iPhone|iPod|Windows Phone/i.test(ua)) return true;
-  if (/Android/i.test(ua)) return /Mobile/i.test(ua);
+  if (/iPhone|iPod|iPad|Android|Windows Phone|Tablet|PlayBook|Silk/i.test(ua)) return true;
+  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true;
   return navigator.userAgentData?.mobile === true;
 }
 
