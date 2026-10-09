@@ -3,6 +3,8 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PyH98bSXQ2rSCzIfmLNN5w_4rTJ6P-x
 
 const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 const defaultCourseColor = "#ffffff";
+// Courses without a colour are drawn in this blue so they stand out on the white grid.
+const defaultCourseAccent = "#3b82f6";
 const colorPalette = [
   { value: "", label: "自动 / 白色", color: "#ffffff" },
   { value: "#f44336", label: "红色", color: "#f44336" },
@@ -419,7 +421,11 @@ function refreshCurrentDate() {
 function startDateAutoRefresh() {
   updateAcademicPeriod();
   window.setInterval(refreshCurrentDate, 60 * 1000);
-  window.setInterval(() => { if (currentUser && scheduleView === "week") renderNowLine(); }, 60 * 1000);
+  window.setInterval(() => {
+    if (!currentUser) return;
+    if (scheduleView === "week") renderNowLine();
+    refreshCourseTimeStates();
+  }, 60 * 1000);
   window.addEventListener("focus", refreshCurrentDate);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) refreshCurrentDate();
@@ -936,7 +942,7 @@ function colorWithAlpha(color, alpha) {
 function applyCourseColor(element, color) {
   const effective = color || defaultCourseColor;
   const isWhite = effective.toLowerCase() === defaultCourseColor;
-  element.style.setProperty("--course-color", isWhite ? "#b4b4ae" : effective);
+  element.style.setProperty("--course-color", isWhite ? defaultCourseAccent : effective);
   element.style.setProperty("--course-background", isWhite ? "#ffffff" : colorWithAlpha(effective, 0.14));
   element.style.setProperty("--course-border", isWhite ? "#e6e6e3" : colorWithAlpha(effective, 0.42));
 }
@@ -3285,8 +3291,35 @@ function createCalendarCourseButton(course, date) {
     createElement("strong", "", course.name),
   );
   applyCourseColor(button, getEffectiveCourseColor(course));
+  markCourseTimeState(button, date, course);
   button.addEventListener("click", () => showCourse(course.id, toISODate(date)));
   return button;
+}
+
+// Lessons that already happened fade out; the one in progress is emphasised.
+function getOccurrenceTimeState(date, startTime, endTime, nowMinutes = getScheduleTimeMinutes()) {
+  if (date.getTime() < scheduleToday.getTime()) return "past";
+  if (!sameDay(date, scheduleToday)) return "upcoming";
+  if (endTime <= nowMinutes) return "past";
+  return startTime <= nowMinutes ? "current" : "upcoming";
+}
+
+function markCourseTimeState(element, date, course) {
+  element.dataset.occurrenceDate = toISODate(date);
+  element.dataset.start = String(course.startTime);
+  element.dataset.end = String(getCourseEnd(course));
+  applyCourseTimeState(element);
+}
+
+function applyCourseTimeState(element, nowMinutes = getScheduleTimeMinutes()) {
+  const state = getOccurrenceTimeState(parseISODate(element.dataset.occurrenceDate), Number(element.dataset.start), Number(element.dataset.end), nowMinutes);
+  element.classList.toggle("is-past", state === "past");
+  element.classList.toggle("is-current", state === "current");
+}
+
+function refreshCourseTimeStates() {
+  const nowMinutes = getScheduleTimeMinutes();
+  document.querySelectorAll(".course-card[data-start], .calendar-course-chip[data-start]").forEach((element) => applyCourseTimeState(element, nowMinutes));
 }
 
 function renderScheduleSummary(occurrences, periodLabel) {
@@ -3383,6 +3416,7 @@ function renderWeekSchedule() {
     else if (course.duration <= 60) card.classList.add("is-short");
     placeCourseCard(card, dayIndex, course.startTime, course.duration);
     applyCourseColor(card, getEffectiveCourseColor(course));
+    markCourseTimeState(card, date, course);
     card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)} 至 ${formatTime(getCourseEnd(course))}`);
     card.title = canEdit ? "拖动调整时间；重复课程可选择仅本次或本次及后续，点击可编辑详情" : "点击查看课程详情";
     card.append(
@@ -3772,7 +3806,7 @@ function createSidebarCourseItem(course, meta, onClick) {
   item.type = "button";
   const swatch = createElement("i", "sidebar-swatch");
   const color = getEffectiveCourseColor(course);
-  swatch.style.background = color && color !== defaultCourseColor ? color : "#b4b4ae";
+  swatch.style.background = color && color !== defaultCourseColor ? color : defaultCourseAccent;
   const copy = createElement("span", "sidebar-item-copy");
   copy.append(createElement("strong", "", course.name), createElement("small", "", meta));
   item.append(swatch, copy);
@@ -3887,10 +3921,11 @@ function renderStudentAgenda(occurrences) {
     courses.forEach((course) => {
       const item = createElement("button", "agenda-item");
       item.type = "button";
-      const done = date < scheduleToday || (isToday && course.startTime + course.duration <= nowMinutes);
-      if (done) item.classList.add("is-done");
+      const state = getOccurrenceTimeState(date, course.startTime, getCourseEnd(course), nowMinutes);
+      if (state === "past") item.classList.add("is-done");
+      if (state === "current") item.classList.add("is-current");
       const color = getEffectiveCourseColor(course);
-      item.style.setProperty("--course-color", color && color !== defaultCourseColor ? color : "#b4b4ae");
+      item.style.setProperty("--course-color", color && color !== defaultCourseColor ? color : defaultCourseAccent);
       item.append(
         createElement("strong", "", course.name),
         createElement("span", "", `${formatTime(course.startTime)} – ${formatTime(getCourseEnd(course))}${info?.type === "workday" ? " · 调休上班" : ""}`),

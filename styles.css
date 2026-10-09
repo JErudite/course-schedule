@@ -6842,3 +6842,57 @@ body.can-edit .section-heading { display: none; }
   .lesson-summary { width: 100%; min-width: 0; }
   .me-sheet .confirm-actions .secondary-button { width: 100%; }
 }
+/* ---------- 2026-10-09 today column in light blue; past / current / upcoming lessons ---------- */
+:root {
+  --today: #2563eb;
+  --today-tint: #f4f8ff;
+  --today-head: #eaf2ff;
+}
+.grid-cell.is-today { background: var(--today-tint); }
+.day-header.is-today { background: var(--today-head); }
+.day-header.is-today > span.day-weekday:not(.calendar-day-status) { color: var(--today); }
+.day-header.is-today .day-number {
+  display: inline-grid;
+  min-width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  place-items: center;
+  padding: 0 7px;
+  border-radius: 15px;
+  background: var(--today);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+}
+.course-card {
+  --course-accent: var(--course-color, #3b82f6);
+  padding-left: 10px;
+  background: color-mix(in srgb, var(--course-accent) 18%, #ffffff);
+  box-shadow: inset 3px 0 0 var(--course-accent);
+  color: color-mix(in srgb, var(--course-accent) 55%, #111111);
+}
+.course-card:hover { box-shadow: inset 3px 0 0 var(--course-accent), 0 2px 10px rgba(0, 0, 0, 0.1); }
+.course-card.is-current {
+  background: color-mix(in srgb, var(--course-accent) 30%, #ffffff);
+  box-shadow: inset 0 0 0 2px var(--course-accent), 0 2px 10px color-mix(in srgb, var(--course-accent) 25%, transparent);
+}
+.course-card.is-current .course-time::after { content: " · 上课中"; font-weight: 700; }
+.course-card.is-past { background: #f1f1ef; box-shadow: inset 3px 0 0 #d2d2cd; color: #8b8b86; }
+.course-card.is-past:hover { box-shadow: inset 3px 0 0 #d2d2cd, 0 2px 10px rgba(0, 0, 0, 0.08); }
+.course-card.is-past .course-time::after { content: " · 已上"; }
+.calendar-course-chip { box-shadow: inset 2px 0 0 var(--course-color, #3b82f6); }
+.calendar-course-chip.is-current { box-shadow: inset 0 0 0 1.5px var(--course-color, #3b82f6); }
+.calendar-course-chip.is-past { background: #f1f1ef; box-shadow: none; color: #8b8b86; }
+.month-day.is-today { background: var(--today-tint); }
+.month-day.is-today .month-day-number { background: var(--today); }
+.year-day.is-today { background: var(--today); }
+.sidebar-day.is-today { background: var(--today); }
+.agenda-day.is-today { margin: 0 -8px; padding-right: 10px; padding-left: 10px; border-radius: 10px; background: var(--today-tint); }
+.agenda-day.is-today .agenda-date span, .agenda-day.is-today .agenda-date strong { color: var(--today); }
+.agenda-item { box-shadow: inset 3px 0 0 var(--course-color, #3b82f6); }
+.agenda-item.is-done { opacity: 1; background: #f1f1ef; box-shadow: inset 3px 0 0 #d2d2cd; color: #8b8b86; }
+.next-lesson-card small { color: var(--today); }
+.next-lesson-card small::before { background: var(--today); }.agenda-item.is-done span::after { content: " · 已上"; }
+.now-line { z-index: 1; }
+.agenda-item.is-current { background: color-mix(in srgb, var(--course-color, #3b82f6) 30%, #ffffff); box-shadow: inset 0 0 0 2px var(--course-color, #3b82f6); }
+.agenda-item.is-current span::after { content: " · 上课中"; font-weight: 700; }
