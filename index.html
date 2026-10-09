@@ -298,14 +298,14 @@
             </label>
             <label class="form-field generated-password-field">
               <span>自动登录密码</span>
-              <input id="studentPasswordInput" name="password" type="text" maxlength="12" autocomplete="off" placeholder="姓名大写首字母" readonly required />
+              <input id="studentPasswordInput" name="password" type="text" maxlength="16" autocomplete="off" placeholder="首字母 + 4 位数字" readonly required />
             </label>
             <button class="primary-button" id="addStudentButton" type="submit">
               <i data-lucide="user-plus"></i>
               <span>新增账号</span>
             </button>
           </form>
-          <p class="shared-password-note"><i data-lucide="key-round"></i><span>学生密码按姓名拼音大写首字母自动生成</span></p>
+          <p class="shared-password-note"><i data-lucide="key-round"></i><span>初始密码 = 姓名拼音大写首字母 + 4 位随机数字，新增后请告诉学生</span></p>
         </div>
 
         <div class="student-sort-toolbar">
@@ -1141,7 +1141,7 @@
 
     <script src="vendor/lucide-subset.js?v=20261008-1"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20261009-1"></script>
+    <script src="app.js?v=20261009-2"></script>
     <script src="assets/operations.js?v=20261008-2"></script>
     <script src="assets/export.js?v=20261008-1"></script>
     <script src="assets/admin-layout.js?v=20260910-2"></script>

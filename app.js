@@ -907,6 +907,10 @@ function mapCourse(row) {
     notes: row.notes || "",
     color: row.color || "",
     studentIds: (row.course_students || []).map((assignment) => assignment.student_id),
+    // Members added to an existing course only owe lessons from the day they joined.
+    studentJoinedOn: Object.fromEntries((row.course_students || [])
+      .filter((assignment) => assignment.joined_on)
+      .map((assignment) => [assignment.student_id, assignment.joined_on])),
     version: Number(row.version),
     updatedAt: row.updated_at,
   };
@@ -2551,12 +2555,20 @@ function getStudentInitialPassword(username) {
     .slice(0, 12);
 }
 
+// Initials alone are easy to guess from a classmate's name; four random digits are added
+// (kept for the whole form so the preview does not change on every keystroke).
+let studentPasswordSuffix = "";
+
 function updateStudentPasswordPreview() {
   const username = document.querySelector("#studentUsernameInput").value;
   if (!window.pinyinPro && username.trim()) {
     loadVendorScript("pinyin").then(updateStudentPasswordPreview).catch(() => {});
   }
-  document.querySelector("#studentPasswordInput").value = getStudentInitialPassword(username);
+  const initials = getStudentInitialPassword(username);
+  if (initials && !studentPasswordSuffix) {
+    studentPasswordSuffix = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
+  }
+  document.querySelector("#studentPasswordInput").value = initials ? `${initials}${studentPasswordSuffix}` : "";
 }
 
 function formatChallengeDuration(seconds) {
@@ -4400,7 +4412,7 @@ async function deleteSelectedCourse(mode = "all") {
 function fetchScheduleRows() {
   return supabaseClient
     .from("courses")
-    .select("*, course_students(student_id)")
+    .select("*, course_students(student_id, joined_on)")
     .order("start_date", { ascending: true })
     .order("start_time", { ascending: true })
     .then((result) => result);
@@ -4723,7 +4735,9 @@ function mergeScheduledAttendanceHistory(records, limit = 30) {
         const courseKey = `${attendanceDate}|${studentId}|${course.id}`;
         if (existingCourseKeys.has(courseKey) || legacyStudentDates.has(`${attendanceDate}|${studentId}`)) return;
         const student = studentsById.get(studentId);
-        if (!student) return;
+        if (!student || student.disabled_at) return;
+        const joinedOn = course.studentJoinedOn?.[studentId];
+        if (joinedOn && attendanceDate < joinedOn) return;
         existingCourseKeys.add(courseKey);
         combined.push({
           student_id: studentId,
@@ -5869,6 +5883,7 @@ async function handleStudentSubmit(event) {
     return;
   }
   studentForm.reset();
+  studentPasswordSuffix = "";
   await loadStudents();
   showStatus(`已新增学生“${username}”，登录密码为 ${password}`);
 }
