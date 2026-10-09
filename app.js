@@ -419,6 +419,7 @@ function refreshCurrentDate() {
 function startDateAutoRefresh() {
   updateAcademicPeriod();
   window.setInterval(refreshCurrentDate, 60 * 1000);
+  window.setInterval(() => { if (currentUser && scheduleView === "week") renderNowLine(); }, 60 * 1000);
   window.addEventListener("focus", refreshCurrentDate);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) refreshCurrentDate();
@@ -935,9 +936,9 @@ function colorWithAlpha(color, alpha) {
 function applyCourseColor(element, color) {
   const effective = color || defaultCourseColor;
   const isWhite = effective.toLowerCase() === defaultCourseColor;
-  element.style.setProperty("--course-color", isWhite ? "#a9b4c4" : effective);
+  element.style.setProperty("--course-color", isWhite ? "#b4b4ae" : effective);
   element.style.setProperty("--course-background", isWhite ? "#ffffff" : colorWithAlpha(effective, 0.14));
-  element.style.setProperty("--course-border", isWhite ? "#d9e0ea" : colorWithAlpha(effective, 0.42));
+  element.style.setProperty("--course-border", isWhite ? "#e6e6e3" : colorWithAlpha(effective, 0.42));
 }
 
 function showStatus(message, action = null) {
@@ -985,6 +986,11 @@ function setSyncState(state, text) {
   const syncState = document.querySelector("#syncState");
   syncState.className = `sync-state is-${state}`;
   document.querySelector("#syncStateText").textContent = text;
+  const sidebarSync = document.querySelector(".sidebar-sync");
+  if (sidebarSync) {
+    sidebarSync.className = `sidebar-sync is-${state}`;
+    sidebarSync.textContent = text;
+  }
 }
 
 function updateLessonSummary() {
@@ -3226,6 +3232,9 @@ function updatePermissionUI() {
   document.querySelector("#addCourse").hidden = !canEdit;
   document.querySelector("#studentManagerButton").hidden = !canEdit;
   document.querySelector("#openStudentChallenge").hidden = canEdit || !currentUser;
+  document.querySelector("#studentTabbar").hidden = canEdit || !currentUser;
+  document.body.classList.toggle("has-student-tabbar", !canEdit && Boolean(currentUser));
+  setStudentTab("schedule");
   dialogCourseActions.hidden = !canEdit || formMode !== "view" || !selectedCourseId;
   document.querySelector("#permissionHint").textContent = canEdit
     ? `${currentUser?.username || "曾老师"} · 可管理课程、学生账号和课次进度`
@@ -3300,7 +3309,8 @@ function updateScheduleViewControls() {
   });
   const periodNames = { week: "本周", month: "本月", year: "今年" };
   const pickerNames = { week: "选择周次", month: "选择月份", year: "选择年份" };
-  document.querySelector("#todayButton span").textContent = `返回${periodNames[scheduleView]}`;
+  document.querySelector("#todayButton span").textContent = "今天";
+  document.querySelector("#todayButton").setAttribute("aria-label", `返回${periodNames[scheduleView]}`);
   document.querySelector("#currentWeek").disabled = false;
   document.querySelector("#currentWeek").setAttribute("aria-label", pickerNames[scheduleView]);
   document.querySelector("#currentWeek").title = pickerNames[scheduleView];
@@ -3332,7 +3342,7 @@ function renderWeekSchedule() {
     header.style.gridColumn = String(index + 2);
     header.style.gridRow = "1";
     if (sameDay(date, scheduleToday)) header.classList.add("is-today");
-    header.append(createElement("strong", "", day), createElement("span", "", `${date.getMonth() + 1}/${date.getDate()}`));
+    header.append(createElement("span", "day-weekday", day), createElement("strong", "day-number", String(date.getDate())));
     const holidayInfo = getOfficialDayInfo(date);
     if (holidayInfo) {
       header.classList.add(`is-${holidayInfo.type}`);
@@ -3342,7 +3352,7 @@ function renderWeekSchedule() {
   });
 
   for (let hour = timelineStart / 60; hour < timelineEnd / 60; hour += 1) {
-    const time = createElement("div", "time-slot");
+    const time = createElement("div", `time-slot${hour * 60 === timelineStart ? " is-first" : ""}`);
     time.style.gridColumn = "1";
     time.style.gridRow = `${((hour * 60 - timelineStart) / snapMinutes) + 2} / span ${60 / snapMinutes}`;
     time.append(createElement("strong", "", `${String(hour).padStart(2, "0")}:00`));
@@ -3398,8 +3408,10 @@ function renderWeekSchedule() {
   document.querySelector("#previousWeek").title = "上一周";
   document.querySelector("#nextWeek").setAttribute("aria-label", "下一周");
   document.querySelector("#nextWeek").title = "下一周";
-  document.querySelector("#todayText").textContent = `${days[(scheduleToday.getDay() + 6) % 7]}，${formatMonthDay(scheduleToday)}`;
-  document.querySelector("#scheduleTitle").textContent = "本周安排";
+  document.querySelector("#todayText").textContent = `第 ${weekNumber} 周 · 今天 ${formatMonthDay(scheduleToday)} ${days[(scheduleToday.getDay() + 6) % 7]}`;
+  document.querySelector("#scheduleTitle").textContent = formatWeekRangeTitle(selectedWeekStart, weekEnd);
+  renderNowLine();
+  renderStudentAgenda(occurrences);
   updateHolidayDataNote(getISOWeekYear(selectedWeekStart));
   renderScheduleSummary(occurrences, "本周");
   autoFocusTodayCourse(occurrences);
@@ -3505,8 +3517,8 @@ function renderMonthSchedule() {
   document.querySelector("#previousWeek").title = "上个月";
   document.querySelector("#nextWeek").setAttribute("aria-label", "下个月");
   document.querySelector("#nextWeek").title = "下个月";
-  document.querySelector("#todayText").textContent = `${year}年${month + 1}月 · 节假日与调休日历`;
-  document.querySelector("#scheduleTitle").textContent = "本月安排";
+  document.querySelector("#todayText").textContent = `今天 ${formatMonthDay(scheduleToday)} ${days[(scheduleToday.getDay() + 6) % 7]} · 含节假日与调休`;
+  document.querySelector("#scheduleTitle").textContent = `${year}年${month + 1}月`;
   updateHolidayDataNote(year);
   renderScheduleSummary(occurrences, "本月");
 }
@@ -3584,8 +3596,8 @@ function renderYearSchedule() {
   document.querySelector("#previousWeek").title = "上一年";
   document.querySelector("#nextWeek").setAttribute("aria-label", "下一年");
   document.querySelector("#nextWeek").title = "下一年";
-  document.querySelector("#todayText").textContent = `${year}年 · 全年课程与节假日`;
-  document.querySelector("#scheduleTitle").textContent = "全年总览";
+  document.querySelector("#todayText").textContent = "全年课程与节假日";
+  document.querySelector("#scheduleTitle").textContent = `${year}年`;
   updateHolidayDataNote(year);
   renderScheduleSummary(occurrences, year === scheduleToday.getFullYear() ? "今年" : `${year}年`);
 }
@@ -3598,7 +3610,9 @@ function renderSchedule() {
   scheduleRenderPending = false;
   renderCourseEndDates();
   renderNextLesson();
+  renderSidebar();
   updateScheduleViewControls();
+  document.querySelector("#scheduleAgenda").hidden = true;
   if (scheduleView === "month") {
     renderMonthSchedule();
     return;
@@ -3643,6 +3657,297 @@ function renderNextLesson() {
     card.hidden = false;
     return;
   }
+}
+
+function formatWeekRangeTitle(start, end) {
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${start.getFullYear()}年${formatMonthDay(start)} – ${end.getFullYear()}年${formatMonthDay(end)}`;
+  }
+  if (start.getMonth() === end.getMonth()) return `${formatMonthDay(start)} – ${end.getDate()}日`;
+  return `${formatMonthDay(start)} – ${formatMonthDay(end)}`;
+}
+
+// The red "now" line across today's column (refreshed every minute by startDateAutoRefresh).
+function renderNowLine() {
+  grid.querySelectorAll(".now-line, .now-line-time").forEach((node) => node.remove());
+  const dayIndex = Math.round((scheduleToday - selectedWeekStart) / 86400000);
+  const minutes = getScheduleTimeMinutes();
+  if (scheduleView !== "week" || dayIndex < 0 || dayIndex > 6 || minutes < timelineStart || minutes >= timelineEnd) return;
+  const row = String(Math.floor((minutes - timelineStart) / snapMinutes) + 2);
+  const offset = String(((minutes - timelineStart) % snapMinutes) / snapMinutes);
+  const line = createElement("div", "now-line");
+  line.style.gridColumn = String(dayIndex + 2);
+  line.style.gridRow = row;
+  line.style.setProperty("--now-offset", offset);
+  line.setAttribute("aria-hidden", "true");
+  const time = createElement("div", "now-line-time", formatTime(minutes));
+  time.style.gridColumn = "1";
+  time.style.gridRow = row;
+  time.style.setProperty("--now-offset", offset);
+  time.setAttribute("aria-hidden", "true");
+  grid.append(line, time);
+}
+
+// Desktop sidebar: brand, a month calendar to jump around, today's lessons and renewals.
+let sidebarMonth = null;
+
+function jumpToScheduleDate(date) {
+  if (scheduleSection.hidden) showScheduleView();
+  if (scheduleView === "year") scheduleView = "week";
+  selectedCalendarDate = new Date(date);
+  selectedWeekStart = startOfWeek(date);
+  renderSchedule();
+}
+
+function createSidebarSection(title, items) {
+  const section = createElement("section", "sidebar-section");
+  section.append(createElement("h3", "sidebar-heading", title), ...items);
+  return section;
+}
+
+function renderSidebarMonth(container) {
+  const month = sidebarMonth;
+  const head = createElement("div", "sidebar-month-head");
+  const previous = createElement("button", "icon-button");
+  previous.type = "button";
+  previous.setAttribute("aria-label", "上个月");
+  previous.innerHTML = '<i data-lucide="chevron-left"></i>';
+  previous.addEventListener("click", () => {
+    sidebarMonth = new Date(month.getFullYear(), month.getMonth() - 1, 1);
+    renderSidebar({ keepMonth: true });
+  });
+  const next = createElement("button", "icon-button");
+  next.type = "button";
+  next.setAttribute("aria-label", "下个月");
+  next.innerHTML = '<i data-lucide="chevron-right"></i>';
+  next.addEventListener("click", () => {
+    sidebarMonth = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+    renderSidebar({ keepMonth: true });
+  });
+  const controls = createElement("div", "sidebar-month-controls");
+  controls.append(previous, next);
+  head.append(createElement("strong", "", `${month.getFullYear()}年${month.getMonth() + 1}月`), controls);
+
+  const weekdays = createElement("div", "sidebar-weekdays");
+  ["一", "二", "三", "四", "五", "六", "日"].forEach((label) => weekdays.append(createElement("span", "", label)));
+  const daysGrid = createElement("div", "sidebar-days");
+  const start = getMonthCalendarStart(month);
+  const weekEnd = addDays(selectedWeekStart, 6);
+  for (let index = 0; index < 42; index += 1) {
+    const date = addDays(start, index);
+    const info = getOfficialDayInfo(date);
+    const inSelectedWeek = scheduleView === "week" && date >= selectedWeekStart && date <= weekEnd;
+    const button = createElement("button", [
+      "sidebar-day",
+      date.getMonth() !== month.getMonth() ? "is-outside" : "",
+      sameDay(date, scheduleToday) ? "is-today" : "",
+      inSelectedWeek ? "is-in-week" : "",
+      inSelectedWeek && date.getDay() === 1 ? "is-week-start" : "",
+      inSelectedWeek && date.getDay() === 0 ? "is-week-end" : "",
+      info?.type === "holiday" ? "is-holiday" : "",
+      getOccurrencesForDate(date).length ? "has-course" : "",
+    ].filter(Boolean).join(" "), String(date.getDate()));
+    button.type = "button";
+    button.setAttribute("aria-label", `${formatFullDate(date)}${info ? ` · ${info.name}` : ""}`);
+    button.addEventListener("click", () => jumpToScheduleDate(date));
+    daysGrid.append(button);
+  }
+  container.append(head, weekdays, daysGrid);
+}
+
+function upcomingOccurrences(limit) {
+  const result = [];
+  const nowMinutes = getScheduleTimeMinutes();
+  for (let offset = 0; offset <= 60 && result.length < limit; offset += 1) {
+    const date = addDays(scheduleToday, offset);
+    getOccurrencesForDate(date)
+      .filter((course) => offset > 0 || course.startTime + course.duration > nowMinutes)
+      .forEach((course) => { if (result.length < limit) result.push({ course, date, offset }); });
+  }
+  return result;
+}
+
+function createSidebarCourseItem(course, meta, onClick) {
+  const item = createElement("button", "sidebar-item");
+  item.type = "button";
+  const swatch = createElement("i", "sidebar-swatch");
+  const color = getEffectiveCourseColor(course);
+  swatch.style.background = color && color !== defaultCourseColor ? color : "#b4b4ae";
+  const copy = createElement("span", "sidebar-item-copy");
+  copy.append(createElement("strong", "", course.name), createElement("small", "", meta));
+  item.append(swatch, copy);
+  item.addEventListener("click", onClick);
+  return item;
+}
+
+function renderSidebar({ keepMonth = false } = {}) {
+  const sidebar = document.querySelector("#appSidebar");
+  if (!sidebar) return;
+  appShell.classList.toggle("has-sidebar", Boolean(currentUser));
+  if (!currentUser) {
+    sidebar.replaceChildren();
+    return;
+  }
+  const focusDate = scheduleView === "week" ? addDays(selectedWeekStart, 3) : selectedCalendarDate;
+  if (!keepMonth || !sidebarMonth) sidebarMonth = new Date(focusDate.getFullYear(), focusDate.getMonth(), 1);
+
+  const brand = createElement("div", "sidebar-brand");
+  const brandCopy = createElement("div", "");
+  brandCopy.append(createElement("strong", "", "我的课程表"), createElement("span", "", getAcademicPeriod(scheduleToday)));
+  brand.append(createElement("span", "brand-mark", "课"), brandCopy);
+
+  const monthBox = createElement("section", "sidebar-month");
+  monthBox.setAttribute("aria-label", "月历");
+  renderSidebarMonth(monthBox);
+
+  const sections = [];
+  if (canEdit) {
+    const todayCourses = getOccurrencesForDate(scheduleToday);
+    const summary = todayAttendanceSummary?.date === toISODate(scheduleToday) && !todayAttendanceSummary.failed ? todayAttendanceSummary : null;
+    const title = summary && summary.pending ? `今天 · 待打卡 ${summary.pending}` : "今天";
+    const items = todayCourses.length
+      ? todayCourses.map((course) => createSidebarCourseItem(course, `${formatTime(course.startTime)} · ${course.studentIds.length} 人`, () => showAttendanceManagement()))
+      : [createElement("p", "sidebar-empty", "今天没有课")];
+    sections.push(createSidebarSection(title, items));
+    const threshold = window.CourseOperations?.lowThreshold ?? 3;
+    const low = students
+      .filter((student) => !student.disabled_at && getStudentRemainingCount(student) <= threshold)
+      .sort((first, second) => getStudentRemainingCount(first) - getStudentRemainingCount(second))
+      .slice(0, 6);
+    if (low.length) {
+      sections.push(createSidebarSection("需要续课", low.map((student) => {
+        const row = createElement("button", "sidebar-renew");
+        row.type = "button";
+        row.title = `给${student.username}续课`;
+        const remaining = getStudentRemainingCount(student);
+        row.append(createElement("span", "", student.username), createElement("strong", remaining === 0 ? "is-empty" : "is-low", `剩 ${remaining} 次`));
+        row.addEventListener("click", () => window.CourseOperations?.renewLessons(student.id));
+        return row;
+      })));
+    }
+  } else {
+    const upcoming = upcomingOccurrences(3);
+    const weekdayNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    sections.push(createSidebarSection("接下来", upcoming.length
+      ? upcoming.map(({ course, date, offset }) => createSidebarCourseItem(
+        course,
+        `${offset === 0 ? "今天" : offset === 1 ? "明天" : weekdayNames[date.getDay()]} ${formatTime(course.startTime)}`,
+        () => jumpToScheduleDate(date),
+      ))
+      : [createElement("p", "sidebar-empty", "近期没有课")]));
+  }
+
+  const footer = createElement("div", "sidebar-footer");
+  footer.append(createElement("span", "sidebar-avatar", String(currentUser.username || "我").slice(0, 1)));
+  const who = createElement("div", "sidebar-who");
+  const sync = document.querySelector("#syncState");
+  who.append(createElement("strong", "", currentUser.username || ""), createElement("small", `sidebar-sync ${sync?.className.match(/is-\w+/)?.[0] || ""}`, document.querySelector("#syncStateText")?.textContent || ""));
+  footer.append(who);
+  if (canEdit) {
+    const admin = createElement("button", "sidebar-link", "管理后台");
+    admin.type = "button";
+    admin.addEventListener("click", () => showAdminHub());
+    footer.append(admin);
+  }
+  const logout = createElement("button", "icon-button sidebar-logout");
+  logout.type = "button";
+  logout.title = "退出登录";
+  logout.setAttribute("aria-label", "退出登录");
+  logout.innerHTML = '<i data-lucide="log-out"></i>';
+  logout.addEventListener("click", () => authButton.click());
+  footer.append(logout);
+
+  sidebar.replaceChildren(brand, monthBox, ...sections, footer);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+// Phones: students read the week as a list (the 7-column grid is too narrow to read).
+const phoneAgendaQuery = window.matchMedia("(max-width: 640px)");
+
+function renderStudentAgenda(occurrences) {
+  const agenda = document.querySelector("#scheduleAgenda");
+  const useAgenda = !canEdit && Boolean(currentUser) && phoneAgendaQuery.matches;
+  agenda.hidden = !useAgenda;
+  if (!useAgenda) return false;
+  scheduleScroll.hidden = true;
+  const nowMinutes = getScheduleTimeMinutes();
+  agenda.replaceChildren(...days.map((label, dayIndex) => {
+    const date = addDays(selectedWeekStart, dayIndex);
+    const info = getOfficialDayInfo(date);
+    const isToday = sameDay(date, scheduleToday);
+    const courses = occurrences.filter((item) => item.dayIndex === dayIndex).map((item) => item.course)
+      .sort((first, second) => first.startTime - second.startTime);
+    const row = createElement("div", `agenda-day${isToday ? " is-today" : ""}${date < scheduleToday ? " is-past" : ""}`);
+    const head = createElement("div", "agenda-date");
+    head.append(createElement("span", "", isToday ? "今天" : label), createElement("strong", "", String(date.getDate())));
+    const list = createElement("div", "agenda-items");
+    if (!courses.length) {
+      list.append(createElement("span", "agenda-empty", info?.type === "holiday" ? `${info.name} · 没有课` : "没有课"));
+    }
+    courses.forEach((course) => {
+      const item = createElement("button", "agenda-item");
+      item.type = "button";
+      const done = date < scheduleToday || (isToday && course.startTime + course.duration <= nowMinutes);
+      if (done) item.classList.add("is-done");
+      const color = getEffectiveCourseColor(course);
+      item.style.setProperty("--course-color", color && color !== defaultCourseColor ? color : "#b4b4ae");
+      item.append(
+        createElement("strong", "", course.name),
+        createElement("span", "", `${formatTime(course.startTime)} – ${formatTime(getCourseEnd(course))}${info?.type === "workday" ? " · 调休上班" : ""}`),
+      );
+      item.addEventListener("click", () => showCourse(course.id, toISODate(date)));
+      list.append(item);
+    });
+    row.append(head, list);
+    return row;
+  }));
+  return true;
+}
+
+function setStudentTab(tab) {
+  document.querySelectorAll("#studentTabbar [data-student-tab]").forEach((button) => {
+    const active = button.dataset.studentTab === tab;
+    button.classList.toggle("is-active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+}
+
+function openStudentMeSheet() {
+  const list = document.querySelector("#studentMeList");
+  const proxy = (label, target) => {
+    const button = createElement("button", "me-sheet-item", label);
+    button.type = "button";
+    button.addEventListener("click", () => {
+      document.querySelector("#studentMeSheet").close();
+      target.click();
+    });
+    return button;
+  };
+  list.replaceChildren(
+    ...[...document.querySelectorAll(".operations-nav button")].map((button) => proxy(button.textContent, button)),
+    proxy("宠物排行榜", document.querySelector("#openPetLeaderboard")),
+    proxy("退出登录", authButton),
+  );
+  document.querySelector("#studentMeSheet").showModal();
+}
+
+function bindStudentTabbar() {
+  document.querySelectorAll("#studentTabbar [data-student-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.studentTab;
+      if (tab === "me") { openStudentMeSheet(); return; }
+      setStudentTab(tab);
+      if (tab === "schedule") { showScheduleView(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+      if (tab === "challenge") document.querySelector("#openStudentChallenge").click();
+      if (tab === "pet") {
+        const pet = document.querySelector("#visitorPet");
+        (pet.hidden || !currentUser?.pet ? document.querySelector("#openPetLeaderboard") : pet).click();
+      }
+    });
+  });
+  document.querySelector("#closeStudentMe").addEventListener("click", () => document.querySelector("#studentMeSheet").close());
+  phoneAgendaQuery.addEventListener("change", () => { if (currentUser) renderSchedule(); });
 }
 
 function renderCourseEndDates() {
@@ -4621,6 +4926,7 @@ function renderTodayAttendanceCount() {
     : overdue.length
       ? `${todayText} · ${overdueDates} 天共 ${overdue.length} 课次待补打卡`
       : todayText;
+  if (canEdit && typeof renderSidebar === "function") renderSidebar({ keepMonth: true });
 }
 
 function cacheTodayAttendance(records, date, request) {
@@ -6397,6 +6703,7 @@ async function initializeApp() {
   document.querySelector("#petDragHint").hidden = petSortMode !== "manual";
   startDateAutoRefresh();
   bindEvents();
+  bindStudentTabbar();
   renderSchedule();
   if (window.lucide) window.lucide.createIcons();
 

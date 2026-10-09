@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f4f6fa" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="referrer" content="no-referrer" />
     <meta
       http-equiv="Content-Security-Policy"
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
     <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="stylesheet" href="styles.css?v=20261009-1" />
+    <link rel="stylesheet" href="styles.css?v=20261009-2" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -44,6 +44,7 @@
     </section>
 
     <main class="app-shell" id="appShell" hidden>
+      <aside class="app-sidebar" id="appSidebar" aria-label="课程表导航"></aside>
       <header class="topbar">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">课</span>
@@ -53,28 +54,11 @@
           </div>
         </div>
 
-        <div class="week-controls" aria-label="日期范围切换">
-          <button class="icon-button" id="previousWeek" type="button" aria-label="上一周" title="上一周">
-            <i data-lucide="chevron-left"></i>
-          </button>
-          <button class="week-picker" id="currentWeek" type="button" aria-label="选择日期范围">
-            <span id="weekLabel">本周</span>
-            <small id="weekRange">正在读取日期</small>
-          </button>
-          <button class="icon-button" id="nextWeek" type="button" aria-label="下一周" title="下一周">
-            <i data-lucide="chevron-right"></i>
-          </button>
-        </div>
-
         <div class="topbar-actions">
           <span class="sync-state is-connecting" id="syncState" role="status" aria-live="polite">
             <i class="sync-dot" aria-hidden="true"></i>
             <span id="syncStateText">正在连接</span>
           </span>
-          <button class="today-button" id="todayButton" type="button">
-            <i data-lucide="calendar-days"></i>
-            <span>返回本周</span>
-          </button>
           <button class="today-button student-manager-button" id="studentManagerButton" type="button" aria-label="管理后台" hidden>
             <i data-lucide="settings-2"></i>
             <span>管理后台</span>
@@ -87,11 +71,38 @@
       </header>
 
       <section class="schedule-section" id="scheduleSection" aria-labelledby="scheduleTitle">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow" id="todayText">周一，4月13日</p>
+        <div class="schedule-toolbar">
+          <div class="schedule-title">
             <h2 id="scheduleTitle">本周安排</h2>
+            <p class="eyebrow" id="todayText">周一，4月13日</p>
           </div>
+          <div class="week-controls" aria-label="日期范围切换">
+            <button class="icon-button" id="previousWeek" type="button" aria-label="上一周" title="上一周">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <button class="today-button" id="todayButton" type="button" aria-label="返回本周">
+              <span>今天</span>
+            </button>
+            <button class="icon-button" id="nextWeek" type="button" aria-label="下一周" title="下一周">
+              <i data-lucide="chevron-right"></i>
+            </button>
+            <button class="week-picker" id="currentWeek" type="button" aria-label="选择日期范围">
+              <span id="weekLabel">本周</span>
+              <small id="weekRange">正在读取日期</small>
+              <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="schedule-view-switcher" id="scheduleViewSwitcher" role="group" aria-label="课程表视图">
+            <button class="is-active" type="button" data-schedule-view="week" aria-pressed="true">周</button>
+            <button type="button" data-schedule-view="month" aria-pressed="false">月</button>
+            <button type="button" data-schedule-view="year" aria-pressed="false">年</button>
+          </div>
+          <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
+            <i data-lucide="plus"></i>
+            <span>新建课程</span>
+          </button>
+        </div>
+        <div class="section-heading">
           <div class="section-actions">
             <button class="visitor-pet" id="visitorPet" type="button" aria-label="查看我的宠物中心" hidden>
               <img id="visitorPetImage" src="" alt="" />
@@ -123,10 +134,6 @@
                 <strong><span id="remainingLessonCount">0</span> 次</strong>
               </div>
             </div>
-            <button class="primary-button add-course-button" id="addCourse" type="button" hidden>
-              <i data-lucide="plus"></i>
-              <span>新增课程</span>
-            </button>
           </div>
         </div>
 
@@ -138,11 +145,7 @@
         </div>
         <div class="calendar-view-toolbar">
           <div class="calendar-toolbar-controls">
-            <div class="schedule-view-switcher" id="scheduleViewSwitcher" role="group" aria-label="课程表视图">
-              <button class="is-active" type="button" data-schedule-view="week" aria-pressed="true">周视图</button>
-              <button type="button" data-schedule-view="month" aria-pressed="false">月视图</button>
-              <button type="button" data-schedule-view="year" aria-pressed="false">年视图</button>
-            </div>
+
             <div class="page-font-control" aria-label="页面字号设置">
               <label for="pageFontSizeInput">
                 <i data-lucide="type" aria-hidden="true"></i>
@@ -180,6 +183,7 @@
           </button>
         </div>
 
+        <div class="schedule-agenda" id="scheduleAgenda" hidden></div>
         <div class="schedule-scroll" id="scheduleScroll">
           <div class="schedule-grid" id="scheduleGrid" aria-label="一周课程表"></div>
         </div>
@@ -903,6 +907,18 @@
         </p>
         <p id="permissionHint">只读模式 · 曾老师的修改会实时显示在这里</p>
       </footer>
+
+      <nav class="student-tabbar" id="studentTabbar" aria-label="学生导航" hidden>
+        <button class="is-active" type="button" data-student-tab="schedule"><i data-lucide="calendar-days"></i><span>课表</span></button>
+        <button type="button" data-student-tab="challenge"><i data-lucide="brain-circuit"></i><span>挑战</span></button>
+        <button type="button" data-student-tab="pet"><i data-lucide="paw-print"></i><span>宠物</span></button>
+        <button type="button" data-student-tab="me"><i data-lucide="circle-user-round"></i><span>我的</span></button>
+      </nav>
+      <dialog class="confirm-dialog me-sheet" id="studentMeSheet" aria-labelledby="studentMeTitle">
+        <h3 id="studentMeTitle">我的</h3>
+        <div class="me-sheet-list" id="studentMeList"></div>
+        <div class="confirm-actions"><button class="secondary-button" id="closeStudentMe" type="button">关闭</button></div>
+      </dialog>
     </main>
 
     <dialog class="week-overview-dialog" id="weekOverviewDialog">
@@ -1139,9 +1155,9 @@
 
     <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
 
-    <script src="vendor/lucide-subset.js?v=20261008-1"></script>
+    <script src="vendor/lucide-subset.js?v=20261009-1"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20261009-3"></script>
+    <script src="app.js?v=20261009-4"></script>
     <script src="assets/operations.js?v=20261008-2"></script>
     <script src="assets/export.js?v=20261008-1"></script>
     <script src="assets/admin-layout.js?v=20260910-2"></script>
