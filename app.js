@@ -935,9 +935,9 @@ function colorWithAlpha(color, alpha) {
 function applyCourseColor(element, color) {
   const effective = color || defaultCourseColor;
   const isWhite = effective.toLowerCase() === defaultCourseColor;
-  element.style.setProperty("--course-color", isWhite ? "#aeb7b0" : effective);
+  element.style.setProperty("--course-color", isWhite ? "#a9b4c4" : effective);
   element.style.setProperty("--course-background", isWhite ? "#ffffff" : colorWithAlpha(effective, 0.14));
-  element.style.setProperty("--course-border", isWhite ? "#d7ddd8" : colorWithAlpha(effective, 0.42));
+  element.style.setProperty("--course-border", isWhite ? "#d9e0ea" : colorWithAlpha(effective, 0.42));
 }
 
 function showStatus(message, action = null) {

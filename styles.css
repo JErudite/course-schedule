@@ -1,12 +1,12 @@
 :root {
   --background: #f4f5f1;
   --surface: #ffffff;
-  --ink: #1d2420;
-  --muted: #6f7772;
-  --line: #dfe3dd;
-  --line-soft: #eaede8;
-  --green: #2f6b4f;
-  --green-soft: #dcece3;
+  --ink: #1c2025;
+  --muted: #6c727a;
+  --line: #dcdfe4;
+  --line-soft: #e7eaee;
+  --green: #2d519d;
+  --green-soft: #d5dff3;
   --blue: #326a88;
   --blue-soft: #dcecf3;
   --coral: #9a533e;
@@ -86,7 +86,7 @@ button {
 
 button:focus-visible,
 .course-card:focus-visible {
-  outline: 3px solid rgba(47, 107, 79, 0.25);
+  outline: 3px solid rgba(45, 81, 157, 0.25);
   outline-offset: 2px;
 }
 
@@ -103,7 +103,7 @@ button:focus-visible,
   place-items: center;
   padding: 24px;
   background:
-    linear-gradient(rgba(47, 107, 79, 0.04), rgba(47, 107, 79, 0.04)),
+    linear-gradient(rgba(45, 81, 157, 0.04), rgba(45, 81, 157, 0.04)),
     var(--background);
 }
 
@@ -113,7 +113,7 @@ button:focus-visible,
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  box-shadow: 0 18px 50px rgba(29, 36, 32, 0.1);
+  box-shadow: 0 18px 50px rgba(28, 32, 37, 0.1);
 }
 
 .login-brand {
@@ -208,7 +208,7 @@ h1 {
 .icon-button:hover,
 .today-button:hover,
 .week-picker:hover {
-  border-color: #b9c2bb;
+  border-color: #b7bcc4;
   background: #fafbf9;
 }
 
@@ -268,11 +268,11 @@ h1 {
   overflow: hidden;
   border: 0;
   border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(25, 32, 27, 0.22);
+  box-shadow: 0 24px 70px rgba(24, 28, 33, 0.22);
 }
 
 .week-overview-dialog::backdrop {
-  background: rgba(24, 30, 26, 0.36);
+  background: rgba(23, 26, 31, 0.36);
   backdrop-filter: blur(2px);
 }
 
@@ -341,7 +341,7 @@ h1 {
 
 .period-year-jump input:focus {
   border-color: var(--green);
-  outline: 3px solid rgba(47, 107, 79, 0.13);
+  outline: 3px solid rgba(45, 81, 157, 0.13);
 }
 
 .period-year-jump .secondary-button {
@@ -367,7 +367,7 @@ h1 {
   gap: 8px;
   padding-right: 3px;
   overflow-y: auto;
-  scrollbar-color: #c8cec8 transparent;
+  scrollbar-color: #c7cacf transparent;
 }
 
 .week-thumbnail-grid.is-month-picker,
@@ -394,12 +394,12 @@ h1 {
 }
 
 .week-thumbnail:hover {
-  border-color: #9fb1a4;
+  border-color: #9ca6b4;
   background: #fafbf9;
 }
 
 .week-thumbnail.is-current {
-  border-color: #79a98d;
+  border-color: #718bb1;
   box-shadow: inset 3px 0 0 var(--green);
 }
 
@@ -429,12 +429,12 @@ h1 {
 .week-miniature i {
   height: 3px;
   border-radius: 2px;
-  background: #d8ddd8;
+  background: #d7dade;
 }
 
 .week-thumbnail.is-selected .week-miniature i,
 .week-thumbnail.is-current .week-miniature i {
-  background: #82aa92;
+  background: #7b91b1;
 }
 
 .period-thumbnail {
@@ -451,12 +451,12 @@ h1 {
   width: 100%;
   height: 4px;
   border-radius: 3px;
-  background: #d8ddd8;
+  background: #d7dade;
 }
 
 .period-thumbnail.is-selected .period-thumbnail-line,
 .period-thumbnail.is-current .period-thumbnail-line {
-  background: #82aa92;
+  background: #7b91b1;
 }
 
 .topbar-actions {
@@ -488,7 +488,7 @@ h1 {
   height: 7px;
   flex: 0 0 7px;
   border-radius: 50%;
-  background: #9aa39d;
+  background: #989da5;
 }
 
 .sync-state.is-online .sync-dot {
@@ -541,7 +541,7 @@ h1 {
 }
 
 .auth-button:hover {
-  background: #303933;
+  background: #2e333b;
 }
 
 .auth-button:active {
@@ -549,7 +549,7 @@ h1 {
 }
 
 .auth-button.is-authenticated {
-  border-color: #b9c2bb;
+  border-color: #b7bcc4;
   background: var(--surface);
   color: var(--ink);
 }
@@ -566,7 +566,7 @@ h1 {
 
 .user-button:hover {
   border-color: var(--ink);
-  background: #303933;
+  background: #2e333b;
 }
 
 .schedule-section {
@@ -624,7 +624,7 @@ h1 {
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #eef1ed;
+  background: #eceef2;
 }
 
 .schedule-view-switcher button {
@@ -646,7 +646,7 @@ h1 {
 .schedule-view-switcher button.is-active {
   background: var(--surface);
   color: var(--green);
-  box-shadow: 0 1px 4px rgba(29, 36, 32, 0.12);
+  box-shadow: 0 1px 4px rgba(28, 32, 37, 0.12);
 }
 
 .page-font-control {
@@ -793,9 +793,9 @@ h1 {
   display: block;
   width: 42px;
   height: 42px;
-  border: 1px dashed #cbd2cc;
+  border: 1px dashed #caced3;
   border-radius: 7px;
-  background: #f1f3f0;
+  background: #eff1f4;
 }
 
 .visitor-pet.is-unassigned:hover strong {
@@ -1132,7 +1132,7 @@ h1 {
 }
 
 .generated-password-field input {
-  background: #f2f5f1;
+  background: #f0f2f6;
   color: var(--green);
   font-weight: 800;
   text-transform: uppercase;
@@ -1157,7 +1157,7 @@ h1 {
 .question-sub-bank-copy > strong { font-size: 1.08rem; }
 .question-sub-bank-stats { display: flex; flex-wrap: wrap; gap: 7px; }
 .question-sub-bank-stat { padding: 4px 8px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; background: var(--surface-soft); font-size: 0.82rem; }
-.question-sub-bank-stat.is-choice { color: var(--accent-strong); border-color: #b8d5c7; background: var(--accent-soft); }
+.question-sub-bank-stat.is-choice { color: var(--accent-strong); border-color: #a7bbe6; background: var(--accent-soft); }
 .question-sub-bank-stat.is-word { color: #6553a3; border-color: #d8d0f1; background: #f3f0ff; }
 .question-sub-bank-actions { display: flex; align-items: center; gap: 10px; }
 .question-sub-bank-actions input[type="text"] { width: min(260px, 34vw); }
@@ -1363,7 +1363,7 @@ h1 {
 }
 
 .attendance-history-day.is-selected {
-  border-color: #9db8a7;
+  border-color: #98a7bd;
   box-shadow: inset 3px 0 0 var(--green);
 }
 
@@ -1445,7 +1445,7 @@ h1 {
   overflow: hidden;
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  background: #f8faf7;
+  background: #f7f8fa;
   color: var(--ink);
   font-size: 10px;
   text-overflow: ellipsis;
@@ -2239,7 +2239,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  scrollbar-color: #c8cec8 transparent;
+  scrollbar-color: #c7cacf transparent;
 }
 
 .calendar-overview {
@@ -2247,7 +2247,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  scrollbar-color: #c8cec8 transparent;
+  scrollbar-color: #c7cacf transparent;
 }
 
 .month-calendar-grid {
@@ -2349,8 +2349,8 @@ h1 {
   min-height: 25px;
   padding: 3px 5px;
   overflow: hidden;
-  border: 1px solid var(--course-border, #d7ddd8);
-  border-left: 3px solid var(--course-color, #aeb7b0);
+  border: 1px solid var(--course-border, #d6d9de);
+  border-left: 3px solid var(--course-color, #acb1b9);
   border-radius: 5px;
   background: var(--course-background, #ffffff);
   cursor: pointer;
@@ -2359,7 +2359,7 @@ h1 {
 
 .calendar-course-chip:hover {
   filter: saturate(1.06);
-  box-shadow: 0 3px 8px rgba(29, 36, 32, 0.08);
+  box-shadow: 0 3px 8px rgba(28, 32, 37, 0.08);
 }
 
 .calendar-course-chip span,
@@ -2403,13 +2403,13 @@ h1 {
 }
 
 .year-month-card:hover {
-  border-color: #9fb9aa;
-  box-shadow: 0 7px 18px rgba(29, 36, 32, 0.08);
+  border-color: #9aa8be;
+  box-shadow: 0 7px 18px rgba(28, 32, 37, 0.08);
   transform: translateY(-1px);
 }
 
 .year-month-card:focus-visible {
-  outline: 3px solid rgba(47, 107, 79, 0.2);
+  outline: 3px solid rgba(45, 81, 157, 0.2);
   outline-offset: 2px;
 }
 
@@ -2468,8 +2468,8 @@ h1 {
 }
 
 .year-day.has-course {
-  background: #e4f3e9;
-  color: #275f46;
+  background: #e0eafd;
+  color: #28478a;
 }
 
 .year-day.is-holiday {
@@ -2481,11 +2481,11 @@ h1 {
 }
 
 .year-day.has-course.is-holiday {
-  background: linear-gradient(90deg, #e4f3e9 0 50%, #fff4f2 50% 100%);
+  background: linear-gradient(90deg, #e0eafd 0 50%, #fff4f2 50% 100%);
 }
 
 .year-day.has-course.is-workday {
-  background: linear-gradient(90deg, #e4f3e9 0 50%, #fff8e8 50% 100%);
+  background: linear-gradient(90deg, #e0eafd 0 50%, #fff8e8 50% 100%);
 }
 
 .year-day .calendar-day-status {
@@ -2627,7 +2627,7 @@ h1 {
 
 .grid-cell {
   background: var(--surface);
-  border-bottom-color: #f1f3f0;
+  border-bottom-color: #eff1f4;
 }
 
 .grid-cell.is-hour {
@@ -2635,7 +2635,7 @@ h1 {
 }
 
 .grid-cell.is-today {
-  background: #e3efe8;
+  background: #e2e8f0;
 }
 
 .can-edit .grid-cell {
@@ -2656,7 +2656,7 @@ h1 {
   overflow: hidden;
   border: 1px dashed var(--green);
   border-radius: 6px;
-  background: rgba(220, 236, 227, 0.92);
+  background: rgba(213, 223, 243, 0.92);
   color: var(--green);
   pointer-events: none;
   user-select: none;
@@ -2692,9 +2692,9 @@ body.is-selecting-course {
   margin: 2px 4px;
   padding: 10px 10px 9px;
   overflow: hidden;
-  border: 1px solid var(--course-border, #d7ddd8);
+  border: 1px solid var(--course-border, #d6d9de);
   border-left-width: 4px;
-  border-left-color: var(--course-color, #aeb7b0);
+  border-left-color: var(--course-color, #acb1b9);
   border-radius: 6px;
   cursor: pointer;
   touch-action: manipulation;
@@ -2729,14 +2729,14 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   cursor: grabbing;
   filter: saturate(1.08);
   opacity: 0.92;
-  box-shadow: 0 12px 28px rgba(29, 36, 32, 0.2);
+  box-shadow: 0 12px 28px rgba(28, 32, 37, 0.2);
 }
 
 .course-card:hover {
   z-index: 6;
   filter: saturate(1.05);
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(29, 36, 32, 0.09);
+  box-shadow: 0 8px 18px rgba(28, 32, 37, 0.09);
 }
 
 .course-card strong,
@@ -2748,7 +2748,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 
 .course-card .course-time {
   margin-bottom: 4px;
-  color: rgba(29, 36, 32, 0.82);
+  color: rgba(28, 32, 37, 0.82);
   font-weight: 700;
 }
 
@@ -2759,7 +2759,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .course-card span {
-  color: rgba(29, 36, 32, 0.67);
+  color: rgba(28, 32, 37, 0.67);
   font-size: 11px;
   line-height: 1.5;
   white-space: nowrap;
@@ -2825,7 +2825,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .course-card.tone-0 {
-  border-color: #bfd9c9;
+  border-color: #b0c2e8;
   border-left-color: var(--green);
   background: var(--green-soft);
 }
@@ -2872,11 +2872,11 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   overflow-y: auto;
   border: 0;
   border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(25, 32, 27, 0.22);
+  box-shadow: 0 24px 70px rgba(24, 28, 33, 0.22);
 }
 
 .course-dialog::backdrop {
-  background: rgba(24, 30, 26, 0.36);
+  background: rgba(23, 26, 31, 0.36);
   backdrop-filter: blur(2px);
 }
 
@@ -2958,7 +2958,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   align-items: center;
   gap: 11px;
   margin-bottom: 0;
-  color: #4f5852;
+  color: #4d525a;
   font-size: 13px;
 }
 
@@ -2985,7 +2985,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 .dialog-notes p {
   display: block;
   margin: 0;
-  color: #4f5852;
+  color: #4d525a;
   font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -2993,7 +2993,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .dialog-notes p.is-empty {
-  color: #979e99;
+  color: #9499a1;
 }
 
 .dialog-form {
@@ -3052,14 +3052,14 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 .form-field input:hover,
 .form-field select:hover,
 .form-field textarea:hover {
-  border-color: #b9c2bb;
+  border-color: #b7bcc4;
 }
 
 .form-field input:focus,
 .form-field select:focus,
 .form-field textarea:focus {
   border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(47, 107, 79, 0.12);
+  box-shadow: 0 0 0 3px rgba(45, 81, 157, 0.12);
 }
 
 .number-field-with-suffix {
@@ -3124,7 +3124,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .weekday-selector label:hover span {
-  border-color: #9fb9aa;
+  border-color: #9aa8be;
 }
 
 .weekday-selector input:checked + span {
@@ -3134,7 +3134,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .weekday-selector input:focus-visible + span {
-  outline: 3px solid rgba(47, 107, 79, 0.18);
+  outline: 3px solid rgba(45, 81, 157, 0.18);
   outline-offset: 2px;
 }
 
@@ -3173,7 +3173,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .primary-button:hover {
-  background: #275c43;
+  background: #274688;
 }
 
 .primary-button:disabled,
@@ -3194,8 +3194,8 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .secondary-button:hover {
-  border-color: #b9c2bb;
-  background: #f7f8f5;
+  border-color: #b7bcc4;
+  background: #f4f6f9;
 }
 
 .course-dialog.is-editing .dialog-details,
@@ -3237,11 +3237,11 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   padding: 24px;
   border: 0;
   border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(25, 32, 27, 0.22);
+  box-shadow: 0 24px 70px rgba(24, 28, 33, 0.22);
 }
 
 .student-dialog::backdrop {
-  background: rgba(24, 30, 26, 0.36);
+  background: rgba(23, 26, 31, 0.36);
   backdrop-filter: blur(2px);
 }
 
@@ -3359,8 +3359,8 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .lesson-count-editor input:focus {
-  border-color: #7eaa91;
-  outline: 3px solid rgba(47, 107, 79, 0.12);
+  border-color: #768eb2;
+  outline: 3px solid rgba(45, 81, 157, 0.12);
 }
 
 .student-row .icon-button {
@@ -3403,7 +3403,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 
 .student-auto-save-state.is-pending,
 .student-auto-save-state.is-saving {
-  color: #7a887f;
+  color: #787f8a;
 }
 
 .student-auto-save-state.is-pending .is-progress-icon,
@@ -3464,7 +3464,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .student-check-item:has(input:checked) {
-  border-color: #8bb49d;
+  border-color: #849abb;
   background: var(--green-soft);
 }
 
@@ -3516,7 +3516,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   height: 26px;
   flex: 0 0 26px;
   padding: 0;
-  border: 1px solid rgba(29, 36, 32, 0.22);
+  border: 1px solid rgba(28, 32, 37, 0.22);
   border-radius: 4px;
   background: var(--swatch-color);
   cursor: pointer;
@@ -3524,7 +3524,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 
 .color-swatch:hover {
   transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(29, 36, 32, 0.13);
+  box-shadow: 0 3px 8px rgba(28, 32, 37, 0.13);
 }
 
 .color-swatch.is-selected {
@@ -3547,7 +3547,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   width: 13px;
   height: 13px;
   flex: 0 0 13px;
-  border: 1px solid rgba(29, 36, 32, 0.22);
+  border: 1px solid rgba(28, 32, 37, 0.22);
   border-radius: 2px;
   background: var(--student-color);
 }
@@ -3652,7 +3652,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   min-height: 38px;
   padding: 0 10px;
   border-bottom: 1px solid var(--line);
-  background: #f8f9f6;
+  background: #f5f7fa;
   color: var(--muted);
   font-size: 11px;
   font-weight: 600;
@@ -3671,9 +3671,9 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   gap: 16px;
   margin-top: 18px;
   padding: 10px;
-  border-top: 2px solid #94aa9c;
+  border-top: 2px solid #909cae;
   border-bottom: 1px solid var(--line-soft);
-  background: #f7faf7;
+  background: #f7f8fa;
 }
 
 .student-class-divider:first-child {
@@ -3696,7 +3696,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .student-class-divider.is-unassigned {
-  border-top-color: #b8bdb9;
+  border-top-color: #b6babf;
   background: #fafafa;
 }
 
@@ -3723,7 +3723,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   height: 32px;
   flex: 0 0 20px;
   place-items: center;
-  color: #a7afa9;
+  color: #a6aab0;
   cursor: grab;
 }
 
@@ -3763,7 +3763,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   width: 22px;
   height: 22px;
   padding: 0;
-  border: 1px solid rgba(29, 36, 32, 0.25);
+  border: 1px solid rgba(28, 32, 37, 0.25);
   border-radius: 3px;
   background: var(--student-color);
   cursor: pointer;
@@ -3771,7 +3771,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .student-color-button:hover {
-  outline: 2px solid rgba(47, 107, 79, 0.18);
+  outline: 2px solid rgba(45, 81, 157, 0.18);
   outline-offset: 2px;
 }
 
@@ -3785,7 +3785,7 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
-  box-shadow: 0 12px 32px rgba(29, 36, 32, 0.17);
+  box-shadow: 0 12px 32px rgba(28, 32, 37, 0.17);
 }
 
 .student-count-field {
@@ -3816,8 +3816,8 @@ body.phone-timeline .touch-timeline-controls { display: flex; flex-wrap: wrap; a
 }
 
 .student-count-field input:focus {
-  border-color: #7eaa91;
-  box-shadow: 0 0 0 3px rgba(47, 107, 79, 0.12);
+  border-color: #768eb2;
+  box-shadow: 0 0 0 3px rgba(45, 81, 157, 0.12);
 }
 
 .student-remaining-count {
@@ -4125,8 +4125,8 @@ body.is-admin-view #studentManagerButton {
 }
 
 .admin-feature-button:hover {
-  border-color: #b7c6ba;
-  box-shadow: 0 10px 24px rgba(29, 36, 32, 0.08);
+  border-color: #b4bcc9;
+  box-shadow: 0 10px 24px rgba(28, 32, 37, 0.08);
   transform: translateY(-1px);
 }
 
@@ -4887,11 +4887,11 @@ body.is-admin-view #studentManagerButton {
   border: 0;
   border-radius: 8px;
   text-align: center;
-  box-shadow: 0 24px 70px rgba(25, 32, 27, 0.22);
+  box-shadow: 0 24px 70px rgba(24, 28, 33, 0.22);
 }
 
 .confirm-dialog::backdrop {
-  background: rgba(24, 30, 26, 0.42);
+  background: rgba(23, 26, 31, 0.42);
   backdrop-filter: blur(2px);
 }
 
@@ -5909,19 +5909,19 @@ body.is-admin-view #studentManagerButton {
 }
 /* Course completion, holiday planning, and review controls. */
 .course-end-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 16px; }
-.course-end-date-item { display: grid; gap: 5px; padding: 12px 16px; text-align: left; border: 1px solid #dbe5dd; border-radius: 14px; background: #f2f7f1; color: #284c35; cursor: pointer; font: inherit; }
+.course-end-date-item { display: grid; gap: 5px; padding: 12px 16px; text-align: left; border: 1px solid #d9dfe7; border-radius: 14px; background: #f1f3f7; color: #233f7a; cursor: pointer; font: inherit; }
 .course-end-date-item span, .course-expected-end-preview { font-size: .9rem; }
-.course-expected-end-preview { padding: 12px; margin: 0; border-radius: 10px; background: #eef7ed; color: #285939; }
+.course-expected-end-preview { padding: 12px; margin: 0; border-radius: 10px; background: #eef1f6; color: #274586; }
 .holiday-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 20px; background: #fff; border-radius: 18px; }
-.holiday-form fieldset { border: 1px solid #dce3dc; border-radius: 12px; padding: 14px; min-width: 0; }
+.holiday-form fieldset { border: 1px solid #dbdfe4; border-radius: 12px; padding: 14px; min-width: 0; }
 .holiday-form .form-field-wide { grid-column: 1 / -1; }
-.holiday-help { color: #66716a; line-height: 1.6; margin: 0; }
+.holiday-help { color: #646a73; line-height: 1.6; margin: 0; }
 .holiday-course-list { display: grid; gap: 6px; max-height: 320px; overflow: auto; margin-top: 10px; }
 .holiday-course-option, .holiday-select-all { display: flex; align-items: center; gap: 10px; min-height: 44px; overflow-wrap: anywhere; }
 .holiday-course-option input, .holiday-select-all input { width: 20px; height: 20px; flex: 0 0 auto; }
 .holiday-preview, .holiday-history { margin-top: 24px; padding: 20px; border-radius: 18px; background: #fff; }
-.holiday-preview-row { display: grid; gap: 7px; padding: 14px 0; border-bottom: 1px solid #e6ebe5; overflow-wrap: anywhere; }
-.holiday-history-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #e6ebe5; }
+.holiday-preview-row { display: grid; gap: 7px; padding: 14px 0; border-bottom: 1px solid #e4e7ec; overflow-wrap: anywhere; }
+.holiday-history-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #e4e7ec; }
 .holiday-conflicts { color: #a0442d; line-height: 1.6; }
 #holidayStatus { line-height: 1.6; }
 #closeCourseHoliday { flex-shrink: 0; white-space: nowrap; }
@@ -5942,21 +5942,21 @@ body.is-admin-view #studentManagerButton {
   --background: #f3f5f4;
   --surface: #ffffff;
   --surface-muted: #f8faf9;
-  --ink: #15201a;
-  --muted: #67736c;
-  --line: #e0e6e2;
-  --line-soft: #edf1ee;
-  --green: #1e6a4b;
-  --green-hover: #17583d;
-  --green-soft: #e3f1e9;
-  --green-tint: #f1f8f4;
+  --ink: #131922;
+  --muted: #656b75;
+  --line: #dfe2e7;
+  --line-soft: #eceef2;
+  --green: #19429c;
+  --green-hover: #123785;
+  --green-soft: #e4e9f0;
+  --green-tint: #f1f4f8;
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;
-  --shadow-xs: 0 1px 2px rgba(18, 32, 25, 0.05);
-  --shadow-sm: 0 1px 2px rgba(18, 32, 25, 0.04), 0 4px 14px rgba(18, 32, 25, 0.05);
-  --shadow-md: 0 2px 6px rgba(18, 32, 25, 0.05), 0 14px 34px rgba(18, 32, 25, 0.09);
-  --focus-ring: 0 0 0 3px rgba(30, 106, 75, 0.16);
+  --shadow-xs: 0 1px 2px rgba(18, 23, 32, 0.05);
+  --shadow-sm: 0 1px 2px rgba(18, 23, 32, 0.04), 0 4px 14px rgba(18, 23, 32, 0.05);
+  --shadow-md: 0 2px 6px rgba(18, 23, 32, 0.05), 0 14px 34px rgba(18, 23, 32, 0.09);
+  --focus-ring: 0 0 0 3px rgba(25, 66, 156, 0.16);
 }
 
 html { background: var(--background); }
@@ -5991,8 +5991,8 @@ button:focus-visible,
   height: 42px;
   flex-basis: 42px;
   border-radius: 12px;
-  background: linear-gradient(145deg, #2a8360, var(--green));
-  box-shadow: 0 4px 10px rgba(30, 106, 75, 0.22);
+  background: linear-gradient(145deg, #2555bb, var(--green));
+  box-shadow: 0 4px 10px rgba(25, 66, 156, 0.22);
   font-size: 19px;
 }
 
@@ -6015,7 +6015,7 @@ h1 { font-size: 20px; }
 .week-picker:hover,
 .secondary-button:hover,
 .auth-button.is-authenticated:hover {
-  border-color: #c9d3cd;
+  border-color: #c7cdd5;
   background: var(--surface-muted);
 }
 
@@ -6029,7 +6029,7 @@ h1 { font-size: 20px; }
   border: 0;
   border-radius: 999px;
   background: var(--green-tint);
-  color: #3f6a55;
+  color: #3158aa;
 }
 
 /* Personal-service links (课程通知 · 学习周报 …) become a light pill row */
@@ -6042,7 +6042,7 @@ h1 { font-size: 20px; }
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.7);
   box-shadow: none;
-  color: #34443b;
+  color: #313a47;
   font-size: 13px;
   font-weight: 600;
 }
@@ -6055,13 +6055,13 @@ h1 { font-size: 20px; }
 .primary-button {
   border-color: var(--green);
   background: var(--green);
-  box-shadow: 0 1px 2px rgba(18, 32, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 2px rgba(18, 23, 32, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: background-color 140ms ease, transform 140ms ease;
 }
 .primary-button:hover { background: var(--green-hover); }
 .primary-button:active, .secondary-button:active { transform: translateY(1px); }
 
-.form-field > span { color: #56625b; font-size: 12px; }
+.form-field > span { color: #545a64; font-size: 12px; }
 
 .form-field input,
 .form-field select,
@@ -6096,7 +6096,7 @@ h1 { font-size: 20px; }
   width: 38px;
   height: 38px;
   flex: 0 0 38px;
-  border: 1px dashed #cdd6d0;
+  border: 1px dashed #cbd0d8;
   border-radius: 9px;
   background: var(--surface-muted);
 }
@@ -6119,10 +6119,10 @@ h1 { font-size: 20px; }
   padding: 3px;
   border: 0;
   border-radius: 12px;
-  background: #e7ece9;
+  background: #e6e9ed;
 }
 .schedule-view-switcher button { min-height: 34px; border-radius: 9px; font-size: 13px; }
-.schedule-view-switcher button.is-active { color: var(--green); box-shadow: 0 1px 3px rgba(18, 32, 25, 0.12); }
+.schedule-view-switcher button.is-active { color: var(--green); box-shadow: 0 1px 3px rgba(18, 23, 32, 0.12); }
 
 .page-font-control {
   min-height: 40px;
@@ -6139,7 +6139,7 @@ h1 { font-size: 20px; }
   border-color: var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  scrollbar-color: #cad3cd transparent;
+  scrollbar-color: #c8cdd5 transparent;
 }
 
 .grid-corner,
@@ -6155,21 +6155,21 @@ h1 { font-size: 20px; }
 
 .time-slot strong { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.grid-cell { border-bottom-color: #f3f6f4; }
-.grid-cell.is-hour { border-top-color: #e4e9e6; }
+.grid-cell { border-bottom-color: #f2f4f7; }
+.grid-cell.is-hour { border-top-color: #e3e6ea; }
 .grid-cell.is-today { background: var(--green-tint); }
 
 .course-card {
   margin: 2px 4px;
   border-left-width: 3px;
   border-radius: 9px;
-  box-shadow: 0 1px 2px rgba(18, 32, 25, 0.06);
+  box-shadow: 0 1px 2px rgba(18, 23, 32, 0.06);
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
 .course-card:hover {
   filter: none;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(18, 32, 25, 0.1);
+  box-shadow: 0 6px 16px rgba(18, 23, 32, 0.1);
 }
 
 .month-day.is-today { background: var(--green-tint); }
@@ -6199,7 +6199,7 @@ h1 { font-size: 20px; }
   transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 .admin-feature-button:hover {
-  border-color: #cbd6cf;
+  border-color: #c9cfd8;
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
@@ -6213,7 +6213,7 @@ h1 { font-size: 20px; }
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #a9b4ad;
+  color: #a7adb6;
   font-size: 20px;
 }
 .admin-drag-handle:hover { background: var(--surface-muted); color: var(--green); }
@@ -6242,14 +6242,14 @@ h1 { font-size: 20px; }
   min-height: 44px;
   height: auto;
   padding: 10px 16px;
-  border: 1px solid #d5e7dc;
+  border: 1px solid #ccd7f0;
   border-radius: 12px;
   background: var(--green-tint);
   box-shadow: none;
-  color: #1f4d39;
+  color: #213b73;
   font-weight: 700;
 }
-.operations-tiles button:hover { border-color: #b9d8c6; background: var(--green-soft); }
+.operations-tiles button:hover { border-color: #abbee6; background: var(--green-soft); }
 .operations-dashboard .operations-inline { align-items: flex-end; gap: 10px; }
 .operations-dashboard .operations-inline .form-field { flex: 0 1 220px; margin: 0; }
 .operations-chips button { border-radius: 999px; }
@@ -6260,28 +6260,28 @@ h1 { font-size: 20px; }
 .student-dialog,
 .confirm-dialog {
   border-radius: 18px;
-  box-shadow: 0 24px 64px rgba(15, 26, 20, 0.22);
+  box-shadow: 0 24px 64px rgba(14, 19, 27, 0.22);
 }
 
 .week-overview-dialog::backdrop,
 .course-dialog::backdrop,
 .student-dialog::backdrop,
 .confirm-dialog::backdrop {
-  background: rgba(16, 26, 21, 0.38);
+  background: rgba(15, 20, 27, 0.38);
   backdrop-filter: none;
 }
 
 .status-message {
   border-radius: 12px;
-  background: #16231c;
-  box-shadow: 0 10px 30px rgba(15, 26, 20, 0.25);
+  background: #141b25;
+  box-shadow: 0 10px 30px rgba(14, 19, 27, 0.25);
   font-size: 13px;
 }
 
 /* ---------- Login ---------- */
 .login-screen {
   background:
-    radial-gradient(900px 480px at 15% -10%, rgba(42, 131, 96, 0.14), transparent 60%),
+    radial-gradient(900px 480px at 15% -10%, rgba(37, 85, 187, 0.14), transparent 60%),
     radial-gradient(700px 420px at 110% 110%, rgba(50, 106, 136, 0.1), transparent 60%),
     var(--background);
 }
@@ -6290,7 +6290,7 @@ h1 { font-size: 20px; }
   padding: 32px;
   border-color: var(--line);
   border-radius: 20px;
-  box-shadow: 0 1px 2px rgba(18, 32, 25, 0.04), 0 24px 60px rgba(18, 32, 25, 0.1);
+  box-shadow: 0 1px 2px rgba(18, 23, 32, 0.04), 0 24px 60px rgba(18, 23, 32, 0.1);
 }
 
 .login-submit { width: 100%; height: 44px; }
@@ -6420,9 +6420,9 @@ h1 { font-size: 20px; }
   gap: 4px 12px;
   margin: 0 0 14px;
   padding: 14px 18px;
-  border: 1px solid #cfe3d6;
+  border: 1px solid #c4d1ee;
   border-radius: 14px;
-  background: var(--green-tint, #f1f8f4);
+  background: var(--green-tint, #f1f4f8);
   color: var(--ink);
 }
 .next-lesson-card small { color: var(--green); font-size: 12px; font-weight: 700; }
@@ -6433,3 +6433,134 @@ h1 { font-size: 20px; }
   .next-lesson-card strong { font-size: 16px; }
   .student-row-actions { flex-wrap: wrap; justify-content: flex-end; }
 }
+/* ==========================================================================
+   2026-10 blue refresh
+   White surfaces on a cool slate canvas, one blue accent used only for what is
+   active or clickable, hairline borders instead of heavy shadows, restrained
+   radii. (Pattern shared by Linear, Notion Calendar and Cal.com.) Status colours
+   keep their meaning: green = present / done, amber = low, red = none left.
+   Token names stay "--green*" for compatibility; they now hold the blue accent.
+   ========================================================================== */
+:root {
+  --background: #f4f6fa;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --ink: #0f172a;
+  --text: #334155;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --line-soft: #eef2f7;
+  --green: #2563eb;
+  --green-hover: #1d4ed8;
+  --green-soft: #e8f0fe;
+  --green-tint: #f4f8ff;
+  --blue: #2563eb;
+  --blue-soft: #e8f0fe;
+  --success: #15803d;
+  --success-soft: #e8f6ed;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 10px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 2px 6px rgba(15, 23, 42, 0.05), 0 12px 32px rgba(15, 23, 42, 0.08);
+  --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+body { color: var(--ink); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { letter-spacing: -0.015em; }
+.eyebrow { color: var(--muted); font-weight: 500; letter-spacing: 0.01em; }
+
+/* Header: one crisp white bar */
+.topbar { border-color: var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); }
+.brand-mark {
+  border-radius: 11px;
+  background: linear-gradient(150deg, #3b82f6 0%, #1d4ed8 100%);
+  box-shadow: 0 1px 2px rgba(29, 78, 216, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.sync-state { background: var(--surface-muted); color: var(--muted); border: 1px solid var(--line-soft); }
+.sync-state.is-online .sync-dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15); }
+.week-picker span { font-weight: 700; }
+.week-picker small { color: var(--muted); }
+
+/* Buttons: blue primary, white hairline secondary */
+.primary-button, .secondary-button { border-radius: 9px; }
+.primary-button {
+  border-color: var(--green);
+  background: var(--green);
+  box-shadow: 0 1px 2px rgba(29, 78, 216, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.primary-button:hover { border-color: var(--green-hover); background: var(--green-hover); }
+.icon-button, .today-button, .week-picker, .secondary-button, .auth-button.is-authenticated { box-shadow: none; }
+.icon-button:hover, .today-button:hover, .week-picker:hover, .secondary-button:hover, .auth-button.is-authenticated:hover {
+  border-color: #cbd5e1;
+  background: var(--surface-muted);
+}
+.form-field > span { color: var(--text); font-weight: 500; }
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus,
+.operations-page input:focus, .operations-page select:focus, .operations-dashboard input:focus { border-color: #93b4f6; }
+
+/* Schedule heading and controls */
+.section-heading h2, .admin-page-header h2 { font-size: 24px; letter-spacing: -0.02em; }
+.schedule-view-switcher { background: #edf1f7; border-radius: 10px; }
+.schedule-view-switcher button { color: var(--muted); font-weight: 600; }
+.schedule-view-switcher button.is-active { color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.04); }
+.page-font-control, .lesson-summary, .visitor-pet { box-shadow: none; }
+.lesson-summary .is-remaining strong { color: var(--green); }
+
+/* Calendar: white grid, faint lines, blue "today" */
+.schedule-scroll, .calendar-overview { border-color: var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); }
+.grid-corner, .day-header, .time-slot { background: var(--surface); }
+.day-header { border-bottom-color: var(--line); }
+.day-header strong { color: var(--text); font-weight: 600; }
+.day-header.is-today { background: var(--green-tint); }
+.day-header.is-today strong { color: var(--green); }
+.day-header.is-today > span:not(.calendar-day-status) { background: var(--green); color: #ffffff; }
+.time-slot strong { color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; }
+.grid-cell { border-bottom-color: #f5f7fa; border-left-color: var(--line-soft); }
+.grid-cell.is-hour { border-top-color: #e8edf3; }
+.grid-cell.is-today { background: #f7faff; }
+.course-card { border-radius: 8px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); }
+.course-card:hover { transform: none; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1); }
+.month-day.is-today { background: var(--green-tint); }
+
+/* Admin hub: calm cards, one icon colour */
+.admin-feature-button { border-color: var(--line); box-shadow: none; }
+.admin-feature-button:hover { border-color: #bfd3fb; box-shadow: var(--shadow-sm); transform: none; }
+.admin-feature-icon,
+.admin-feature-icon.is-student, .admin-feature-icon.is-attendance, .admin-feature-icon.is-pet,
+.admin-feature-icon.is-ranking, .admin-feature-icon.is-coin-shop, .admin-feature-icon.is-challenge,
+.admin-feature-icon.is-question-bank {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--green-soft);
+  color: var(--green);
+}
+.admin-feature-button > i:last-child { color: #94a3b8; }
+.operations-dashboard, .operations-card { box-shadow: none; }
+.operations-tiles button { border-color: #d6e4fd; background: var(--green-tint); color: #1e40af; }
+.operations-tiles button:hover { border-color: #bfd3fb; background: var(--green-soft); }
+.admin-page:not(.admin-hub):not(.operations-page) { box-shadow: var(--shadow-xs); }
+
+/* Status colours keep their meaning */
+.attendance-status-button.is-present.is-selected,
+.attendance-record-marker.is-complete,
+.student-attendance-status.is-present,
+.challenge-record-row.is-correct .challenge-record-result { border-color: #86c79b; background: var(--success-soft); color: var(--success); }
+.student-auto-save-state { color: var(--success); }
+
+/* Dialogs, toast, login */
+.week-overview-dialog, .course-dialog, .student-dialog, .confirm-dialog { border-radius: 16px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18); }
+.week-overview-dialog::backdrop, .course-dialog::backdrop, .student-dialog::backdrop, .confirm-dialog::backdrop { background: rgba(15, 23, 42, 0.36); }
+.status-message { background: #0f172a; }
+.login-screen {
+  background:
+    radial-gradient(900px 480px at 12% -10%, rgba(37, 99, 235, 0.12), transparent 60%),
+    radial-gradient(700px 420px at 110% 110%, rgba(56, 189, 248, 0.1), transparent 60%),
+    var(--background);
+}
+.next-lesson-card { border-color: #d6e4fd; background: var(--green-tint); }
+.next-lesson-card small { color: var(--green); }
+.course-end-date-item { border-color: var(--line); background: var(--surface); color: var(--ink); }
+.course-end-date-item span { color: var(--muted); }
