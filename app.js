@@ -935,11 +935,22 @@ function applyCourseColor(element, color) {
   element.style.setProperty("--course-border", isWhite ? "#d7ddd8" : colorWithAlpha(effective, 0.42));
 }
 
-function showStatus(message) {
+function showStatus(message, action = null) {
   statusMessage.textContent = message;
+  statusMessage.classList.toggle("has-action", Boolean(action));
+  if (action) {
+    const button = createElement("button", "status-message-action", action.label);
+    button.type = "button";
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      statusMessage.classList.remove("is-visible", "has-action");
+      try { await action.run(); } catch { showStatus("操作未完成，请刷新后重试"); }
+    }, { once: true });
+    statusMessage.append(button);
+  }
   statusMessage.classList.add("is-visible");
   window.clearTimeout(statusTimer);
-  statusTimer = window.setTimeout(() => statusMessage.classList.remove("is-visible"), 3200);
+  statusTimer = window.setTimeout(() => statusMessage.classList.remove("is-visible", "has-action"), action ? 10000 : 3200);
 }
 
 function settleCourseConflict(confirmed) {
@@ -3160,6 +3171,8 @@ async function showCoinShop() {
   coinShopPage.hidden = false;
   document.body.classList.add("is-admin-view");
   document.querySelector("#coinShopCreateSection").hidden = !canEdit;
+  document.querySelector("#coinShopOrdersSection").hidden = !canEdit;
+  if (canEdit) void window.CourseOperations?.mountOrders(document.querySelector("#coinShopOrdersList"));
   document.querySelector("#coinShopStudentSummary").hidden = canEdit;
   document.querySelector("#coinShopListTitle").textContent = canEdit ? "全部商品" : "可兑换商品";
   document.querySelector("#closeCoinShop span").textContent = canEdit ? "返回管理后台" : "返回学习挑战";
@@ -3571,6 +3584,7 @@ function renderSchedule() {
   if (scheduleSection.hidden && currentUser) return;
   scheduleRenderPending = false;
   renderCourseEndDates();
+  renderNextLesson();
   updateScheduleViewControls();
   if (scheduleView === "month") {
     renderMonthSchedule();
@@ -3581,6 +3595,41 @@ function renderSchedule() {
     return;
   }
   renderWeekSchedule();
+}
+
+function getScheduleNowMinutes() {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+    timeZone: scheduleTimeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date()).map(({ type, value }) => [type, value]));
+  return Number(parts.hour) * 60 + Number(parts.minute);
+}
+
+// Students mostly open the page on a phone to answer one question: when is my next class?
+function renderNextLesson() {
+  const card = document.querySelector("#nextLessonCard");
+  if (!card) return;
+  card.hidden = true;
+  if (canEdit || !currentUser) return;
+  const today = getScheduleToday();
+  const nowMinutes = getScheduleNowMinutes();
+  for (let offset = 0; offset <= 120; offset += 1) {
+    const date = addDays(today, offset);
+    const next = getOccurrencesForDate(date).find((course) => offset > 0 || course.startTime + course.duration > nowMinutes);
+    if (!next) continue;
+    const inProgress = offset === 0 && next.startTime <= nowMinutes;
+    const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()];
+    const dayLabel = offset === 0 ? "今天" : offset === 1 ? "明天" : offset === 2 ? "后天" : `${date.getMonth() + 1}月${date.getDate()}日`;
+    card.replaceChildren(
+      createElement("small", "", inProgress ? "正在上课" : "下一节课"),
+      createElement("strong", "", `${dayLabel} ${weekday} ${formatTime(next.startTime)}–${formatTime(next.startTime + next.duration)}`),
+      createElement("span", "", next.name),
+    );
+    card.hidden = false;
+    return;
+  }
 }
 
 function renderCourseEndDates() {
@@ -4097,7 +4146,8 @@ function renderStudentChecklist(selectedIds) {
   const selected = new Set(selectedIds);
   const checklist = document.querySelector("#studentChecklist");
   checklist.replaceChildren();
-  [...students].sort(compareStudentNames).forEach((student) => {
+  // Stopped accounts are not offered for new courses; one already in this course stays visible so it can be removed.
+  [...students].filter((student) => !student.disabled_at || selected.has(student.id)).sort(compareStudentNames).forEach((student) => {
     const label = createElement("label", "student-check-item");
     const checkbox = createElement("input");
     checkbox.type = "checkbox";
@@ -4107,7 +4157,7 @@ function renderStudentChecklist(selectedIds) {
     const color = createElement("i", "student-color-indicator");
     color.style.setProperty("--student-color", student.color || defaultCourseColor);
     color.setAttribute("aria-hidden", "true");
-    label.append(checkbox, color, createElement("span", "", student.username));
+    label.append(checkbox, color, createElement("span", "", student.disabled_at ? `${student.username}（已停用）` : student.username));
     checklist.append(label);
   });
   document.querySelector("#studentChecklistEmpty").hidden = students.length > 0;
@@ -4340,9 +4390,10 @@ async function deleteSelectedCourse(mode = "all") {
   deleteDialog.close();
   dialog.close();
   await loadSchedule({ quiet: true });
-  if (mode === "single") showStatus("仅当天课程已删除，其他重复课程保持不变");
-  else if (mode === "future") showStatus("当天及后续课程已删除，此前课程保持不变");
-  else showStatus("课程已删除");
+  const undo = window.CourseOperations ? { label: "撤销", run: () => window.CourseOperations.undoCourseDelete(course.id) } : null;
+  if (mode === "single") showStatus("仅当天课程已删除，其他重复课程保持不变", undo);
+  else if (mode === "future") showStatus("当天及后续课程已删除，此前课程保持不变", undo);
+  else showStatus("课程已删除", undo);
 }
 
 function fetchScheduleRows() {
@@ -4382,9 +4433,28 @@ async function loadSchedule({ quiet = false, prefetched = null } = {}) {
   return true;
 }
 
-async function applyRealtimeChange() {
-  await loadSchedule({ quiet: true });
-  setSyncState("online", canEdit ? "曾老师 · 实时同步" : "只读 · 实时同步");
+// Saving one course emits a burst of row events (course + every member); reload once per burst.
+let realtimeScheduleTimer = null;
+function applyRealtimeChange() {
+  window.clearTimeout(realtimeScheduleTimer);
+  realtimeScheduleTimer = window.setTimeout(async () => {
+    realtimeScheduleTimer = null;
+    await loadSchedule({ quiet: true });
+    setSyncState("online", canEdit ? "曾老师 · 实时同步" : "只读 · 实时同步");
+  }, 300);
+}
+
+let realtimeAttendanceTimer = null;
+function applyAttendanceRealtimeChange() {
+  window.clearTimeout(realtimeAttendanceTimer);
+  realtimeAttendanceTimer = window.setTimeout(async () => {
+    realtimeAttendanceTimer = null;
+    if (canEdit && !attendanceManagementPage.hidden) {
+      await Promise.all([loadAttendance(), loadAttendanceHistory({ quiet: true })]);
+    } else if (canEdit && !adminHub.hidden) {
+      await loadTodayAttendanceSummary();
+    }
+  }, 300);
 }
 
 async function applyStudentRealtimeChange() {
@@ -4463,13 +4533,7 @@ function subscribeToCourses() {
     .subscribe();
   realtimeAttendanceChannel = supabaseClient
     .channel("attendance-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "student_attendance" }, async () => {
-      if (canEdit && !attendanceManagementPage.hidden) {
-        await Promise.all([loadAttendance(), loadAttendanceHistory({ quiet: true })]);
-      } else if (canEdit && !adminHub.hidden) {
-        await loadTodayAttendanceSummary();
-      }
-    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "student_attendance" }, applyAttendanceRealtimeChange)
     .subscribe();
   realtimeCoinShopChannel = supabaseClient
     .channel("coin-shop-live")
@@ -4491,7 +4555,7 @@ async function loadStudents() {
     .order("created_at", { ascending: true });
   if (!canEdit || currentUser?.id !== requestUserId) return false;
   if (error) {
-    showStatus("无法读取访客账号，请稍后重试");
+    showStatus("无法读取学生账号，请稍后重试");
     return false;
   }
   const nextStudents = data.map((student) => normalizePetFields({
@@ -4728,7 +4792,10 @@ function createAttendanceRow(record) {
     identity.append(createElement("small", "", `${record.start_time !== null && record.start_time !== undefined ? `${formatTime(record.start_time)} · ` : ""}${record.course_names || "今日课程"}`));
     const marker = createElement("span", `attendance-record-marker${selectedStatus ? " is-complete" : ""}`, selectedStatus ? `✓ 已打卡 · ${selectedStatus.label}` : "待打卡");
     identity.append(marker);
-    const progress = createElement("span", "attendance-current-count", `当前已上 ${record.current_lesson_count} 次`);
+    const remainingCount = student ? getStudentRemainingCount(student) : null;
+    const lowThreshold = window.CourseOperations?.lowThreshold ?? 3;
+    const progress = createElement("span", `attendance-current-count${remainingCount === 0 ? " is-empty" : remainingCount !== null && remainingCount <= lowThreshold ? " is-low" : ""}`,
+      `已上 ${student ? student.current_lesson_count : record.current_lesson_count} 次${remainingCount === null ? "" : ` · 剩 ${remainingCount} 次`}`);
     const controls = createElement("div", "attendance-status-controls");
     attendanceStatusOptions.forEach(({ value, label, icon, className }) => {
       const button = createElement("button", `secondary-button attendance-status-button ${className}${record.status === value ? " is-selected" : ""}`);
@@ -4827,7 +4894,7 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
     (Number(student?.required_lesson_count) || 0) - (Number(student?.current_lesson_count) || 0),
   );
   if (status === "present" && record?.status !== "present" && student && remainingLessons === 0) {
-    showStatus(`${record?.username || student?.username || "该学生"}无法进行打卡，课程次数不足`);
+    showStatus(`${record?.username || student?.username || "该学生"}无法进行打卡，课程次数不足`, { label: "去续课", run: () => window.CourseOperations?.renewLessons(studentId) });
     return;
   }
   const previousStatus = record?.status ?? "";
@@ -4872,20 +4939,32 @@ async function markAllStudentsPresent() {
   const skippedNames = [];
   let failedCount = 0;
   try {
-    for (const record of pendingRecords) {
-      const { data, error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
-        p_student_id: record.student_id,
-        p_course_id: record.course_id || null,
-        p_attendance_date: attendanceDate,
-        p_status: "present",
-      });
-      if (error) {
-        if (String(error.message || "").includes("课程次数不足")) skippedNames.push(record.username);
-        else failedCount += 1;
-      } else if (data) {
-        checkedInCount += 1;
+    // One queue per student (their lessons are charged in order); a few students at a time.
+    const queues = [...pendingRecords.reduce((groups, record) => {
+      if (!groups.has(record.student_id)) groups.set(record.student_id, []);
+      groups.get(record.student_id).push(record);
+      return groups;
+    }, new Map()).values()];
+    const runQueue = async (queue) => {
+      for (const record of queue) {
+        const { data, error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
+          p_student_id: record.student_id,
+          p_course_id: record.course_id || null,
+          p_attendance_date: attendanceDate,
+          p_status: "present",
+        });
+        if (error) {
+          if (String(error.message || "").includes("课程次数不足")) skippedNames.push(record.username);
+          else failedCount += 1;
+        } else if (data) {
+          checkedInCount += 1;
+        }
       }
-    }
+    };
+    const workers = Array.from({ length: Math.min(4, queues.length) }, async () => {
+      while (queues.length) await runQueue(queues.shift());
+    });
+    await Promise.all(workers);
   } catch {
     failedCount += 1;
   } finally {
@@ -5196,8 +5275,8 @@ function renderStudentList() {
       saveInProgress = true;
       setStudentAutoSaveState(autoSaveState, "saving", student.username);
       const profile = {
-        currentCount: Number(currentField.input.value),
-        requiredCount: Number(requiredField.input.value),
+        currentCount: /^\d+$/.test(currentField.input.value.trim()) ? Number(currentField.input.value) : student.current_lesson_count,
+        requiredCount: /^\d+$/.test(requiredField.input.value.trim()) ? Number(requiredField.input.value) : student.required_lesson_count,
         lifetimeCount: student.lesson_count,
         color: selectedColor,
         expectedCurrent: student.current_lesson_count,
@@ -5228,16 +5307,32 @@ function renderStudentList() {
       autoSaveTimer = window.setTimeout(flushAutoSave, immediate ? 0 : 700);
     };
 
+    // Save only when an edit is finished (leaving the field or Enter). Saving while typing
+    // recorded half-typed numbers in the lesson ledger, and a cleared field was saved as 0.
+    const savedValue = (input) => String(input === currentField.input ? student.current_lesson_count : student.required_lesson_count);
+    const commitCountEdit = (input) => {
+      if (!/^\d+$/.test(input.value.trim())) {
+        input.value = savedValue(input);
+        updateRemaining();
+        if (!saveQueued && autoSaveTimer === null && !saveInProgress) setStudentAutoSaveState(autoSaveState, "saved", student.username);
+        showStatus("课次需填写 0 或正整数，不能留空，已恢复原来的数字");
+        return;
+      }
+      if (input.value.trim() === savedValue(input) && !saveQueued) {
+        setStudentAutoSaveState(autoSaveState, "saved", student.username);
+        return;
+      }
+      requestAutoSave(true);
+    };
     [currentField.input, requiredField.input].forEach((input) => {
       input.addEventListener("input", () => {
         updateRemaining();
-        requestAutoSave();
+        setStudentAutoSaveState(autoSaveState, "pending", student.username);
       });
-      input.addEventListener("change", () => requestAutoSave(true));
+      input.addEventListener("blur", () => commitCountEdit(input));
       input.addEventListener("keydown", (event) => {
         if (event.key !== "Enter") return;
         event.preventDefault();
-        requestAutoSave(true);
         input.blur();
       });
     });
@@ -5250,17 +5345,32 @@ function renderStudentList() {
       }, 0);
     });
 
-    const removeButton = createElement("button", "icon-button delete-student");
+    const removeButton = createElement("button", `icon-button ${student.disabled_at ? "restore-student" : "delete-student"}`);
     removeButton.type = "button";
-    removeButton.title = `停用${student.username}`;
-    removeButton.setAttribute("aria-label", `停用${student.username}`);
-    removeButton.innerHTML = '<i data-lucide="user-round-x"></i>';
-    removeButton.disabled = Boolean(student.disabled_at);
+    removeButton.title = student.disabled_at ? `恢复${student.username}的账号` : `停用${student.username}`;
+    removeButton.setAttribute("aria-label", removeButton.title);
+    removeButton.innerHTML = `<i data-lucide="${student.disabled_at ? "user-round-check" : "user-round-x"}"></i>`;
     removeButton.addEventListener("click", () => {
+      if (student.disabled_at) {
+        void window.CourseOperations?.setStudentEnabled(student.id, true);
+        return;
+      }
       selectedStudentId = student.id;
       document.querySelector("#deleteStudentName").textContent = student.username;
       deleteStudentDialog.showModal();
     });
+    const renewButton = createElement("button", "icon-button renew-student");
+    renewButton.type = "button";
+    renewButton.title = `给${student.username}续课`;
+    renewButton.setAttribute("aria-label", renewButton.title);
+    renewButton.innerHTML = '<i data-lucide="circle-plus"></i>';
+    renewButton.addEventListener("click", () => window.CourseOperations?.renewLessons(student.id));
+    const passwordButton = createElement("button", "icon-button reset-student-password");
+    passwordButton.type = "button";
+    passwordButton.title = `重置${student.username}的登录密码`;
+    passwordButton.setAttribute("aria-label", passwordButton.title);
+    passwordButton.innerHTML = '<i data-lucide="key-round"></i>';
+    passwordButton.addEventListener("click", () => window.CourseOperations?.resetStudentPassword(student.id));
     const actions = createElement("div", "student-row-actions");
     const deleteButton = createElement("button", "icon-button delete-student");
     deleteButton.type = "button";
@@ -5269,7 +5379,7 @@ function renderStudentList() {
     deleteButton.setAttribute("aria-label", deleteButton.title);
     deleteButton.innerHTML = '<i data-lucide="trash-2"></i>';
     deleteButton.addEventListener("click", () => window.CourseOperations?.deleteStudent(student.id));
-    actions.append(autoSaveState, removeButton, deleteButton);
+    actions.append(autoSaveState, renewButton, passwordButton, removeButton, deleteButton);
     row.append(identity, currentField.label, requiredField.label, remaining, actions);
     if (manualDrag) bindStudentRowDrag(row, student.id);
     list.append(row);
@@ -5278,7 +5388,7 @@ function renderStudentList() {
   const visibleCount = new Set(sections.flatMap(section => section.students.map(student => student.id))).size;
   document.querySelector("#studentCount").textContent = search.trim() ? `找到 ${visibleCount} / ${students.length} 人` : `${students.length} 人`;
   document.querySelector("#studentListEmpty").hidden = visibleCount > 0;
-  document.querySelector("#studentListEmpty").textContent = search.trim() ? "没有找到匹配的学生，请修改或清空搜索词" : "暂无访客账号";
+  document.querySelector("#studentListEmpty").textContent = search.trim() ? "没有找到匹配的学生，请修改或清空搜索词" : "暂无学生账号";
   document.querySelector("#studentDragHint").hidden = !manualDrag;
   if (window.lucide) window.lucide.createIcons();
 }
@@ -5759,7 +5869,7 @@ async function handleStudentSubmit(event) {
   }
   studentForm.reset();
   await loadStudents();
-  showStatus(`已新增访客“${username}”，登录密码为 ${password}`);
+  showStatus(`已新增学生“${username}”，登录密码为 ${password}`);
 }
 
 async function deleteSelectedStudent() {
@@ -5769,7 +5879,7 @@ async function deleteSelectedStudent() {
   const { error } = await supabaseClient.rpc("delete_student_account", { p_student_id: student.id });
   confirmDeleteStudentButton.disabled = false;
   if (error) {
-    showStatus("停用访客账号失败，请稍后重试");
+    showStatus("停用学生账号失败，请稍后重试");
     return;
   }
   await loadStudents();
@@ -5780,7 +5890,10 @@ async function deleteSelectedStudent() {
   showStatus(`已停用“${student.username}”，历史数据保留`);
 }
 
+let appliedSessionUserId = null;
+
 async function applySession(session) {
+  appliedSessionUserId = session?.user?.id || null;
   currentUser = null;
   canEdit = false;
   attendanceCache.clear();
@@ -6276,7 +6389,18 @@ async function initializeApp() {
   await applySession(session);
 
   supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
+    // Token refreshes and tab re-focus re-announce the same account; rebuilding the whole
+    // page for those made every return to the app slow. Only a different account re-initializes.
+    if ((nextSession?.user?.id || null) === appliedSessionUserId) return;
     window.setTimeout(() => applySession(nextSession), 0);
+  });
+  let hiddenSince = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenSince = Date.now(); return; }
+    if (!currentUser || !hiddenSince || Date.now() - hiddenSince < 60 * 1000) return;
+    hiddenSince = 0;
+    void loadSchedule({ quiet: true });
+    if (canEdit) void loadStudents();
   });
 }
 

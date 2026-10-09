@@ -6358,3 +6358,78 @@ h1 { font-size: 20px; }
 
   .status-message { right: 12px; bottom: 12px; left: 12px; max-width: none; }
 }
+
+/* ---------- 2026-10-08: account tools, orders in shop, undo toast, next lesson ---------- */
+.status-message.has-action { display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+.status-message-action {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.status-message-action:hover { background: rgba(255, 255, 255, 0.12); }
+
+.admin-hub-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.admin-hub-tools .secondary-button { min-height: 38px; }
+
+.coin-shop-orders-section { padding: 4px 0 20px; }
+.coin-shop-orders-section .coin-shop-list-heading { margin-bottom: 14px; }
+.coin-shop-orders-section .coin-shop-list-heading span { color: var(--muted); font-size: 12px; }
+#coinShopOrdersList { display: grid; gap: 12px; }
+#coinShopOrdersList .operations-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+#coinShopOrdersList .operations-card { display: grid; gap: 8px; align-content: start; }
+#coinShopOrdersList .operations-card .secondary-button { justify-self: start; }
+
+.operations-dialog { text-align: left; }
+.operations-dialog h3 { margin: 0 0 6px; }
+.operations-dialog .form-field { display: grid; gap: 6px; margin: 14px 0 0; }
+.operations-dialog .form-field input { min-height: 42px; }
+.operations-dialog [role="alert"]:not(:empty) { color: #a33e35; }
+.operations-dialog .confirm-actions { margin-top: 18px; }
+.operations-password-reveal {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--green-soft);
+  color: var(--ink);
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  user-select: all;
+}
+
+.student-row .restore-student,
+.student-row .renew-student { color: var(--green); }
+.student-row .reset-student-password { color: var(--muted); }
+
+.attendance-current-count.is-low { color: #b26a00; font-weight: 700; }
+.attendance-current-count.is-empty { color: #c62828; font-weight: 700; }
+
+.next-lesson-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 14px;
+  padding: 14px 18px;
+  border: 1px solid #cfe3d6;
+  border-radius: 14px;
+  background: var(--green-tint, #f1f8f4);
+  color: var(--ink);
+}
+.next-lesson-card small { color: var(--green); font-size: 12px; font-weight: 700; }
+.next-lesson-card strong { font-size: 18px; }
+.next-lesson-card span { color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .next-lesson-card { padding: 12px 14px; }
+  .next-lesson-card strong { font-size: 16px; }
+  .student-row-actions { flex-wrap: wrap; justify-content: flex-end; }
+}

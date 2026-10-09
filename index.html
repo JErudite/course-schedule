@@ -10,8 +10,10 @@
       content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data: blob: https://dpjyjzszqmgakwtdhmwq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'self' blob:"
     />
     <title>我的课程表</title>
-    <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="styles.css?v=20260928-1" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css?v=20261008-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -128,6 +130,7 @@
           </div>
         </div>
 
+        <p id="nextLessonCard" class="next-lesson-card" hidden></p>
         <div id="courseEndDates" class="course-end-dates" aria-label="课程预计结束日期" hidden></div>
         <div class="touch-timeline-controls" id="touchTimelineControls" hidden>
           <button class="secondary-button" id="toggleTouchTimelineEditing" type="button" aria-pressed="false">开启排课编辑</button>
@@ -193,6 +196,10 @@
             <i data-lucide="arrow-left"></i>
             <span>返回课程表</span>
           </button>
+        </div>
+        <div class="admin-hub-tools">
+          <button class="secondary-button" id="changeOwnPassword" type="button"><i data-lucide="key-round"></i><span>修改我的密码</span></button>
+          <button class="secondary-button" id="exportScheduleData" type="button"><i data-lucide="file-spreadsheet"></i><span>导出 Excel 留底</span></button>
         </div>
         <p class="admin-layout-hint">按住板块右侧 ⠿ 拖动调整位置，松手自动保存；也可聚焦手柄后用方向键调整。排序保存在当前浏览器。</p>
         <div class="admin-feature-grid">
@@ -332,7 +339,7 @@
           <span>操作</span>
         </div>
         <div class="student-list" id="studentList"></div>
-        <p class="empty-list-hint" id="studentListEmpty">暂无访客账号</p>
+        <p class="empty-list-hint" id="studentListEmpty">暂无学生账号</p>
       </section>
 
       <section class="admin-page attendance-page" id="attendanceManagementPage" aria-labelledby="attendanceManagementTitle" hidden>
@@ -616,6 +623,16 @@
           <div><small>我的金币余额</small><strong id="coinShopStudentBalance">0 金币</strong></div>
           <p>选择商品后使用金币购买，购买记录会自动保存。</p>
         </div>
+
+        <section class="coin-shop-orders-section" id="coinShopOrdersSection" aria-labelledby="coinShopOrdersTitle" hidden>
+          <div class="coin-shop-list-heading">
+            <div>
+              <strong id="coinShopOrdersTitle">学生兑换订单</strong>
+              <span>学生用金币兑换后会出现在这里；把商品交给学生后点“确认已领取”，取消会退回金币</span>
+            </div>
+          </div>
+          <div id="coinShopOrdersList"></div>
+        </section>
 
         <section class="coin-shop-create-section" id="coinShopCreateSection" aria-labelledby="coinShopCreateTitle">
           <div class="coin-shop-section-heading">
@@ -1072,7 +1089,7 @@
 
     <dialog class="confirm-dialog" id="deleteStudentDialog">
       <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="user-minus"></i></div>
-      <h3>停用访客账号</h3>
+      <h3>停用学生账号</h3>
       <p>停用“<strong id="deleteStudentName"></strong>”后，该账号不能登录，但课程分配、课时和挑战历史均会保留。</p>
       <div class="confirm-actions">
         <button class="secondary-button" id="cancelDeleteStudent" type="button">取消</button>
@@ -1122,10 +1139,11 @@
 
     <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
 
-    <script src="vendor/lucide-subset.js?v=20260928-1"></script>
+    <script src="vendor/lucide-subset.js?v=20261008-1"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20260928-2"></script>
-    <script src="assets/operations.js?v=20261008-1"></script>
+    <script src="app.js?v=20261008-1"></script>
+    <script src="assets/operations.js?v=20261008-2"></script>
+    <script src="assets/export.js?v=20261008-1"></script>
     <script src="assets/admin-layout.js?v=20260910-2"></script>
   </body>
 </html>
