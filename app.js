@@ -3,8 +3,8 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PyH98bSXQ2rSCzIfmLNN5w_4rTJ6P-x
 
 const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 const defaultCourseColor = "#ffffff";
-// Courses without a colour are drawn in this blue so they stand out on the white grid.
-const defaultCourseAccent = "#3b82f6";
+// Courses without a colour are drawn in this sage green so they stand out on the white grid.
+const defaultCourseAccent = "#6f8a64";
 const colorPalette = [
   { value: "", label: "自动 / 白色", color: "#ffffff" },
   { value: "#f44336", label: "红色", color: "#f44336" },
