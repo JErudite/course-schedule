@@ -6896,3 +6896,87 @@ body.can-edit .section-heading { display: none; }
 .now-line { z-index: 1; }
 .agenda-item.is-current { background: color-mix(in srgb, var(--course-color, #6f8a64) 36%, #ffffff); box-shadow: inset 0 0 0 2px var(--course-color, #6f8a64); }
 .agenda-item.is-current span::after { content: " · 上课中"; font-weight: 700; }
+
+/* ---------- 2026-10-12 attendance on the schedule ---------- */
+.course-card { display: flex; flex-direction: column; align-items: stretch; overflow: hidden; }
+/* Older layers style every span in a card as a block line; marks need their own layout. */
+.course-card .course-attendance { display: flex; width: auto; min-width: 0; flex-wrap: wrap; gap: 3px; margin-top: 4px; overflow: hidden; opacity: 1; }
+.course-attendance .attendance-mark {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px 1px 1px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #3f3f3b;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  opacity: 1;
+}
+.course-attendance .attendance-mark > span { display: inline; min-width: 0; overflow: hidden; color: inherit; font-size: inherit; line-height: inherit; text-overflow: ellipsis; white-space: nowrap; opacity: 1; }
+.attendance-mark b {
+  display: inline-grid;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+}
+.attendance-mark.is-present b { background: var(--success); }
+.attendance-mark.is-makeup b { background: #3d6fa6; }
+.attendance-mark.is-leave b { background: #c2711b; }
+.course-attendance .attendance-mark.is-pending { background: rgba(255, 255, 255, 0.78); color: #6f6f6b; }
+.attendance-mark.is-pending b { background: #e4e4e0; color: #6f6f6b; }
+/* A lesson that has ended without a record is a reminder. */
+.is-past .course-attendance .attendance-mark.is-pending { background: #fdf0f0; color: var(--danger); }
+.is-past .attendance-mark.is-pending b { background: #f7d4d4; color: var(--danger); }
+.course-card.is-past .attendance-mark:not(.is-pending) { background: #ffffff; color: #55554f; }
+.course-card.is-compact .course-attendance,
+.course-card.is-micro .course-attendance,
+.course-card.is-tiny .course-attendance { display: none; }
+.course-card.is-short .course-attendance { margin-top: 2px; }
+.calendar-course-chip:has(.course-attendance) { grid-template-columns: 35px minmax(0, 1fr) auto; }
+.calendar-course-chip .course-attendance { display: inline-flex; flex-wrap: nowrap; gap: 2px; margin: 0; overflow: visible; }
+.calendar-course-chip .attendance-mark { padding: 0 4px; border-radius: 4px; font-size: 10px; font-weight: 600; line-height: 15px; }
+.calendar-course-chip .attendance-mark.is-present { background: #e3f3e9; color: var(--success); }
+.calendar-course-chip .attendance-mark.is-makeup { background: #e3ecf7; color: #3d6fa6; }
+.calendar-course-chip .attendance-mark.is-leave { background: #fbeedd; color: #a45d12; }
+
+.dialog-attendance { display: grid; gap: 8px; margin: 2px 0 6px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fbfbfa; }
+.dialog-attendance-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.dialog-attendance-head strong { flex: 0 0 auto; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.dialog-attendance-head span { margin-right: auto; color: var(--muted); font-size: 12px; }
+.dialog-attendance-all { flex: 0 0 auto; white-space: nowrap; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: #ffffff; color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.dialog-attendance-all:hover:not(:disabled) { background: var(--hover); }
+.dialog-attendance-list { display: grid; gap: 6px; }
+.dialog-attendance-empty { margin: 0; color: var(--muted); font-size: 13px; }
+.dialog-attendance-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 6px 8px; border-radius: 8px; background: #ffffff; }
+.dialog-attendance-identity { display: flex; min-width: 0; align-items: center; gap: 7px; }
+.dialog-attendance-identity strong { overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.dialog-attendance-identity small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dialog-attendance-identity small.is-low { color: var(--warning); }
+.dialog-attendance-identity small.is-empty { color: var(--danger); }
+.dialog-attendance-controls { display: flex; align-items: center; gap: 4px; }
+.dialog-attendance-choice,
+.dialog-attendance-undo { height: 30px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; background: #ffffff; color: #4b4b46; font: inherit; font-size: 13px; cursor: pointer; }
+.dialog-attendance-choice:hover:not(:disabled) { background: var(--hover); }
+.dialog-attendance-choice.is-present.is-selected { border-color: #9fd3b2; background: #e3f3e9; color: var(--success); font-weight: 600; }
+.dialog-attendance-choice.is-makeup.is-selected { border-color: #a9c4e3; background: #e3ecf7; color: #3d6fa6; font-weight: 600; }
+.dialog-attendance-choice.is-leave.is-selected { border-color: #ecc493; background: #fbeedd; color: #a45d12; font-weight: 600; }
+.dialog-attendance-undo { padding: 0 8px; border-color: transparent; background: transparent; color: var(--muted); font-size: 12px; }
+.dialog-attendance-undo:hover:not(:disabled) { color: var(--ink); text-decoration: underline; }
+.dialog-attendance button:disabled { cursor: progress; opacity: 0.6; }
+@media (max-width: 560px) {
+  .dialog-attendance-head span { order: 3; flex-basis: 100%; }
+  .dialog-attendance-all { margin-left: auto; }
+  .dialog-attendance-row { padding: 8px; }
+  .dialog-attendance-controls { width: 100%; }
+  .dialog-attendance-choice { flex: 1 1 0; }
+}

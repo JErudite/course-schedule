@@ -112,7 +112,7 @@ window.CourseOperations = (() => {
       await loadClasses(); if(currentUser?.id!==userId||token!==sessionToken)return; buildNavigation(status.unread);
       realtime=supabaseClient.channel(`operations-${userId}`)
         .on("postgres_changes",{event:"*",schema:"public",table:"student_notifications",filter:`student_id=eq.${userId}`},()=>refreshUnread())
-        .on("postgres_changes",{event:"*",schema:"public",table:"course_attendance"},()=>{clearTimeout(attendanceRefreshTimer);attendanceRefreshTimer=setTimeout(async()=>{if(canEdit&&!attendanceManagementPage.hidden)await Promise.all([loadStudents(),loadAttendance(),loadAttendanceHistory({quiet:true})]);else if(canEdit&&!adminHub.hidden)await Promise.all([loadTodayAttendanceSummary(),refreshDashboard()]);},300);})
+        .on("postgres_changes",{event:"*",schema:"public",table:"course_attendance"},()=>{clearTimeout(attendanceRefreshTimer);attendanceRefreshTimer=setTimeout(async()=>{if(canEdit&&typeof refreshScheduleAttendance==="function")refreshScheduleAttendance();if(canEdit&&!attendanceManagementPage.hidden)await Promise.all([loadStudents(),loadAttendance(),loadAttendanceHistory({quiet:true})]);else if(canEdit&&!adminHub.hidden)await Promise.all([loadTodayAttendanceSummary(),refreshDashboard()]);},300);})
         .on("postgres_changes",{event:"*",schema:"public",table:"teaching_classes"},()=>loadClasses())
         .on("postgres_changes",{event:"*",schema:"public",table:"class_students"},()=>loadClasses()).subscribe();
       renderSchedule(); if(canEdit)renderStudentList();

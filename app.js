@@ -190,6 +190,12 @@ let pageFontSize = defaultPageFontSize;
 let draggedStudentId = null;
 let attendanceRecords = [];
 const attendanceCache = new Map();
+// Attendance drawn on the schedule itself: ISO date -> Map("courseId|studentId" -> status).
+const scheduleAttendance = new Map();
+const scheduleAttendanceLoaded = new Set();
+// Bumped whenever records may have changed; responses fetched under an older value are dropped.
+let scheduleAttendanceGeneration = 0;
+let scheduleAttendanceBusy = false;
 let attendanceHistoryRows = null;
 let todayAttendanceSummary = null;
 let todayAttendanceRequest = 0;
@@ -3291,7 +3297,9 @@ function createCalendarCourseButton(course, date) {
     createElement("strong", "", course.name),
   );
   applyCourseColor(button, getEffectiveCourseColor(course));
+  button.dataset.courseId = course.id;
   markCourseTimeState(button, date, course);
+  renderCourseAttendanceMarks(button);
   button.addEventListener("click", () => showCourse(course.id, toISODate(date)));
   return button;
 }
@@ -3319,7 +3327,330 @@ function applyCourseTimeState(element, nowMinutes = getScheduleTimeMinutes()) {
 
 function refreshCourseTimeStates() {
   const nowMinutes = getScheduleTimeMinutes();
-  document.querySelectorAll(".course-card[data-start], .calendar-course-chip[data-start]").forEach((element) => applyCourseTimeState(element, nowMinutes));
+  document.querySelectorAll(".course-card[data-start], .calendar-course-chip[data-start]").forEach((element) => {
+    const wasDue = element.classList.contains("is-past") || element.classList.contains("is-current");
+    applyCourseTimeState(element, nowMinutes);
+    const isDue = element.classList.contains("is-past") || element.classList.contains("is-current");
+    if (wasDue !== isDue) renderCourseAttendanceMarks(element);
+  });
+}
+
+// ---------- Attendance on the schedule: marks on each lesson, check-in from the lesson dialog ----------
+const attendanceMarkLetters = { present: "到", makeup: "补", leave: "假", "": "待" };
+const scheduleAttendanceReminderDays = 30;
+
+function getScheduleAttendanceStatus(courseId, studentId, isoDate) {
+  return scheduleAttendance.get(isoDate)?.get(`${courseId}|${studentId}`) || "";
+}
+
+function setScheduleAttendanceStatus(courseId, studentId, isoDate, status) {
+  if (!scheduleAttendance.has(isoDate)) scheduleAttendance.set(isoDate, new Map());
+  const records = scheduleAttendance.get(isoDate);
+  if (status) records.set(`${courseId}|${studentId}`, status);
+  else records.delete(`${courseId}|${studentId}`);
+}
+
+// Students due in one lesson, mirroring get_attendance_for_date_v3: active members who had
+// already joined on that date, plus anyone who has a record for it.
+function getOccurrenceRoster(course, isoDate) {
+  const records = scheduleAttendance.get(isoDate) || new Map();
+  const studentIds = course.studentIds.filter((studentId) => {
+    if (records.has(`${course.id}|${studentId}`)) return true;
+    const student = students.find((item) => item.id === studentId);
+    if (!student || student.disabled_at) return false;
+    const joinedOn = course.studentJoinedOn?.[studentId];
+    return !joinedOn || joinedOn <= isoDate;
+  });
+  records.forEach((_, key) => {
+    const [courseId, studentId] = key.split("|");
+    if (courseId === course.id && !studentIds.includes(studentId)) studentIds.push(studentId);
+  });
+  return studentIds.map((studentId) => {
+    const student = students.find((item) => item.id === studentId);
+    return { studentId, student, name: student?.username || "学生", status: records.get(`${course.id}|${studentId}`) || "" };
+  });
+}
+
+function describeOccurrenceAttendance(roster) {
+  return attendanceHistoryStatusOptions
+    .map(({ value, label }) => {
+      const names = roster.filter((entry) => entry.status === value).map((entry) => entry.name);
+      return names.length ? `${label}：${names.join("、")}` : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function renderCourseAttendanceMarks(element) {
+  element.querySelector(".course-attendance")?.remove();
+  if (!canEdit) return;
+  const course = schedule.find((item) => item.id === element.dataset.courseId);
+  const isoDate = element.dataset.occurrenceDate;
+  if (!course || !isoDate || !scheduleAttendanceLoaded.has(isoDate)) return;
+  const roster = getOccurrenceRoster(course, isoDate);
+  // Lessons that have started also show who is still unrecorded; later ones only show advance records.
+  // Older lessons skip that reminder: before September 2026 attendance was kept per day, not per lesson.
+  const isDue = (element.classList.contains("is-past") || element.classList.contains("is-current"))
+    && isoDate >= toISODate(addDays(getScheduleToday(), -scheduleAttendanceReminderDays));
+  const shown = roster.filter((entry) => entry.status || isDue);
+  const isChip = element.classList.contains("calendar-course-chip");
+  const baseTitle = isChip
+    ? `${course.name} · ${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`
+    : "点击打卡、查看详情；拖动调整时间";
+  element.title = shown.length ? `${describeOccurrenceAttendance(shown)}\n${baseTitle}` : baseTitle;
+  if (!shown.length) return;
+  const marks = createElement("span", "course-attendance");
+  if (isChip) {
+    attendanceHistoryStatusOptions.forEach(({ value }) => {
+      const count = shown.filter((entry) => entry.status === value).length;
+      if (count) marks.append(createElement("span", `attendance-mark is-${value || "pending"}`, `${attendanceMarkLetters[value]}${count}`));
+    });
+  } else {
+    shown.forEach((entry) => {
+      const mark = createElement("span", `attendance-mark is-${entry.status || "pending"}`);
+      mark.append(createElement("b", "", attendanceMarkLetters[entry.status]), createElement("span", "", entry.name));
+      marks.append(mark);
+    });
+  }
+  element.append(marks);
+}
+
+function renderScheduleAttendanceMarks() {
+  document.querySelectorAll(".course-card[data-course-id], .calendar-course-chip[data-course-id]").forEach(renderCourseAttendanceMarks);
+}
+
+function getScheduleAttendanceRange() {
+  if (scheduleView === "week") return [selectedWeekStart, addDays(selectedWeekStart, 6)];
+  if (scheduleView === "month") {
+    const start = getMonthCalendarStart(selectedCalendarDate);
+    return [start, addDays(start, 41)];
+  }
+  return null;
+}
+
+async function loadScheduleAttendance({ force = false, range = getScheduleAttendanceRange() } = {}) {
+  if (!canEdit || !currentUser || !range) return false;
+  const dates = [];
+  for (let date = range[0]; date <= range[1]; date = addDays(date, 1)) dates.push(toISODate(date));
+  if (!force && dates.every((isoDate) => scheduleAttendanceLoaded.has(isoDate))) return true;
+  const generation = scheduleAttendanceGeneration;
+  const { data, error } = await supabaseClient
+    .from("course_attendance")
+    .select("student_id, course_id, attendance_date, status")
+    .gte("attendance_date", dates[0])
+    .lte("attendance_date", dates[dates.length - 1]);
+  // A save or realtime change since the request started makes this snapshot stale.
+  if (generation !== scheduleAttendanceGeneration || !canEdit || scheduleAttendanceBusy || error) return false;
+  dates.forEach((isoDate) => {
+    scheduleAttendance.set(isoDate, new Map());
+    scheduleAttendanceLoaded.add(isoDate);
+  });
+  (data || []).forEach((row) => setScheduleAttendanceStatus(row.course_id, row.student_id, row.attendance_date, row.status));
+  renderScheduleAttendanceMarks();
+  renderDialogAttendance();
+  return true;
+}
+
+function refreshScheduleAttendance() {
+  if (!canEdit) return;
+  scheduleAttendanceGeneration += 1;
+  scheduleAttendanceLoaded.clear();
+  const range = getScheduleAttendanceRange();
+  if (range) void loadScheduleAttendance({ force: true, range });
+  else if (dialog.open && selectedOccurrenceDate) {
+    const date = parseISODate(selectedOccurrenceDate);
+    void loadScheduleAttendance({ force: true, range: [date, date] });
+  }
+}
+
+function getDialogOccurrence() {
+  if (!canEdit || !dialog.open || formMode !== "view" || !selectedCourseId) return null;
+  const course = schedule.find((item) => item.id === selectedCourseId);
+  if (!course) return null;
+  return { course, isoDate: selectedOccurrenceDate || course.startDate };
+}
+
+function renderDialogAttendance() {
+  const section = document.querySelector("#dialogAttendance");
+  if (!section) return;
+  const occurrence = getDialogOccurrence();
+  const studentsRow = document.querySelector("#dialogStudents").closest("p");
+  section.hidden = !occurrence;
+  studentsRow.hidden = false;
+  if (!occurrence) return;
+  const { course, isoDate } = occurrence;
+  const list = document.querySelector("#dialogAttendanceList");
+  const hint = document.querySelector("#dialogAttendanceHint");
+  const allButton = document.querySelector("#dialogAttendanceAll");
+  const todayIso = toISODate(getScheduleToday());
+  hint.textContent = isoDate > todayIso
+    ? "提前登记 · 到课会立即扣 1 次课时"
+    : isoDate === todayIso ? "今天" : formatAttendanceDay(isoDate);
+  if (!scheduleAttendanceLoaded.has(isoDate)) {
+    list.replaceChildren(createElement("p", "dialog-attendance-empty", "正在读取这节课的打卡…"));
+    allButton.hidden = true;
+    const date = parseISODate(isoDate);
+    void loadScheduleAttendance({ range: [date, date] });
+    return;
+  }
+  const roster = getOccurrenceRoster(course, isoDate);
+  studentsRow.hidden = roster.length > 0;
+  allButton.hidden = !roster.some((entry) => !entry.status);
+  allButton.disabled = scheduleAttendanceBusy;
+  if (!roster.length) {
+    list.replaceChildren(createElement("p", "dialog-attendance-empty", "这节课还没有分配学生"));
+    return;
+  }
+  const lowThreshold = window.CourseOperations?.lowThreshold ?? 3;
+  list.replaceChildren(...roster.map((entry) => {
+    const row = createElement("div", `dialog-attendance-row${entry.status ? " is-recorded" : ""}`);
+    const identity = createElement("div", "dialog-attendance-identity");
+    const color = createElement("i", "student-color-indicator");
+    color.style.setProperty("--student-color", entry.student?.color || defaultCourseAccent);
+    identity.append(color, createElement("strong", "", entry.name));
+    if (entry.student) {
+      const remaining = getStudentRemainingCount(entry.student);
+      identity.append(createElement("small", remaining === 0 ? "is-empty" : remaining <= lowThreshold ? "is-low" : "", `剩 ${remaining} 次`));
+    }
+    const controls = createElement("div", "dialog-attendance-controls");
+    attendanceStatusOptions.forEach(({ value, label, className }) => {
+      const button = createElement("button", `dialog-attendance-choice ${className}${entry.status === value ? " is-selected" : ""}`, label);
+      button.type = "button";
+      button.disabled = scheduleAttendanceBusy;
+      button.setAttribute("aria-pressed", String(entry.status === value));
+      button.addEventListener("click", () => setOccurrenceAttendance(course, isoDate, entry.studentId, value));
+      controls.append(button);
+    });
+    const undo = createElement("button", "dialog-attendance-undo", "撤销");
+    undo.type = "button";
+    undo.hidden = !entry.status;
+    undo.disabled = scheduleAttendanceBusy;
+    undo.title = "改回待打卡；原为到课会返还 1 次课时";
+    undo.addEventListener("click", () => clearOccurrenceAttendance(course, isoDate, entry.studentId));
+    controls.append(undo);
+    row.append(identity, controls);
+    return row;
+  }));
+}
+
+function renderOccurrenceAttendanceChange() {
+  renderScheduleAttendanceMarks();
+  renderDialogAttendance();
+}
+
+function describeAttendanceSaveError(error) {
+  const message = String(error?.message || "");
+  if (message.includes("课程次数不足") || message.includes("旧版按日记录")) return message;
+  if (message.includes("未分配此课程")) return "该学生这天没有这节课，无法打卡";
+  if (message.includes("invalid attendance status or date") || error?.code === "PGRST202") return "提前打卡和撤销需要先更新数据库，暂时只能给今天及以前的课打卡";
+  return "打卡保存失败，请稍后重试";
+}
+
+function afterOccurrenceAttendanceSaved(isoDate) {
+  attendanceCache.delete(isoDate);
+  const todayIso = toISODate(getScheduleToday());
+  const tasks = [loadStudents()];
+  if (!attendanceManagementPage.hidden) tasks.push(loadAttendance());
+  if (isoDate <= todayIso) tasks.push(loadAttendanceHistory({ quiet: true }));
+  if (isoDate === todayIso) tasks.push(loadTodayAttendanceSummary());
+  void Promise.all(tasks).then(() => refreshScheduleAttendance());
+}
+
+async function setOccurrenceAttendance(course, isoDate, studentId, status) {
+  if (!canEdit || scheduleAttendanceBusy) return;
+  const previous = getScheduleAttendanceStatus(course.id, studentId, isoDate);
+  if (previous === status) return;
+  const student = students.find((item) => item.id === studentId);
+  if (status === "present" && previous !== "present" && student && getStudentRemainingCount(student) === 0) {
+    showStatus(`${student.username}无法进行打卡，课程次数不足`, { label: "去续课", run: () => window.CourseOperations?.renewLessons(studentId) });
+    return;
+  }
+  scheduleAttendanceBusy = true;
+  scheduleAttendanceGeneration += 1;
+  setScheduleAttendanceStatus(course.id, studentId, isoDate, status);
+  renderOccurrenceAttendanceChange();
+  const { error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
+    p_student_id: studentId,
+    p_course_id: course.id,
+    p_attendance_date: isoDate,
+    p_status: status,
+  });
+  scheduleAttendanceBusy = false;
+  if (error) {
+    setScheduleAttendanceStatus(course.id, studentId, isoDate, previous);
+    renderOccurrenceAttendanceChange();
+    showStatus(describeAttendanceSaveError(error));
+    return;
+  }
+  renderOccurrenceAttendanceChange();
+  const name = student?.username || "学生";
+  const refunded = previous === "present" ? "；已返还原到课的课时" : "";
+  const messages = {
+    present: `${name} 已登记到课，扣 1 次课时`,
+    makeup: `${name} 已登记补课，不扣课时${refunded}`,
+    leave: `${name} 已登记请假，不扣课时${refunded}`,
+  };
+  showStatus(messages[status]);
+  afterOccurrenceAttendanceSaved(isoDate);
+}
+
+async function clearOccurrenceAttendance(course, isoDate, studentId) {
+  if (!canEdit || scheduleAttendanceBusy) return;
+  const previous = getScheduleAttendanceStatus(course.id, studentId, isoDate);
+  if (!previous) return;
+  scheduleAttendanceBusy = true;
+  scheduleAttendanceGeneration += 1;
+  setScheduleAttendanceStatus(course.id, studentId, isoDate, "");
+  renderOccurrenceAttendanceChange();
+  const { error } = await supabaseClient.rpc("clear_attendance_for_date_v3", {
+    p_student_id: studentId,
+    p_course_id: course.id,
+    p_attendance_date: isoDate,
+  });
+  scheduleAttendanceBusy = false;
+  if (error) {
+    setScheduleAttendanceStatus(course.id, studentId, isoDate, previous);
+    renderOccurrenceAttendanceChange();
+    showStatus(describeAttendanceSaveError(error));
+    return;
+  }
+  renderOccurrenceAttendanceChange();
+  const name = students.find((item) => item.id === studentId)?.username || "学生";
+  showStatus(`${name} 已改回待打卡${previous === "present" ? "，返还 1 次课时" : ""}`);
+  afterOccurrenceAttendanceSaved(isoDate);
+}
+
+async function markOccurrenceAllPresent() {
+  const occurrence = getDialogOccurrence();
+  if (!occurrence || scheduleAttendanceBusy) return;
+  const { course, isoDate } = occurrence;
+  const pending = getOccurrenceRoster(course, isoDate).filter((entry) => !entry.status);
+  if (!pending.length) return;
+  scheduleAttendanceBusy = true;
+  scheduleAttendanceGeneration += 1;
+  renderDialogAttendance();
+  let checkedIn = 0;
+  const skipped = [];
+  let failure = null;
+  for (const entry of pending) {
+    if (entry.student && getStudentRemainingCount(entry.student) === 0) { skipped.push(entry.name); continue; }
+    const { error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
+      p_student_id: entry.studentId,
+      p_course_id: course.id,
+      p_attendance_date: isoDate,
+      p_status: "present",
+    });
+    if (error && String(error.message || "").includes("课程次数不足")) { skipped.push(entry.name); continue; }
+    if (error) { failure = error; break; }
+    checkedIn += 1;
+    setScheduleAttendanceStatus(course.id, entry.studentId, isoDate, "present");
+    renderScheduleAttendanceMarks();
+  }
+  scheduleAttendanceBusy = false;
+  renderOccurrenceAttendanceChange();
+  if (failure) showStatus(describeAttendanceSaveError(failure));
+  else showStatus(`${checkedIn ? `已登记 ${checkedIn} 人到课` : "没有新增到课"}${skipped.length ? `；${skipped.join("、")}课程次数不足，未打卡` : ""}`);
+  if (checkedIn) afterOccurrenceAttendanceSaved(isoDate);
 }
 
 function renderScheduleSummary(occurrences, periodLabel) {
@@ -3418,11 +3749,12 @@ function renderWeekSchedule() {
     applyCourseColor(card, getEffectiveCourseColor(course));
     markCourseTimeState(card, date, course);
     card.setAttribute("aria-label", `${course.name}，${formatTime(course.startTime)} 至 ${formatTime(getCourseEnd(course))}`);
-    card.title = canEdit ? "拖动调整时间；重复课程可选择仅本次或本次及后续，点击可编辑详情" : "点击查看课程详情";
+    card.title = canEdit ? "点击打卡、查看详情；拖动调整时间" : "点击查看课程详情";
     card.append(
       createElement("strong", "", course.name),
       createElement("span", "course-time", `${formatTime(course.startTime)} - ${formatTime(getCourseEnd(course))}`),
     );
+    renderCourseAttendanceMarks(card);
     enableCourseInteraction(card, course, { date, dayIndex });
     grid.append(card);
   });
@@ -3649,6 +3981,7 @@ function renderSchedule() {
   document.querySelector("#scheduleAgenda").hidden = true;
   if (scheduleView === "month") {
     renderMonthSchedule();
+    void loadScheduleAttendance();
     return;
   }
   if (scheduleView === "year") {
@@ -3656,6 +3989,7 @@ function renderSchedule() {
     return;
   }
   renderWeekSchedule();
+  void loadScheduleAttendance();
 }
 
 function getScheduleNowMinutes() {
@@ -4294,6 +4628,7 @@ function showCourse(courseId, occurrenceDate) {
   formMode = "view";
   showCourseDetails(course);
   if (!dialog.open) dialog.showModal();
+  renderDialogAttendance();
 }
 
 function showCourseDetails(course) {
@@ -4319,6 +4654,7 @@ function showCourseDetails(course) {
   notes.classList.toggle("is-empty", !course.notes);
   document.querySelector("#dialogAccent").style.background = getEffectiveCourseColor(course);
   dialogCourseActions.hidden = !canEdit;
+  renderDialogAttendance();
 }
 
 function refreshOpenDialog() {
@@ -5276,6 +5612,7 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
   }
   renderAttendance();
   void Promise.all([loadStudents(), loadAttendance(), loadAttendanceHistory({ quiet: true })]);
+  if (typeof refreshScheduleAttendance === "function") refreshScheduleAttendance();
   const messages = {
     present: "已登记到课；只有到课计入当前已上次数",
     makeup: "已登记补课，不扣课时；若原为到课，已返还对应课时",
@@ -5327,6 +5664,7 @@ async function markAllStudentsPresent() {
     attendanceBusy = false;
     await Promise.all([loadStudents(), loadAttendance(), loadAttendanceHistory({ quiet: true })]);
     renderAttendance();
+    if (typeof refreshScheduleAttendance === "function") refreshScheduleAttendance();
   }
   const successMessage = checkedInCount > 0
     ? `已新增 ${formatAttendanceDay(attendanceDate)} ${checkedInCount} 课次到课记录`
@@ -6254,6 +6592,9 @@ async function applySession(session) {
   currentUser = null;
   canEdit = false;
   attendanceCache.clear();
+  scheduleAttendance.clear();
+  scheduleAttendanceLoaded.clear();
+  scheduleAttendanceGeneration += 1;
   attendanceHistoryRows = null;
 
   if (!session) {
@@ -6517,6 +6858,7 @@ function bindEvents() {
   document.querySelector("#closeDialog").addEventListener("click", () => dialog.close());
   document.querySelector("#copyCourse").addEventListener("click", copySelectedCourse);
   document.querySelector("#editCourse").addEventListener("click", startEditingCourse);
+  document.querySelector("#dialogAttendanceAll").addEventListener("click", markOccurrenceAllPresent);
   document.querySelector("#deleteCourse").addEventListener("click", () => {
     const course = schedule.find((item) => item.id === selectedCourseId);
     if (!course || !canEdit) return;
@@ -6758,7 +7100,7 @@ async function initializeApp() {
     if (!currentUser || !hiddenSince || Date.now() - hiddenSince < 60 * 1000) return;
     hiddenSince = 0;
     void loadSchedule({ quiet: true });
-    if (canEdit) void loadStudents();
+    if (canEdit) { void loadStudents(); refreshScheduleAttendance(); }
   });
 }
 
