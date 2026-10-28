@@ -201,6 +201,11 @@ let todayAttendanceSummary = null;
 let todayAttendanceRequest = 0;
 let attendanceHistory = [];
 let expandedAttendanceDate = null;
+// A past date expanded in the history list keeps its own records; the section above stays on its date.
+let historyDetailRecords = [];
+let historyDetailLoading = false;
+let historyDetailRequest = 0;
+let historyDetailDate = null;
 let attendanceLoading = false;
 let attendanceLoadRequest = 0;
 let selectedAttendanceDate = "";
@@ -3107,6 +3112,7 @@ async function showStudentManagement() {
 async function showAttendanceManagement() {
   if (!canEdit) return;
   selectedAttendanceDate = toISODate(getScheduleToday());
+  expandedAttendanceDate = null;
   // Open the page at once with whatever is already known, then refresh in the background.
   const cached = attendanceCache.get(selectedAttendanceDate);
   attendanceRecords = cached || [];
@@ -5390,6 +5396,8 @@ async function loadAttendanceHistory({ quiet = false } = {}) {
   attendanceHistory = mergeScheduledAttendanceHistory(attendanceHistoryRows);
   renderAttendanceHistory();
   renderTodayAttendanceCount();
+  // Changes made here or elsewhere also refresh the expanded day.
+  if (expandedAttendanceDate) void loadHistoryDetail(expandedAttendanceDate);
   return true;
 }
 
@@ -5439,6 +5447,33 @@ function mergeScheduledAttendanceHistory(records, limit = 30) {
       || String(first.username || "").localeCompare(String(second.username || ""), "zh-CN"));
 }
 
+async function loadHistoryDetail(date) {
+  if (!canEdit || !date) return false;
+  const request = ++historyDetailRequest;
+  const cached = attendanceCache.get(date);
+  // A refresh of the day already on screen keeps its rows instead of flashing "loading".
+  const shown = historyDetailDate === date && historyDetailRecords.length > 0;
+  if (!shown) {
+    historyDetailRecords = cached ? cached.map((record) => ({ ...record })) : [];
+    historyDetailLoading = !cached;
+    historyDetailDate = date;
+    renderAttendanceHistory();
+  }
+  const { data, error } = await supabaseClient.rpc("get_attendance_for_date_v3", { p_attendance_date: date });
+  if (!canEdit || request !== historyDetailRequest || expandedAttendanceDate !== date) return false;
+  historyDetailLoading = false;
+  if (error) {
+    if (!cached && !shown) historyDetailRecords = [];
+    renderAttendanceHistory();
+    showStatus("所选日期的打卡记录读取失败，请稍后重试");
+    return false;
+  }
+  historyDetailRecords = normalizeAttendanceRecords(data);
+  attendanceCache.set(date, historyDetailRecords.map((record) => ({ ...record })));
+  renderAttendanceHistory();
+  return true;
+}
+
 async function selectAttendanceDate(value) {
   const today = toISODate(getScheduleToday());
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > today || attendanceBusy) return;
@@ -5463,7 +5498,7 @@ function renderAttendance() {
   datePicker.max = todayIso;
   datePicker.value = selectedAttendanceDate;
   document.querySelector("#showTodayAttendance").disabled = selectedAttendanceDate === todayIso || attendanceBusy;
-  list.replaceChildren(...attendanceRecords.map(createAttendanceRow));
+  list.replaceChildren(...attendanceRecords.map((record) => createAttendanceRow(record)));
   document.querySelector("#attendanceEmpty").hidden = attendanceRecords.length > 0;
   document.querySelector("#attendanceEmpty").textContent = attendanceLoading ? "正在读取当天打卡记录…" : "所选日期没有分配学生的课程或打卡记录";
   document.querySelector("#markAllPresent").disabled = attendanceBusy || attendanceLoading || pendingCount === 0;
@@ -5473,7 +5508,7 @@ function renderAttendance() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-function createAttendanceRow(record) {
+function createAttendanceRow(record, date = selectedAttendanceDate, loading = attendanceLoading) {
     const selectedStatus = attendanceStatusOptions.find(option => option.value === record.status);
     const row = createElement("article", `attendance-row${selectedStatus ? " is-recorded" : ""}`);
     const identity = createElement("div", "attendance-identity");
@@ -5492,10 +5527,10 @@ function createAttendanceRow(record) {
     attendanceStatusOptions.forEach(({ value, label, icon, className }) => {
       const button = createElement("button", `secondary-button attendance-status-button ${className}${record.status === value ? " is-selected" : ""}`);
       button.type = "button";
-      button.disabled = attendanceBusy || attendanceLoading;
+      button.disabled = attendanceBusy || loading;
       button.setAttribute("aria-pressed", String(record.status === value));
       button.innerHTML = `<i data-lucide="${icon}"></i><span>${label}</span>`;
-      button.addEventListener("click", () => setAttendanceStatus(record.student_id, value, record.course_id));
+      button.addEventListener("click", () => setAttendanceStatus(record.student_id, value, record.course_id, date));
       controls.append(button);
     });
     row.append(identity, progress, controls);
@@ -5512,12 +5547,12 @@ function renderAttendanceHistory() {
   });
   list.replaceChildren(...[...groups.entries()].map(([date, records]) => {
     const hasPendingAttendance = records.some((record) => !record.status);
-    const article = createElement("article", `attendance-history-day${hasPendingAttendance ? " has-pending" : ""}${date === selectedAttendanceDate ? " is-selected" : ""}`);
+    const article = createElement("article", `attendance-history-day${hasPendingAttendance ? " has-pending" : ""}${date === expandedAttendanceDate ? " is-selected" : ""}`);
     const heading = createElement("div", "attendance-history-day-heading");
     const dateButton = createElement("button", "attendance-history-date");
     dateButton.type = "button";
     dateButton.textContent = formatAttendanceDay(date, parseISODate(date).getFullYear() !== getScheduleToday().getFullYear());
-    const expanded = expandedAttendanceDate === date && selectedAttendanceDate === date;
+    const expanded = expandedAttendanceDate === date;
     dateButton.setAttribute("aria-expanded", String(expanded));
     dateButton.setAttribute("aria-controls", `attendance-detail-${date}`);
     dateButton.disabled = attendanceBusy;
@@ -5526,7 +5561,7 @@ function renderAttendanceHistory() {
       if (attendanceBusy) return;
       if (expanded) { expandedAttendanceDate = null; renderAttendanceHistory(); return; }
       expandedAttendanceDate = date;
-      await selectAttendanceDate(date);
+      await loadHistoryDetail(date);
     };
     dateButton.addEventListener("click", toggle);
     article.addEventListener("click", event => {
@@ -5559,9 +5594,9 @@ function renderAttendanceHistory() {
       const detail = createElement("div", "attendance-history-detail");
       detail.id = `attendance-detail-${date}`;
       detail.append(createElement("p", "attendance-edit-hint", "可直接修改：只有到课扣一次课时；到课改补课或请假会退回课时。修改后自动同步。"));
-      if (attendanceLoading) detail.append(createElement("p", "", "正在读取当天打卡记录…"));
-      else if (!attendanceRecords.length) detail.append(createElement("p", "", "未读取到详情，请收起后重试。"));
-      else detail.append(...attendanceRecords.map(createAttendanceRow));
+      if (historyDetailLoading) detail.append(createElement("p", "", "正在读取当天打卡记录…"));
+      else if (!historyDetailRecords.length) detail.append(createElement("p", "", "未读取到详情，请收起后重试。"));
+      else detail.append(...historyDetailRecords.map((record) => createAttendanceRow(record, date, historyDetailLoading)));
       article.append(detail);
     }
     return article;
@@ -5577,9 +5612,14 @@ function renderAttendanceHistory() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-async function setAttendanceStatus(studentId, status, courseId = null) {
-  if (!canEdit || attendanceBusy || attendanceLoading) return;
-  const record = attendanceRecords.find((item) => item.student_id === studentId && (item.course_id || null) === (courseId || null));
+async function setAttendanceStatus(studentId, status, courseId = null, date = selectedAttendanceDate) {
+  const isTop = date === selectedAttendanceDate;
+  const isDetail = date === expandedAttendanceDate;
+  if (!canEdit || attendanceBusy || (isTop && attendanceLoading) || (!isTop && historyDetailLoading)) return;
+  const matches = (item) => item.student_id === studentId && (item.course_id || null) === (courseId || null);
+  const lists = [isTop ? attendanceRecords : null, isDetail ? historyDetailRecords : null].filter(Boolean);
+  const records = lists.map((list) => list.find(matches)).filter(Boolean);
+  const record = records[0];
   const student = students.find((item) => item.id === studentId);
   const remainingLessons = Math.max(
     0,
@@ -5590,18 +5630,18 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
     return;
   }
   const previousStatus = record?.status ?? "";
-  if (record) record.status = status;
+  records.forEach((item) => { item.status = status; });
   attendanceBusy = true;
   renderAttendance();
   const { error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
     p_student_id: studentId,
     p_course_id: courseId || null,
-    p_attendance_date: selectedAttendanceDate,
+    p_attendance_date: date,
     p_status: status,
   });
   attendanceBusy = false;
   if (error) {
-    if (record) record.status = previousStatus;
+    records.forEach((item) => { item.status = previousStatus; });
     if (String(error.message || "").includes("课程次数不足")) {
       showStatus(error.message);
     } else {
@@ -5611,6 +5651,7 @@ async function setAttendanceStatus(studentId, status, courseId = null) {
     return;
   }
   renderAttendance();
+  attendanceCache.delete(date);
   void Promise.all([loadStudents(), loadAttendance(), loadAttendanceHistory({ quiet: true })]);
   if (typeof refreshScheduleAttendance === "function") refreshScheduleAttendance();
   const messages = {
