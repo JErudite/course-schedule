@@ -5589,7 +5589,21 @@ function renderAttendanceHistory() {
       statusGroup.append(title, nameList);
       statusGrid.append(statusGroup);
     });
-    article.append(heading, statusGrid);
+    if (expanded) {
+      // Bulk check-in for this past day, next to its status overview.
+      const statusRow = createElement("div", "attendance-history-status-row");
+      const pendingCount = historyDetailRecords.filter((record) => !record.status).length;
+      const markAll = createElement("button", "primary-button attendance-history-mark-all");
+      markAll.type = "button";
+      markAll.innerHTML = `<i data-lucide="check-check"></i><span>一键到课打卡</span>`;
+      markAll.disabled = attendanceBusy || historyDetailLoading || pendingCount === 0;
+      markAll.title = pendingCount ? `给这天 ${pendingCount} 个待打卡课次登记到课；已有记录不变` : "这天没有待打卡的课次";
+      markAll.addEventListener("click", () => markAllStudentsPresent(date));
+      statusRow.append(statusGrid, markAll);
+      article.append(heading, statusRow);
+    } else {
+      article.append(heading, statusGrid);
+    }
     if (expanded) {
       const detail = createElement("div", "attendance-history-detail");
       detail.id = `attendance-detail-${date}`;
@@ -5662,13 +5676,14 @@ async function setAttendanceStatus(studentId, status, courseId = null, date = se
   showStatus(messages[status] || "打卡已保存");
 }
 
-async function markAllStudentsPresent() {
-  if (!canEdit || attendanceBusy || attendanceLoading) return;
-  const pendingRecords = attendanceRecords.filter((record) => !record.status);
+async function markAllStudentsPresent(attendanceDate = selectedAttendanceDate) {
+  // The top section's date, or a past day expanded in the history list.
+  const isTop = attendanceDate === selectedAttendanceDate;
+  if (!canEdit || attendanceBusy || (isTop ? attendanceLoading : historyDetailLoading)) return;
+  const pendingRecords = (isTop ? attendanceRecords : historyDetailRecords).filter((record) => !record.status);
   if (pendingRecords.length === 0) return;
   attendanceBusy = true;
   renderAttendance();
-  const attendanceDate = selectedAttendanceDate;
   let checkedInCount = 0;
   const skippedNames = [];
   let failedCount = 0;
