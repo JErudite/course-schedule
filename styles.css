@@ -6988,3 +6988,10 @@ body.can-edit .section-heading { display: none; }
 @media (max-width: 760px) {
   .attendance-history-status-row { flex-direction: column; align-items: stretch; gap: 0; }
 }
+
+/* ---------- 2026-10-31 history names at the same size as the student rows ---------- */
+.attendance-history-status > strong { font-size: 13px; }
+.attendance-history-names { gap: 6px; }
+.attendance-history-names span,
+.attendance-history-names small { padding: 4px 10px; font-size: 14px; line-height: 20px; }
+.attendance-history-names span { font-weight: 600; }
