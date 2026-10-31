@@ -5541,7 +5541,10 @@ function renderAttendanceHistory() {
   const list = document.querySelector("#attendanceHistoryList");
   if (!list) return;
   const groups = new Map();
+  // Today is shown in the section above; the list only holds past days.
+  const historyToday = toISODate(getScheduleToday());
   attendanceHistory.forEach((record) => {
+    if (record.attendance_date >= historyToday) return;
     if (!groups.has(record.attendance_date)) groups.set(record.attendance_date, []);
     groups.get(record.attendance_date).push(record);
   });
@@ -5622,7 +5625,7 @@ function renderAttendanceHistory() {
   alert.textContent = overdue.length
     ? `提醒：${new Set(overdue.map(record => record.attendance_date)).size} 天共有 ${overdue.length} 课次尚未打卡，可点击对应日期补录。`
     : "";
-  document.querySelector("#attendanceHistoryEmpty").hidden = attendanceHistory.length > 0;
+  document.querySelector("#attendanceHistoryEmpty").hidden = groups.size > 0;
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -7107,7 +7110,7 @@ function bindEvents() {
     setPetSortMode(event.target.value);
     window.localStorage.setItem("pet-sort-mode", petSortMode);
   });
-  document.querySelector("#markAllPresent").addEventListener("click", markAllStudentsPresent);
+  document.querySelector("#markAllPresent").addEventListener("click", () => markAllStudentsPresent());
   document.querySelector("#attendanceDatePicker").addEventListener("change", (event) => selectAttendanceDate(event.target.value));
   document.querySelector("#showTodayAttendance").addEventListener("click", () => selectAttendanceDate(toISODate(getScheduleToday())));
   document.querySelector("#refreshAttendanceHistory").addEventListener("click", () => Promise.all([loadAttendance(), loadAttendanceHistory()]));
