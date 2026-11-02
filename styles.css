@@ -7261,3 +7261,208 @@ dialog[open]::backdrop { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .login-earth, .login-motto span, .login-screen .login-form { animation: none; }
 }
+
+/* ==========================================================================
+   2026-11 cosmos: the main app joins the night-Earth login. Two themes on one
+   set of roles — deep space (default) and day — chosen in the sidebar.
+   Earth-limb blue is the accent; city-light gold marks only "today / now".
+   ========================================================================== */
+:root, :root[data-theme="light"] {
+  --background: #f6f7fb; --canvas: #eceff6; --surface: #ffffff; --surface-muted: #f6f7fb; --raised: #f1f3f9;
+  --ink: #141a2b; --text: #2a3146; --muted: #5d6680; --subtle: #8f98ae;
+  --line: #e2e6ef; --line-soft: #eef0f6; --hover: #eef1f8;
+  --green: #141a2b; --green-hover: #0a0f1d; --green-soft: #eef1f8; --green-tint: #f6f7fb;
+  --brand: #141a2b; --brand-hover: #0a0f1d;
+  --limb: #2f6fd6; --limb-soft: rgba(47, 111, 214, 0.1); --gold: #b07a14; --gold-soft: rgba(176, 122, 20, 0.1);
+  --now: var(--gold); --today: var(--gold); --today-tint: rgba(176, 122, 20, 0.05); --today-head: rgba(176, 122, 20, 0.09);
+  --success: #13906a; --success-soft: rgba(19, 144, 106, 0.1); --warning: #b46c0c; --danger: #c94a4a;
+  --focus-ring: 0 0 0 3px rgba(47, 111, 214, 0.25);
+  --sheet-shadow: 0 0 0 1px rgba(20, 30, 70, 0.05), 0 1px 2px rgba(20, 30, 70, 0.04), 0 18px 40px -18px rgba(20, 30, 70, 0.18);
+  --glass: rgba(255, 255, 255, 0.78);
+  --course-default: #5b8ee6;
+  --on-ink: #f6f7fb;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --background: #05070f; --canvas: #05070f; --surface: #0b1020; --surface-muted: #111829; --raised: #141c30;
+  --ink: #e8ecf6; --text: #c9d0e2; --muted: #8e97b0; --subtle: #6a738c;
+  --line: rgba(160, 190, 255, 0.12); --line-soft: rgba(160, 190, 255, 0.07); --hover: rgba(160, 190, 255, 0.08);
+  --green: #e8ecf6; --green-hover: #ffffff; --green-soft: rgba(160, 190, 255, 0.1); --green-tint: rgba(160, 190, 255, 0.05);
+  --brand: #e8ecf6; --brand-hover: #ffffff;
+  --limb: #7cb4ff; --limb-soft: rgba(124, 180, 255, 0.13); --gold: #f2c46d; --gold-soft: rgba(242, 196, 109, 0.12);
+  --now: var(--gold); --today: var(--gold); --today-tint: rgba(242, 196, 109, 0.05); --today-head: rgba(242, 196, 109, 0.08);
+  --success: #4fd1a5; --success-soft: rgba(79, 209, 165, 0.12); --warning: #f2b25c; --danger: #ff8f8f;
+  --focus-ring: 0 0 0 3px rgba(124, 180, 255, 0.35);
+  --sheet-shadow: 0 0 0 1px rgba(160, 190, 255, 0.08), 0 24px 60px -24px rgba(0, 0, 0, 0.8);
+  --glass: rgba(14, 20, 38, 0.66);
+  --course-default: #7cb4ff;
+  --on-ink: #05070f;
+  color-scheme: dark;
+}
+html, body { background: var(--background); color: var(--ink); }
+@media (min-width: 1180px) { html, body { background: var(--canvas); } }
+:root[data-theme="dark"] .app-shell.has-sidebar { background: var(--surface); }
+:root[data-theme="dark"] .app-shell.has-sidebar > .app-sidebar { background: linear-gradient(180deg, var(--limb-soft), transparent 45%); }
+::selection { background: var(--limb-soft); }
+input, textarea, select { caret-color: var(--limb); }
+
+/* The starfield sits behind everything in deep space; day has none. */
+.cosmos-sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity .6s ease; }
+:root[data-theme="dark"] .cosmos-sky { opacity: 1; }
+.app-shell { position: relative; z-index: 1; }
+
+/* Ink buttons invert with the theme. */
+.primary-button, .login-screen ~ * .primary-button { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.primary-button:hover:not(:disabled) { border-color: var(--green-hover); background: var(--green-hover); color: var(--on-ink); }
+.brand-mark, .sidebar-brand .brand-mark { background: var(--ink); color: var(--on-ink); }
+.status-message { background: var(--ink); color: var(--on-ink); }
+.secondary-button, .icon-button, .today-button, .auth-button.is-authenticated { border-color: var(--line); background: var(--surface); color: var(--ink); }
+.secondary-button:hover, .icon-button:hover, .today-button:hover { border-color: var(--line); background: var(--hover); }
+.schedule-view-switcher { background: var(--surface-muted); }
+.schedule-view-switcher.has-thumb::before { background: var(--raised); box-shadow: 0 0 0 1px var(--line), 0 4px 12px -6px rgba(0, 0, 0, .35); }
+.schedule-view-switcher button { color: var(--muted); }
+.schedule-view-switcher button.is-active { color: var(--ink); }
+
+/* Display type from the login page. */
+#scheduleTitle, .admin-page-header h2, .student-greeting { font-family: "Instrument Serif", "Songti SC", "STSong", serif; font-weight: 400; letter-spacing: -0.005em; }
+#scheduleTitle { font-size: clamp(34px, 3.4vw, 46px); line-height: 1; }
+.admin-page-header h2 { font-size: clamp(30px, 3vw, 40px); line-height: 1.05; }
+
+/* Week grid */
+.schedule-grid { background: var(--surface); }
+.grid-cell, .time-slot, .day-header, .grid-corner { border-color: var(--line-soft); }
+.time-slot, .grid-corner { background: var(--surface); }
+.grid-cell.is-hour { border-top-color: var(--line-soft); }
+.grid-cell.is-today { background: var(--today-tint); }
+.day-header { background: var(--surface); }
+.day-header .day-number { font-family: "Instrument Serif", serif; font-weight: 400; font-size: 24px; }
+.grid-cell.is-today { background: var(--today-tint); }
+.day-header.is-today { background: var(--today-head); }
+.day-header.is-today > span.day-weekday:not(.calendar-day-status) { color: var(--gold); }
+.day-header.is-today .day-number { min-width: 0; height: auto; padding: 0; border-radius: 0; color: var(--gold); background: linear-gradient(100deg, var(--gold) 30%, #fff6dc 50%, var(--gold) 70%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: cosmos-shimmer 4s linear infinite; font-size: 24px; }
+@keyframes cosmos-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.course-card { --course-accent: var(--course-color, var(--course-default)); background: color-mix(in srgb, var(--course-accent) 17%, var(--surface)); box-shadow: inset 2px 0 0 var(--course-accent), inset 0 0 0 1px color-mix(in srgb, var(--course-accent) 22%, transparent); color: var(--ink); border: 0; }
+.course-card strong { color: var(--ink); }
+.course-card .course-time, .course-card span { color: var(--muted); }
+.course-card:hover { box-shadow: inset 2px 0 0 var(--course-accent), inset 0 0 0 1px color-mix(in srgb, var(--course-accent) 40%, transparent), 0 14px 26px -14px rgba(0, 0, 0, .5); }
+.course-card.is-current { background: color-mix(in srgb, var(--course-accent) 26%, var(--surface)); box-shadow: inset 0 0 0 1.5px var(--course-accent), 0 0 26px -6px var(--course-accent); }
+.course-card.is-past { background: var(--surface-muted); box-shadow: inset 2px 0 0 var(--line), inset 0 0 0 1px var(--line-soft); color: var(--muted); opacity: .78; }
+.course-card.is-past strong { color: var(--muted); }
+.course-attendance .attendance-mark { background: color-mix(in srgb, var(--surface) 80%, transparent); color: var(--ink); }
+.course-card.is-past .attendance-mark:not(.is-pending) { background: var(--raised); color: var(--muted); }
+.course-attendance .attendance-mark.is-pending { background: var(--raised); color: var(--muted); }
+.is-past .course-attendance .attendance-mark.is-pending { background: rgba(255, 143, 143, .12); color: var(--danger); }
+.attendance-mark.is-pending b { background: var(--line); color: var(--muted); }
+.is-past .attendance-mark.is-pending b { background: rgba(255, 143, 143, .25); color: var(--danger); }
+.attendance-mark.is-present b { background: var(--success); color: var(--on-ink); }
+.attendance-mark.is-leave b { background: var(--warning); color: var(--on-ink); }
+.attendance-mark.is-makeup b { background: #8f7cf0; }
+.now-line { border-top-color: var(--gold); background: var(--gold); }
+.now-line::before, .now-line::after { background: var(--gold); }
+.now-line-time { background: var(--gold); color: var(--on-ink); }
+.now-line .cosmos-comet { position: absolute; top: -1px; left: 0; width: 46%; height: 2px; border-radius: 2px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--gold), #fff); filter: drop-shadow(0 0 6px var(--gold)); animation: cosmos-comet 3.2s cubic-bezier(.45, 0, .2, 1) infinite; }
+@keyframes cosmos-comet { 0% { transform: translateX(-100%); opacity: 0; } 15%, 85% { opacity: 1; } 100% { transform: translateX(220%); opacity: 0; } }
+.schedule-grid::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: radial-gradient(240px circle at var(--mx, -999px) var(--my, -999px), color-mix(in srgb, var(--limb) 14%, transparent), transparent 70%); }
+.schedule-grid { position: relative; }
+.course-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: radial-gradient(120px circle at var(--lx, -999px) var(--ly, -999px), var(--limb), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+@media (hover: hover) {
+  .course-card.is-tilting { transform: translateY(-3px) scale(1.03) perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); z-index: 4; }
+}
+
+/* Month / year / sidebar */
+.month-day { background: var(--surface); border-color: var(--line-soft); }
+.month-day.is-outside-month { background: var(--surface-muted); }
+.month-day.is-today { background: var(--today-tint); }
+.month-day.is-today .month-day-number, .year-day.is-today, .sidebar-day.is-today { background: var(--gold); color: var(--on-ink); }
+.calendar-course-chip { background: color-mix(in srgb, var(--course-color, var(--course-default)) 17%, var(--surface)); color: var(--ink); box-shadow: inset 2px 0 0 var(--course-color, var(--course-default)); }
+.calendar-course-chip.is-past { background: var(--surface-muted); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-soft); }
+.calendar-course-chip .attendance-mark.is-present { background: var(--success-soft); color: var(--success); }
+.calendar-course-chip .attendance-mark.is-leave { background: rgba(242, 178, 92, .14); color: var(--warning); }
+.calendar-course-chip .attendance-mark.is-makeup { background: rgba(143, 124, 240, .16); color: #a596ff; }
+.sidebar-day.is-in-week, .sidebar-week { background: var(--limb-soft); }
+
+/* Dialogs and sheets become glass. */
+.course-dialog, .confirm-dialog, .week-overview-dialog, .student-dialog { background: var(--glass); color: var(--ink); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); box-shadow: 0 0 0 1px var(--line), 0 30px 70px -24px rgba(0, 0, 0, .6); }
+.week-overview-dialog::backdrop, .course-dialog::backdrop, .student-dialog::backdrop, .confirm-dialog::backdrop { background: rgba(3, 5, 12, .5); }
+.dialog-attendance { background: color-mix(in srgb, var(--surface) 60%, transparent); border-color: var(--line); }
+.dialog-attendance-row { background: var(--surface-muted); position: relative; overflow: hidden; }
+.dialog-attendance-choice, .dialog-attendance-all, .dialog-attendance-undo { border-color: var(--line); background: var(--surface); color: var(--text); }
+.dialog-attendance-choice.is-present.is-selected { border-color: transparent; background: var(--success); color: var(--on-ink); }
+.dialog-attendance-choice.is-makeup.is-selected { border-color: transparent; background: #8f7cf0; color: #fff; }
+.dialog-attendance-choice.is-leave.is-selected { border-color: transparent; background: var(--warning); color: var(--on-ink); }
+.attendance-status-button.is-present.is-selected { border-color: transparent; background: var(--success); color: var(--on-ink); }
+.attendance-status-button.is-makeup.is-selected { border-color: transparent; background: #8f7cf0; color: #fff; }
+.attendance-status-button.is-leave.is-selected { border-color: transparent; background: var(--warning); color: var(--on-ink); }
+
+/* Feedback: a burst of stars and a sweep of light on the row that changed. */
+.cosmos-burst { position: fixed; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 2000; }
+.cosmos-sweep { position: relative; overflow: hidden; }
+.cosmos-sweep::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--sweep, var(--limb)) 32%, transparent) 50%, transparent 80%); animation: cosmos-sweep .9s cubic-bezier(.3, 0, .2, 1) forwards; }
+@keyframes cosmos-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* Admin hub: a night planet turns in the header; tiles tilt toward the pointer. */
+.admin-hub .admin-page-header { position: relative; }
+.cosmos-planet { position: absolute; right: -40px; top: -150px; width: 300px; height: 300px; border-radius: 50%; pointer-events: none; z-index: 0;
+  box-shadow: inset 22px -14px 50px -18px rgba(124, 180, 255, .55), 0 0 80px -20px rgba(124, 180, 255, .55); overflow: hidden; opacity: .9; }
+.cosmos-planet canvas { width: 100%; height: 100%; display: block; }
+:root[data-theme="light"] .cosmos-planet { opacity: .55; }
+.admin-page-header > :not(.cosmos-planet) { position: relative; z-index: 1; }
+.admin-feature-button { position: relative; overflow: hidden; border-color: var(--line); background: var(--surface); color: var(--ink); transition: transform .35s var(--ease-out), box-shadow .35s ease, border-color .25s ease; }
+.admin-feature-button::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s ease;
+  background: radial-gradient(180px circle at var(--fx, 50%) var(--fy, 50%), color-mix(in srgb, var(--limb) 22%, transparent), transparent 70%); }
+@media (hover: hover) {
+  .admin-feature-button:hover { transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-2px); border-color: color-mix(in srgb, var(--limb) 40%, transparent); background: var(--surface); }
+  .admin-feature-button:hover::after { opacity: 1; }
+}
+.admin-feature-icon, .admin-feature-icon.is-student, .admin-feature-icon.is-attendance, .admin-feature-icon.is-pet, .admin-feature-icon.is-ranking, .admin-feature-icon.is-coin-shop, .admin-feature-icon.is-challenge, .admin-feature-icon.is-question-bank { background: var(--limb-soft); color: var(--limb); }
+
+/* Student next-lesson card: a small turning Earth in the corner. */
+.next-lesson-card { position: relative; overflow: hidden; }
+.cosmos-globe { position: absolute; right: -50px; bottom: -70px; width: 170px; height: 170px; border-radius: 50%; overflow: hidden; pointer-events: none; opacity: .9;
+  box-shadow: -6px -6px 30px -6px rgba(124, 180, 255, .6); }
+.cosmos-globe video { width: 100%; height: 100%; object-fit: cover; transform: scale(1.18); }
+.next-lesson-card > *:not(.cosmos-globe) { position: relative; z-index: 1; }
+:root[data-theme="dark"] .next-lesson-card { background: radial-gradient(120% 140% at 100% 0%, #1b3466 0%, #0b1328 55%, #070b17 100%); border-color: var(--line); color: #eef2fb; }
+
+@media (prefers-reduced-motion: reduce) {
+  .day-header.is-today .day-number, .now-line .cosmos-comet { animation: none; }
+  .cosmos-sweep::before { animation: none; display: none; }
+}
+
+/* Theme toggle: moon in deep space, sun by day. */
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .icon-sun, :root[data-theme="light"] .theme-toggle .icon-moon { display: none; }
+:root[data-theme="light"] .theme-toggle .icon-sun { display: block; }
+.sidebar-footer .theme-toggle { width: 32px; height: 32px; flex: 0 0 32px; }
+html.is-theme-flip::view-transition-old(root), html.is-theme-flip::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
+/* Deep space: older layers painted these with literal light colours. */
+:root[data-theme="dark"] {
+  --blue: var(--limb); --blue-soft: var(--limb-soft); --coral: var(--danger); --coral-soft: rgba(255, 143, 143, 0.12);
+  --yellow: var(--gold); --yellow-soft: var(--gold-soft);
+  --shadow-xs: 0 0 0 1px rgba(160, 190, 255, 0.04); --shadow-sm: 0 6px 16px -10px rgba(0, 0, 0, 0.7); --shadow-md: 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+}
+:root[data-theme="dark"] :is(.schedule-scroll, .calendar-overview, .year-month-card, .holiday-form, .holiday-history, .lesson-summary, .visitor-pet, .course-end-date-item) { background: var(--surface); border-color: var(--line); color: var(--text); }
+:root[data-theme="dark"] :is(.calendar-weekday, .student-table-head, .pet-resource-editor, .pet-resource-input, .coin-shop-image-preview, .challenge-tabs, .year-day.has-course) { background: var(--surface-muted); border-color: var(--line); }
+:root[data-theme="dark"] :is(.shared-password-note, .attendance-overdue-alert, .pet-admin-label, .pet-exclusive-label) { background: var(--gold-soft); border-color: rgba(242, 196, 109, 0.25); color: var(--gold); }
+:root[data-theme="dark"] .attendance-history-day.has-pending { background: rgba(255, 143, 143, 0.07); border-color: rgba(255, 143, 143, 0.22); }
+:root[data-theme="dark"] .student-remaining-count { color: var(--ink); }
+:root[data-theme="dark"] .sidebar-avatar { background: var(--raised); color: var(--ink); }
+:root[data-theme="dark"] .visitor-pet.is-unassigned::before { border-color: var(--line); }
+:root[data-theme="dark"] :is(.lesson-summary strong, .course-end-date-item strong, .visitor-pet strong) { color: var(--ink); }
+:root[data-theme="dark"] .calendar-status-badge.is-holiday, :root[data-theme="dark"] .year-day.is-holiday { background: rgba(255, 143, 143, 0.14); color: #ffb0b0; }
+:root[data-theme="dark"] .calendar-status-badge.is-workday, :root[data-theme="dark"] .year-day.is-workday { background: rgba(242, 178, 92, 0.14); color: #f6c98a; }
+:root[data-theme="dark"] .year-day.is-today { color: var(--on-ink); }
+:root[data-theme="dark"] .student-tabbar { background: rgba(8, 12, 24, 0.82); border-color: var(--line); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); }
+.agenda-item { background: color-mix(in srgb, var(--course-color, var(--course-default)) 18%, var(--surface)); box-shadow: inset 3px 0 0 var(--course-color, var(--course-default)); color: var(--ink); }
+.agenda-item.is-current { background: color-mix(in srgb, var(--course-color, var(--course-default)) 30%, var(--surface)); box-shadow: inset 0 0 0 2px var(--course-color, var(--course-default)), 0 0 24px -8px var(--course-color, var(--course-default)); }
+.agenda-item.is-done { background: var(--surface-muted); box-shadow: inset 3px 0 0 var(--line), inset 0 0 0 1px var(--line-soft); color: var(--muted); }
+.attendance-history-names span, .attendance-history-names small { background: var(--surface-muted); border-color: var(--line); }
+:root[data-theme="dark"] .attendance-history-status.is-pending .attendance-history-names span { border-color: rgba(242, 196, 109, 0.3); color: var(--gold); }
+:root[data-theme="dark"] .challenge-summary-card > span { background: var(--limb-soft) !important; color: var(--limb) !important; }
+:root[data-theme="dark"] .challenge-summary-card.is-coin > span { background: var(--gold-soft) !important; color: var(--gold) !important; }
+.sidebar-day.is-today, .sidebar-day.is-today.is-in-week { background: var(--gold); color: var(--on-ink); }
