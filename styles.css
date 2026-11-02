@@ -6995,3 +6995,168 @@ body.can-edit .section-heading { display: none; }
 .attendance-history-names span,
 .attendance-history-names small { padding: 4px 10px; font-size: 14px; line-height: 20px; }
 .attendance-history-names span { font-weight: 600; }
+
+/* ==========================================================================
+   2026-11 premium layer: warm canvas, one floating sheet, deep green ink,
+   themed browser surfaces and the CSS half of the motion system.
+   ========================================================================== */
+:root {
+  --canvas: #f1f0eb;
+  --brand: #22302a;
+  --brand-hover: #141d18;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --sheet-shadow: 0 0 0 1px rgba(34, 44, 36, 0.05), 0 1px 2px rgba(34, 44, 36, 0.04), 0 18px 40px -18px rgba(34, 44, 36, 0.16);
+  --focus-ring: 0 0 0 3px rgba(95, 115, 86, 0.28);
+  --line: #ecebe7;
+  --line-soft: #f3f2ef;
+  --hover: #f2f1ed;
+}
+
+/* Browser surfaces */
+::selection { background: rgba(95, 115, 86, 0.22); color: inherit; }
+html { scrollbar-color: #cfcdc6 transparent; scrollbar-width: thin; accent-color: var(--today); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: #d3d1ca padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: #b9b7af; }
+::-webkit-scrollbar-track { background: transparent; }
+input, textarea { caret-color: var(--today); }
+
+/* Shell: the sidebar sits on the canvas, the working area floats above it */
+@media (min-width: 1180px) {
+  html, body { background: var(--canvas); }
+  /* Inside the sheet a page needs no second frame. */
+  .app-shell.has-sidebar > .attendance-page { border-color: transparent; padding-left: 0; padding-right: 0; }
+  .app-shell.has-sidebar {
+    min-height: calc(100vh - 24px);
+    box-sizing: border-box;
+    margin: 12px 12px 12px var(--sidebar-width);
+    padding: 4px 32px 32px;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: var(--sheet-shadow);
+  }
+  .app-shell.has-sidebar > .app-sidebar { border-right: 0; background: transparent; }
+}
+.sidebar-day, .sidebar-course, .sidebar-link { transition: background-color 160ms ease, color 160ms ease; }
+
+/* Ink: a deep green-black instead of pure black */
+.brand-mark, .sidebar-brand .brand-mark { background: var(--brand); }
+.primary-button { border-color: var(--brand); background: var(--brand); }
+.primary-button:hover { border-color: var(--brand-hover); background: var(--brand-hover); }
+.status-message { background: var(--brand); }
+
+/* Press feedback: every button acknowledges the click */
+button { transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 200ms ease, transform 120ms var(--ease-out); }
+button:active:not(:disabled) { transform: scale(0.97); }
+.course-card:active:not(:disabled), .calendar-course-chip:active { transform: none; }
+
+/* Lessons lift slightly under the pointer */
+.course-card { transition: transform 220ms var(--ease-out), box-shadow 220ms ease, background-color 220ms ease; }
+@media (hover: hover) {
+  .course-card:hover { transform: translateY(-1px); }
+  .calendar-course-chip { transition: transform 200ms var(--ease-out), box-shadow 200ms ease; }
+  .calendar-course-chip:hover { transform: translateY(-1px); box-shadow: 0 4px 10px -4px rgba(34, 44, 36, 0.22); }
+}
+
+/* Segmented control: one thumb slides to the active view */
+.schedule-view-switcher.has-thumb { position: relative; isolation: isolate; }
+.schedule-view-switcher.has-thumb::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: var(--thumb-w, 0);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(34, 44, 36, 0.1), 0 2px 6px -2px rgba(34, 44, 36, 0.12);
+  transform: translateX(var(--thumb-x, 0));
+  transition: transform 380ms var(--ease-out), width 380ms var(--ease-out);
+}
+.schedule-view-switcher.has-thumb button,
+.schedule-view-switcher.has-thumb button.is-active { background: transparent; box-shadow: none; }
+
+/* The current-time marker breathes so "now" is findable at a glance */
+.now-line::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--now);
+  animation: now-pulse 2.4s var(--ease-out) infinite;
+}
+@keyframes now-pulse {
+  0% { opacity: 0.45; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.8); }
+}
+
+/* Pages arrive instead of snapping in */
+.schedule-section:not([hidden]),
+.admin-page:not([hidden]) { animation: page-in 420ms var(--ease-out) backwards; }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.admin-feature-item:not([hidden]) { animation: page-in 460ms var(--ease-out) backwards; }
+.admin-feature-item:nth-child(2) { animation-delay: 30ms; }
+.admin-feature-item:nth-child(3) { animation-delay: 60ms; }
+.admin-feature-item:nth-child(4) { animation-delay: 90ms; }
+.admin-feature-item:nth-child(5) { animation-delay: 120ms; }
+.admin-feature-item:nth-child(n + 6) { animation-delay: 150ms; }
+
+/* Dialogs rise over a softly blurred backdrop and leave faster than they arrive */
+dialog[open] {
+  opacity: 1;
+  transform: none;
+  transition: opacity 260ms var(--ease-out), transform 320ms var(--ease-out), overlay 180ms allow-discrete, display 180ms allow-discrete;
+}
+@starting-style {
+  dialog[open] { opacity: 0; transform: translateY(10px) scale(0.98); }
+}
+dialog:not([open]) {
+  opacity: 0;
+  transform: scale(0.985);
+  transition: opacity 160ms ease, transform 180ms ease, overlay 180ms allow-discrete, display 180ms allow-discrete;
+}
+dialog::backdrop {
+  -webkit-backdrop-filter: blur(6px) saturate(1.1);
+  backdrop-filter: blur(6px) saturate(1.1);
+  transition: opacity 260ms ease, overlay 180ms allow-discrete, display 180ms allow-discrete;
+}
+dialog[open]::backdrop { opacity: 1; }
+@starting-style {
+  dialog[open]::backdrop { opacity: 0; }
+}
+.week-overview-dialog::backdrop, .course-dialog::backdrop, .student-dialog::backdrop, .confirm-dialog::backdrop { background: rgba(22, 28, 24, 0.26); }
+.course-dialog, .confirm-dialog, .week-overview-dialog, .student-dialog { box-shadow: 0 0 0 1px rgba(34, 44, 36, 0.06), 0 30px 60px -20px rgba(22, 28, 24, 0.35); }
+
+/* Toast arrives from below with a short blur */
+.status-message {
+  filter: blur(4px);
+  transform: translateY(14px) scale(0.96);
+  transition: opacity 240ms var(--ease-out), transform 360ms var(--ease-out), filter 240ms ease;
+}
+.status-message.is-visible { filter: none; transform: none; }
+
+/* Check-in states settle with colour, not a jump */
+.attendance-status-button, .dialog-attendance-choice { transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, transform 120ms var(--ease-out); }
+.attendance-history-day { transition: border-color 200ms ease, box-shadow 240ms ease, background-color 240ms ease; }
+@media (hover: hover) {
+  .attendance-history-day:hover { box-shadow: 0 6px 18px -10px rgba(34, 44, 36, 0.22); }
+}
+
+/* Week, month and year cross-fade into each other */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 320ms; animation-timing-function: var(--ease-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-section:not([hidden]), .admin-page:not([hidden]), .admin-feature-item:not([hidden]) { animation-name: fade-in; }
+  .now-line::after { animation: none; opacity: 0; }
+  .schedule-view-switcher.has-thumb::before { transition: none; }
+  dialog[open], dialog:not([open]) { transform: none; }
+  .status-message { filter: none; transform: none; }
+  button:active:not(:disabled), .course-card:hover, .calendar-course-chip:hover { transform: none; }
+}
+@keyframes fade-in { from { opacity: 0; } }
