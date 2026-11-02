@@ -399,3 +399,37 @@ button:active:not(:disabled) { transform: scale(0.96); }
 .student-filter-empty svg { width: 120px; height: 80px; }
 .student-filter-empty p { margin: 4px 0 0; }
 @media (max-width: 900px) { .student-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- Check-in page: day ring with counts, avatar rows ---------- */
+.attendance-toolbar { border: 0; }
+.attendance-date-copy strong { font-size: 20px; font-weight: 700; }
+.attendance-date-picker input { height: 40px; border: 0; border-radius: 12px; background: #f2f2f7; }
+.attendance-overview { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; margin: 4px 0 14px; padding: 14px 16px; border-radius: 18px; background: #f7f7fa; }
+.attendance-ring { position: relative; display: grid; width: 64px; height: 64px; flex: 0 0 64px; place-items: center; }
+.attendance-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.attendance-ring svg circle:last-child { transition: stroke-dasharray 0.6s var(--ease-out); }
+.attendance-ring b { position: relative; font-size: 14px; }
+.attendance-ring-copy { display: flex; flex: 1 1 180px; flex-direction: column; gap: 2px; }
+.attendance-ring-copy strong { font-size: 16px; }
+.attendance-ring-copy small { color: var(--muted); font-size: 12.5px; }
+.attendance-count-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.attendance-count-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; background: #ffffff; box-shadow: var(--shadow-xs); font-size: 13px; }
+.attendance-count-chip i { width: 8px; height: 8px; border-radius: 50%; }
+.attendance-count-chip.is-present i { background: #34c759; }
+.attendance-count-chip.is-makeup i { background: #007aff; }
+.attendance-count-chip.is-leave i { background: #ff9500; }
+.attendance-count-chip.is-pending i { background: #ff3b30; }
+.attendance-list { display: flex; flex-direction: column; gap: 8px; }
+.attendance-row { border: 0; border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px var(--line-soft), var(--shadow-xs); transition: box-shadow 0.25s ease; }
+.attendance-row:hover { box-shadow: 0 0 0 1px var(--line), var(--shadow-sm); }
+.attendance-row.is-recorded { background: #ffffff; }
+.attendance-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 50%; background: var(--student-color, #0a84ff); color: #ffffff; font-size: 14px; font-weight: 600; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2); }
+.attendance-status-button { height: 38px; }
+.attendance-overdue-alert { border: 0; border-radius: 14px; background: rgba(255, 149, 0, 0.12); color: #8a4a00; }
+.attendance-history-day { border: 0; border-radius: 18px; background: #ffffff; box-shadow: 0 0 0 1px var(--line-soft), var(--shadow-xs); }
+.attendance-history-day.has-pending { background: #ffffff; box-shadow: inset 4px 0 0 #ff3b30, 0 0 0 1px var(--line-soft), var(--shadow-xs); }
+.attendance-history-names span, .attendance-history-names small { border: 0; border-radius: 999px; background: #f2f2f7; }
+.attendance-history-status.is-pending .attendance-history-names span { background: rgba(255, 59, 48, 0.1); color: #d70015; }
+@media (min-width: 1180px) { .app-shell.has-sidebar > .attendance-page { padding-right: 24px; padding-left: 24px; } }
+.attendance-row { padding: 12px 14px; }
+.attendance-identity { align-items: center; }
