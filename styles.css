@@ -7160,3 +7160,104 @@ dialog[open]::backdrop { opacity: 1; }
   button:active:not(:disabled), .course-card:hover, .calendar-course-chip:hover { transform: none; }
 }
 @keyframes fade-in { from { opacity: 0; } }
+
+/* ==========================================================================
+   2026-11 login: the turning night Earth on the right, a starfield on the left,
+   the motto and the sign-in floating over it. Single dark look by design.
+   ========================================================================== */
+@font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap; src: url("vendor/fonts/instrument-serif-normal-latin.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; font-display: swap; src: url("vendor/fonts/instrument-serif-italic-latin.woff2") format("woff2"); }
+.login-screen {
+  --l-space: #04050a;
+  --l-ink: #f2f0ea;
+  --l-mist: rgba(242, 240, 234, 0.7);
+  --l-hair: rgba(242, 240, 234, 0.15);
+  --l-earth: #6fb3ff;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: block;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: radial-gradient(120% 80% at 80% 30%, #0a1022 0%, var(--l-space) 60%);
+  color: var(--l-ink);
+  color-scheme: dark;
+}
+.login-screen[hidden] { display: none; }
+.login-stage { position: absolute; inset: 0; overflow: hidden; }
+.login-stars { position: absolute; inset: 0; width: 100%; height: 100%; }
+.login-earth {
+  position: absolute; top: 0; right: 0; width: 80%; height: 100%;
+  object-fit: cover; object-position: 30% 50%;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 26%); mask-image: linear-gradient(90deg, transparent 0%, #000 26%);
+  transition: opacity 700ms ease;
+  animation: login-film-in 2600ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.login-earth.is-seam { opacity: 0; }
+@keyframes login-film-in { from { opacity: 0; transform: scale(1.08); filter: blur(6px); } }
+.login-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(4, 5, 10, 0.6) 0%, rgba(4, 5, 10, 0.2) 40%, rgba(4, 5, 10, 0) 60%); }
+.login-ui {
+  position: absolute; inset: 0; z-index: 1;
+  display: grid; grid-template-rows: auto 1fr auto;
+  padding-block: max(22px, env(safe-area-inset-top, 0px)) max(26px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+.login-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.login-screen .login-brand { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+.login-screen .brand-mark { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 9px; background: rgba(242, 240, 234, 0.92); color: #0b1020; font-size: 15px; }
+.login-term { font-size: 12.5px; color: var(--l-mist); padding: 7px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--l-hair); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.login-screen .login-panel {
+  align-self: center; width: min(480px, 100%); padding: 0; display: grid; gap: 26px;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+.login-motto { margin: 0; font-family: "Instrument Serif", "Songti SC", serif; font-weight: 400; font-size: clamp(52px, 7.4vw, 104px); line-height: 0.98; letter-spacing: -0.01em; color: var(--l-ink); text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6); }
+.login-motto span { display: block; white-space: nowrap; }
+.login-motto em { font-style: italic; color: #cfe2ff; }
+.login-screen .login-form {
+  display: grid; gap: 12px; padding: 18px; border-radius: 20px;
+  background: rgba(16, 20, 32, 0.42);
+  box-shadow: inset 0 0 0 1px var(--l-hair), 0 30px 60px -30px rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2);
+}
+.login-screen .form-field { gap: 6px; }
+.login-screen .form-field > span { color: var(--l-mist); font-size: 12.5px; font-weight: 500; letter-spacing: 0.04em; }
+.login-screen .form-field input {
+  height: 44px; border: 0; border-radius: 12px; padding: 0 14px;
+  font-size: 15px; font-weight: 500; color: var(--l-ink);
+  background: rgba(242, 240, 234, 0.07); box-shadow: inset 0 0 0 1px var(--l-hair); caret-color: var(--l-earth);
+}
+.login-screen .form-field input::placeholder { color: rgba(242, 240, 234, 0.38); }
+.login-screen .form-field input:focus { outline: 0; border: 0; background: rgba(242, 240, 234, 0.11); box-shadow: inset 0 0 0 1px rgba(111, 179, 255, 0.75), 0 0 0 4px rgba(111, 179, 255, 0.16); }
+.login-screen .form-field input:-webkit-autofill { -webkit-text-fill-color: var(--l-ink); -webkit-box-shadow: inset 0 0 0 1px var(--l-hair), inset 0 0 0 40px #161b2b; caret-color: var(--l-earth); }
+.login-screen .login-error { min-height: 0; margin: 0; color: #ffb4a8; font-size: 12.5px; }
+.login-screen .login-error:empty { display: none; }
+.login-screen .login-submit {
+  width: 100%; height: 46px; margin-top: 4px; border: 0; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  background: var(--l-ink); color: #0b1020; font-size: 15px; font-weight: 700;
+  box-shadow: 0 10px 30px -10px rgba(111, 179, 255, 0.55);
+}
+.login-screen .login-submit:hover:not(:disabled) { background: #ffffff; border: 0; box-shadow: 0 14px 36px -10px rgba(111, 179, 255, 0.85); }
+.login-screen .login-submit svg { width: 16px; height: 16px; transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1); }
+.login-screen .login-submit:hover svg { transform: translateX(4px); }
+.login-screen .login-submit:disabled { opacity: 0.6; }
+.login-screen .login-submit:focus-visible { outline: 2px solid var(--l-earth); outline-offset: 3px; box-shadow: none; }
+.login-hint { margin: 0; font-size: 12.5px; color: rgba(242, 240, 234, 0.55); }
+.login-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 11.5px; letter-spacing: 0.14em; color: var(--l-mist); font-variant-numeric: tabular-nums; }
+.login-motto span, .login-screen .login-form { animation: login-arrive 1200ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.login-motto span:nth-child(1) { animation-delay: 500ms; }
+.login-motto span:nth-child(2) { animation-delay: 620ms; }
+.login-screen .login-form { animation-delay: 820ms; }
+@keyframes login-arrive { from { opacity: 0; transform: translateY(18px); filter: blur(8px); } }
+@media (max-width: 720px) {
+  .login-ui { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+  .login-earth { width: 100%; object-position: 62% 50%; -webkit-mask-image: none; mask-image: none; }
+  .login-shade { background: linear-gradient(0deg, rgba(4, 5, 10, 0.88) 0%, rgba(4, 5, 10, 0.35) 50%, rgba(4, 5, 10, 0) 75%); }
+  .login-screen .login-panel { align-self: end; gap: 18px; padding-bottom: 10px; }
+  .login-term { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-earth, .login-motto span, .login-screen .login-form { animation: none; }
+}

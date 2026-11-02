@@ -7,39 +7,49 @@
     <meta name="referrer" content="no-referrer" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data: blob: https://dpjyjzszqmgakwtdhmwq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'self' blob:"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data: blob: https://dpjyjzszqmgakwtdhmwq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'self'; worker-src 'self' blob:"
     />
     <title>我的课程表</title>
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
     <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="stylesheet" href="styles.css?v=20261101-1" />
+    <link rel="stylesheet" href="styles.css?v=20261102-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
-      <div class="login-panel">
-        <div class="login-brand">
-          <span class="brand-mark" aria-hidden="true">课</span>
-          <div>
-            <p class="eyebrow">课程安排与实时同步</p>
-            <h1>登录课程表</h1>
-          </div>
+      <div class="login-stage" aria-hidden="true">
+        <canvas class="login-stars" id="loginStars"></canvas>
+        <video class="login-earth" id="loginEarth" src="assets/login/earth-night.mp4" poster="assets/login/earth-night-poster.jpg" muted loop playsinline preload="none"></video>
+        <div class="login-shade"></div>
+      </div>
+      <div class="login-ui">
+        <header class="login-top">
+          <div class="login-brand"><span class="brand-mark" aria-hidden="true">课</span>我的课程表</div>
+          <div class="login-term" id="loginTerm">2026 – 2027 学年 · 秋季学期</div>
+        </header>
+        <div class="login-panel">
+          <h1 class="login-motto" lang="en"><span>Practice</span><span>makes <em>perfect</em></span></h1>
+          <form class="login-form" id="loginForm">
+            <label class="form-field">
+              <span>用户名</span>
+              <input id="loginUsername" name="username" type="text" maxlength="40" autocomplete="username" placeholder="请输入用户名" required />
+            </label>
+            <label class="form-field">
+              <span>密码</span>
+              <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required />
+            </label>
+            <p class="login-error" id="loginError" role="alert" aria-live="polite"></p>
+            <button class="primary-button login-submit" id="loginSubmit" type="submit">
+              <span>进入课程表</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+            <p class="login-hint">忘记密码？请联系曾老师重置。</p>
+          </form>
         </div>
-        <form class="login-form" id="loginForm">
-          <label class="form-field">
-            <span>用户名</span>
-            <input id="loginUsername" name="username" type="text" maxlength="40" autocomplete="username" placeholder="请输入用户名" required />
-          </label>
-          <label class="form-field">
-            <span>密码</span>
-            <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required />
-          </label>
-          <p class="login-error" id="loginError" role="alert" aria-live="polite"></p>
-          <button class="primary-button login-submit" id="loginSubmit" type="submit">
-            <i data-lucide="log-in"></i>
-            <span>进入课程表</span>
-          </button>
-        </form>
+        <footer class="login-bottom">
+          <span id="loginClock">北京时间 --:--</span>
+          <span id="loginMonth"></span>
+        </footer>
       </div>
     </section>
 
@@ -1170,5 +1180,6 @@
     <script src="assets/export.js?v=20261008-1"></script>
     <script src="assets/admin-layout.js?v=20260910-2"></script>
     <script src="assets/motion.js?v=20261101-1"></script>
+    <script src="assets/login-scene.js?v=20261102-2"></script>
   </body>
 </html>
