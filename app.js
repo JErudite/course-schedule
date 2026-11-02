@@ -3454,6 +3454,7 @@ async function loadScheduleAttendance({ force = false, range = getScheduleAttend
   (data || []).forEach((row) => setScheduleAttendanceStatus(row.course_id, row.student_id, row.attendance_date, row.status));
   renderScheduleAttendanceMarks();
   renderDialogAttendance();
+  window.ScheduleInspector?.render();
   return true;
 }
 
@@ -3542,6 +3543,7 @@ function renderDialogAttendance() {
 function renderOccurrenceAttendanceChange() {
   renderScheduleAttendanceMarks();
   renderDialogAttendance();
+  window.ScheduleInspector?.render();
 }
 
 function describeAttendanceSaveError(error) {
@@ -3626,8 +3628,7 @@ async function clearOccurrenceAttendance(course, isoDate, studentId) {
   afterOccurrenceAttendanceSaved(isoDate);
 }
 
-async function markOccurrenceAllPresent() {
-  const occurrence = getDialogOccurrence();
+async function markOccurrenceAllPresent(occurrence = getDialogOccurrence()) {
   if (!occurrence || scheduleAttendanceBusy) return;
   const { course, isoDate } = occurrence;
   const pending = getOccurrenceRoster(course, isoDate).filter((entry) => !entry.status);
@@ -4707,6 +4708,7 @@ function showCourse(courseId, occurrenceDate) {
   showCourseDetails(course);
   if (!dialog.open) dialog.showModal();
   renderDialogAttendance();
+  window.ScheduleInspector?.select(courseId, occurrenceDate);
 }
 
 function showCourseDetails(course) {
@@ -6989,7 +6991,7 @@ function bindEvents() {
   document.querySelector("#closeDialog").addEventListener("click", () => dialog.close());
   document.querySelector("#copyCourse").addEventListener("click", copySelectedCourse);
   document.querySelector("#editCourse").addEventListener("click", startEditingCourse);
-  document.querySelector("#dialogAttendanceAll").addEventListener("click", markOccurrenceAllPresent);
+  document.querySelector("#dialogAttendanceAll").addEventListener("click", () => markOccurrenceAllPresent());
   document.querySelector("#deleteCourse").addEventListener("click", () => {
     const course = schedule.find((item) => item.id === selectedCourseId);
     if (!course || !canEdit) return;
