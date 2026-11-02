@@ -3,8 +3,8 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PyH98bSXQ2rSCzIfmLNN5w_4rTJ6P-x
 
 const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 const defaultCourseColor = "#ffffff";
-// Courses without a colour are drawn in this Earth-limb blue so they read in both themes.
-const defaultCourseAccent = "#0a84ff";
+// Courses without a colour are drawn in this sage green so they stand out on the white grid.
+const defaultCourseAccent = "#6f8a64";
 const colorPalette = [
   { value: "", label: "自动 / 白色", color: "#ffffff" },
   { value: "#f44336", label: "红色", color: "#f44336" },
@@ -3454,7 +3454,6 @@ async function loadScheduleAttendance({ force = false, range = getScheduleAttend
   (data || []).forEach((row) => setScheduleAttendanceStatus(row.course_id, row.student_id, row.attendance_date, row.status));
   renderScheduleAttendanceMarks();
   renderDialogAttendance();
-  window.ScheduleInspector?.render();
   return true;
 }
 
@@ -3543,7 +3542,6 @@ function renderDialogAttendance() {
 function renderOccurrenceAttendanceChange() {
   renderScheduleAttendanceMarks();
   renderDialogAttendance();
-  window.ScheduleInspector?.render();
 }
 
 function describeAttendanceSaveError(error) {
@@ -3628,7 +3626,8 @@ async function clearOccurrenceAttendance(course, isoDate, studentId) {
   afterOccurrenceAttendanceSaved(isoDate);
 }
 
-async function markOccurrenceAllPresent(occurrence = getDialogOccurrence()) {
+async function markOccurrenceAllPresent() {
+  const occurrence = getDialogOccurrence();
   if (!occurrence || scheduleAttendanceBusy) return;
   const { course, isoDate } = occurrence;
   const pending = getOccurrenceRoster(course, isoDate).filter((entry) => !entry.status);
@@ -4155,78 +4154,6 @@ function createSidebarCourseItem(course, meta, onClick) {
   return item;
 }
 
-// Sidebar icons are small inline strokes on coloured tiles, drawn here so the bundle stays tiny.
-const sidebarIconPaths = {
-  calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-  check: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 13l2 2 4-4"/>',
-  students: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.5a3.5 3.5 0 010 7M21.5 20a6.5 6.5 0 00-4-6"/>',
-  paw: '<circle cx="6" cy="9.5" r="2"/><circle cx="10" cy="5.5" r="2"/><circle cx="14" cy="5.5" r="2"/><circle cx="18" cy="9.5" r="2"/><path d="M12 11.5c-3.3 0-5.6 3.3-5.6 5.8 0 2 2 2.5 3.4 2 .9-.4 1.4-.6 2.2-.6s1.3.2 2.2.6c1.4.5 3.4 0 3.4-2 0-2.5-2.3-5.8-5.6-5.8z"/>',
-  trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3"/>',
-  star: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
-  book: '<path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19V5M8 7h7"/>',
-  coin: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.5 10c0-1.2 1.1-2 2.5-2s2.5.8 2.5 2-1.1 1.6-2.5 2-2.5.8-2.5 2 1.1 2 2.5 2 2.5-.8 2.5-2"/>',
-  moon: '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
-  grid: '<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
-};
-function sidebarIcon(name) {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${sidebarIconPaths[name] || ""}</svg>`;
-}
-
-function renderSidebarGreeting() {
-  const card = createElement("section", "sidebar-greeting");
-  card.setAttribute("aria-label", "今天");
-  const hour = Math.floor(getScheduleTimeMinutes() / 60);
-  const hello = hour < 11 ? "早上好" : hour < 13 ? "中午好" : hour < 18 ? "下午好" : "晚上好";
-  const name = canEdit ? "曾老师" : String(currentUser.username || "同学");
-  const remaining = upcomingOccurrences(20).filter(({ offset }) => offset === 0);
-  const line = remaining.length
-    ? `今天还有 ${remaining.length} 节课，下一节 ${formatTime(remaining[0].course.startTime)}`
-    : "今天的课都上完啦";
-  card.innerHTML = '<svg class="sidebar-greeting-art" viewBox="0 0 120 70" aria-hidden="true"><g class="sidebar-sun"><circle cx="52" cy="34" r="12" fill="#ffb340"/><g stroke="#ffb340" stroke-width="3" stroke-linecap="round"><path d="M52 13v-5M52 60v-5M31 34h-5M78 34h-5M37 19l-3.5-3.5M70.5 52.5L67 49M37 49l-3.5 3.5M70.5 15.5L67 19"/></g></g><path class="sidebar-cloud" d="M66 52h34a10 10 0 000-20 14 14 0 00-26-4 9 9 0 00-8 24z" fill="#fff"/></svg>';
-  card.append(
-    createElement("small", "", `${["周日", "周一", "周二", "周三", "周四", "周五", "周六"][scheduleToday.getDay()]} · ${scheduleToday.getMonth() + 1}月${scheduleToday.getDate()}日`),
-    createElement("strong", "", `${hello}，${name}`),
-    createElement("span", "", line),
-  );
-  return card;
-}
-
-function renderSidebarNav() {
-  const nav = createElement("nav", "sidebar-nav");
-  nav.setAttribute("aria-label", "功能");
-  const pending = todayAttendanceSummary?.date === toISODate(scheduleToday) && !todayAttendanceSummary.failed ? todayAttendanceSummary.pending : 0;
-  const items = canEdit ? [
-    ["scheduleSection", "课表", "calendar", "red", () => showScheduleView()],
-    ["attendanceManagementPage", "上课点名", "check", "orange", () => showAttendanceManagement(), pending],
-    ["studentManagementPage", "学生与课时", "students", "teal", () => showStudentManagement(), students.length || ""],
-    ["petManagementPage", "宠物分配", "paw", "green", () => showPetManagement()],
-    ["petLeaderboardPage", "宠物排行", "trophy", "yellow", () => showPetLeaderboard()],
-    ["challengeRecordsPage", "挑战记录", "star", "blue", () => showChallengeRecords()],
-    ["questionBankPage", "题库设置", "book", "indigo", () => showQuestionBank()],
-    ["coinShopPage", "金币商城", "coin", "gold", () => showCoinShop()],
-    ["courseHolidayPage", "假期停课", "moon", "purple", () => showCourseHoliday()],
-    ["adminHub", "管理后台", "grid", "gray", () => showAdminHub()],
-  ] : [
-    ["scheduleSection", "我的课表", "calendar", "red", () => showScheduleView()],
-    ["studentChallengePage", "学习挑战", "star", "blue", () => showStudentChallenge()],
-    ["petDetailPage", "我的宠物", "paw", "green", () => showPetDetail()],
-    ["petLeaderboardPage", "宠物排行", "trophy", "yellow", () => showPetLeaderboard()],
-    ["coinShopPage", "金币商城", "coin", "gold", () => showCoinShop()],
-  ];
-  items.forEach(([page, label, icon, tone, open, badge]) => {
-    const button = createElement("button", "sidebar-nav-item");
-    button.type = "button";
-    button.dataset.page = page;
-    const tile = createElement("span", `sidebar-nav-icon is-${tone}`);
-    tile.innerHTML = sidebarIcon(icon);
-    button.append(tile, createElement("span", "sidebar-nav-label", label));
-    if (badge) button.append(createElement("span", page === "attendanceManagementPage" ? "sidebar-nav-badge" : "sidebar-nav-count", String(badge)));
-    button.addEventListener("click", open);
-    nav.append(button);
-  });
-  return nav;
-}
-
 function renderSidebar({ keepMonth = false } = {}) {
   const sidebar = document.querySelector("#appSidebar");
   if (!sidebar) return;
@@ -4241,12 +4168,7 @@ function renderSidebar({ keepMonth = false } = {}) {
   const brand = createElement("div", "sidebar-brand");
   const brandCopy = createElement("div", "");
   brandCopy.append(createElement("strong", "", "我的课程表"), createElement("span", "", getAcademicPeriod(scheduleToday)));
-  const brandMark = createElement("span", "brand-mark");
-  brandMark.innerHTML = sidebarIcon("calendar");
-  brand.append(brandMark, brandCopy);
-
-  const greeting = renderSidebarGreeting();
-  const nav = renderSidebarNav();
+  brand.append(createElement("span", "brand-mark", "课"), brandCopy);
 
   const monthBox = createElement("section", "sidebar-month");
   monthBox.setAttribute("aria-label", "月历");
@@ -4295,6 +4217,12 @@ function renderSidebar({ keepMonth = false } = {}) {
   const sync = document.querySelector("#syncState");
   who.append(createElement("strong", "", currentUser.username || ""), createElement("small", `sidebar-sync ${sync?.className.match(/is-\w+/)?.[0] || ""}`, document.querySelector("#syncStateText")?.textContent || ""));
   footer.append(who);
+  if (canEdit) {
+    const admin = createElement("button", "sidebar-link", "管理后台");
+    admin.type = "button";
+    admin.addEventListener("click", () => showAdminHub());
+    footer.append(admin);
+  }
   const logout = createElement("button", "icon-button sidebar-logout");
   logout.type = "button";
   logout.title = "退出登录";
@@ -4303,9 +4231,8 @@ function renderSidebar({ keepMonth = false } = {}) {
   logout.addEventListener("click", () => authButton.click());
   footer.append(logout);
 
-  sidebar.replaceChildren(brand, greeting, nav, monthBox, ...sections, footer);
+  sidebar.replaceChildren(brand, monthBox, ...sections, footer);
   if (window.lucide) window.lucide.createIcons();
-  window.SoftUI?.markCurrentPage();
 }
 
 // Phones: students read the week as a list (the 7-column grid is too narrow to read).
@@ -4708,7 +4635,6 @@ function showCourse(courseId, occurrenceDate) {
   showCourseDetails(course);
   if (!dialog.open) dialog.showModal();
   renderDialogAttendance();
-  window.ScheduleInspector?.select(courseId, occurrenceDate);
 }
 
 function showCourseDetails(course) {
@@ -6991,7 +6917,7 @@ function bindEvents() {
   document.querySelector("#closeDialog").addEventListener("click", () => dialog.close());
   document.querySelector("#copyCourse").addEventListener("click", copySelectedCourse);
   document.querySelector("#editCourse").addEventListener("click", startEditingCourse);
-  document.querySelector("#dialogAttendanceAll").addEventListener("click", () => markOccurrenceAllPresent());
+  document.querySelector("#dialogAttendanceAll").addEventListener("click", markOccurrenceAllPresent);
   document.querySelector("#deleteCourse").addEventListener("click", () => {
     const course = schedule.find((item) => item.id === selectedCourseId);
     if (!course || !canEdit) return;
