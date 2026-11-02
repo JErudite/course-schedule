@@ -465,3 +465,32 @@ button:active:not(:disabled) { transform: scale(0.96); }
   .student-hello strong { font-size: 26px; }
   .lesson-summary { grid-template-columns: 84px repeat(3, minmax(0, 1fr)); padding: 10px 12px; }
 }
+
+/* ---------- Other admin pages: hairline boxes become soft grey cards ---------- */
+.pet-list-heading, .leaderboard-status-band, .challenge-records-toolbar, .question-import-band, .coin-shop-create-section, .operations-dashboard,
+.admin-page fieldset.form-field-wide, .question-bank-summary article, .admin-page .question-stat-card {
+  border: 0; border-radius: 18px; background: #f7f7fa; box-shadow: none;
+}
+.admin-page fieldset.form-field-wide { padding: 14px 16px; }
+.admin-page fieldset.form-field-wide legend { padding: 0 4px; font-weight: 600; }
+.pet-resource-editor { border: 0; border-radius: 16px; background: #f7f7fa; }
+.pet-resource-input { border: 0; border-radius: 12px; background: #ffffff; box-shadow: 0 0 0 1px var(--line-soft); }
+.pet-exclusive-label { border: 0; border-radius: 999px; background: rgba(255, 149, 0, 0.14); color: #8a4a00; }
+.pet-student-row { border: 0; border-radius: 18px; background: #ffffff; box-shadow: 0 0 0 1px var(--line-soft), var(--shadow-xs); }
+.pet-student-row.is-admin-pet { background: linear-gradient(150deg, #fff7e8, #ffffff 60%); }
+.admin-page select { border: 0; border-radius: 12px; background-color: #f2f2f7; }
+.admin-page .empty-list-hint, .admin-page [id$="Empty"] {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 0; color: var(--muted);
+}
+.admin-page .empty-list-hint[hidden], .admin-page [id$="Empty"][hidden] { display: none; }
+.admin-page .empty-list-hint::before {
+  content: ""; width: 96px; height: 64px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 64'%3E%3Crect x='14' y='10' width='68' height='46' rx='12' fill='%23f2f2f7'/%3E%3Cpath d='M14 24h68' stroke='%23e5e5ea' stroke-width='3'/%3E%3Ccircle cx='34' cy='38' r='4' fill='%23d1d1d6'/%3E%3Ccircle cx='48' cy='38' r='4' fill='%23d1d1d6'/%3E%3Ccircle cx='62' cy='38' r='4' fill='%23ffb340'/%3E%3Cpath d='M30 4v10M66 4v10' stroke='%23d1d1d6' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.question-bank-summary article > :first-child, .question-stat-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: linear-gradient(160deg, #7d7aff, #5856d6); color: #ffffff; }
+.leaderboard-row, .challenge-record-row { border: 0; border-radius: 14px; }
+.question-bank-dashboard article { border: 0; border-radius: 18px; background: #f7f7fa; box-shadow: none; }
+.question-bank-dashboard article > span { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; color: #ffffff; background: linear-gradient(160deg, #7d7aff, #5856d6); }
+.question-bank-dashboard article:nth-child(2) > span { background: linear-gradient(160deg, #5ac8fa, #007aff); }
+.question-bank-dashboard article:nth-child(3) > span { background: linear-gradient(160deg, #a5e870, #34c759); }
+.question-bank-dashboard article > span svg { width: 20px; height: 20px; }
