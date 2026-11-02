@@ -360,3 +360,42 @@ button:active:not(:disabled) { transform: scale(0.96); }
   .app-shell.has-sidebar { padding-right: 20px; padding-left: calc(var(--sidebar-width) + 20px); }
   .inspector-choice { padding: 0 6px; }
 }
+
+/* ---------- Student page: tiles, filter, avatar rows with a progress line ---------- */
+.student-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 4px 0 18px; }
+.student-stat { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; background: #f7f7fa; }
+.student-stat-icon { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border-radius: 12px; color: #ffffff; }
+.student-stat-icon svg { width: 20px; height: 20px; }
+.student-stat-icon.is-teal { background: linear-gradient(160deg, #66d4cf, #30b0c7); }
+.student-stat-icon.is-blue { background: linear-gradient(160deg, #5ac8fa, #007aff); }
+.student-stat-icon.is-orange { background: linear-gradient(160deg, #ffb340, #ff9500); }
+.student-stat-icon.is-gray { background: linear-gradient(160deg, #a2a2a7, #8e8e93); }
+.student-stat b { display: block; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.student-stat strong { display: block; font-size: 13px; font-weight: 600; }
+.student-stat small { color: var(--muted); font-size: 12px; }
+.student-filter { display: flex; padding: 2px; border-radius: 10px; background: rgba(118, 118, 128, 0.12); }
+.student-filter-tab { display: inline-flex; height: 32px; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; font: inherit; font-size: 13px; transition: background-color 0.25s ease, box-shadow 0.25s ease; }
+.student-filter-tab span { color: var(--subtle); font-size: 12px; }
+.student-filter-tab.is-active { background: #ffffff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 1px 1px rgba(0, 0, 0, 0.04); font-weight: 600; }
+.student-sort-toolbar { flex-wrap: wrap; gap: 10px; }
+.student-sort-toolbar select, .student-search-input { height: 36px; border: 0; border-radius: 10px; background: #f2f2f7; }
+.admin-create-band { padding: 16px; border: 0; border-radius: 18px; background: #f7f7fa; }
+.shared-password-note { border: 0; border-radius: 12px; background: rgba(255, 149, 0, 0.12); color: #8a4a00; }
+.student-table-head { border: 0; border-radius: 12px; background: transparent; color: var(--subtle); }
+.admin-page .student-list { display: flex; flex-direction: column; gap: 8px; }
+.admin-page .student-row { position: relative; overflow: hidden; border: 0; border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px var(--line-soft), var(--shadow-xs); transition: box-shadow 0.25s ease, transform 0.25s var(--ease-out); }
+.admin-page .student-row:hover { box-shadow: 0 0 0 1px var(--line), var(--shadow-sm); }
+.admin-page .student-row.is-disabled { opacity: 0.6; }
+.student-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--student-color, #0a84ff) 80%, #000000 0%); color: #ffffff; font-size: 14px; font-weight: 600; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2); }
+.student-color-button { width: 18px; height: 18px; border-radius: 6px; }
+.student-progress { position: absolute; right: 12px; bottom: 0; left: 12px; height: 3px; overflow: hidden; border-radius: 3px; background: rgba(118, 118, 128, 0.12); pointer-events: none; }
+.student-progress i { display: block; height: 100%; border-radius: 3px; background: #34c759; transition: width 0.6s var(--ease-out); }
+.student-progress.is-low i { background: #ff9500; }
+.student-progress.is-empty i { background: #ff3b30; }
+.student-count-field input { border: 0; border-radius: 10px; background: #f2f2f7; }
+.student-remaining-count { color: var(--ink); }
+.student-class-divider { border: 0; border-radius: 12px; background: #f2f2f7; }
+.student-filter-empty { display: flex; flex-direction: column; align-items: center; padding: 28px 0; color: var(--muted); font-size: 14px; }
+.student-filter-empty svg { width: 120px; height: 80px; }
+.student-filter-empty p { margin: 4px 0 0; }
+@media (max-width: 900px) { .student-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
