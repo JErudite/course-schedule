@@ -6995,3 +6995,150 @@ body.can-edit .section-heading { display: none; }
 .attendance-history-names span,
 .attendance-history-names small { padding: 4px 10px; font-size: 14px; line-height: 20px; }
 .attendance-history-names span { font-weight: 600; }
+
+/* ---------- Login collage: art tiles on a square grid, a large white word printed across them ---------- */
+.login-screen {
+  position: relative;
+  overflow: hidden;
+  justify-items: end;
+  padding: 24px 7vw;
+  background: #fbfaf7;
+}
+.login-collage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-auto-rows: 12.5vw;
+}
+.login-tile {
+  background: var(--tile, #d9d4ca) center / cover no-repeat;
+  animation: login-tile-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.login-tile-1  { grid-area: 1 / 2 / 2 / 3;  --i: 1;  --tile: linear-gradient(135deg, #e9b98a, #c4673f); }
+.login-tile-2  { grid-area: 1 / 3 / 3 / 5;  --i: 0;  --tile: linear-gradient(160deg, #efe6d6, #b9a78b); }
+.login-tile-3  { grid-area: 1 / 6 / 2 / 7;  --i: 3;  --tile: linear-gradient(135deg, #8fb3c9, #3e6b87); }
+.login-tile-4  { grid-area: 2 / 7 / 3 / 9;  --i: 4;  --tile: linear-gradient(135deg, #f1d36b, #d96c4a); }
+.login-tile-5  { grid-area: 3 / 1 / 5 / 3;  --i: 2;  --tile: linear-gradient(135deg, #c9cfc0, #6f7f63); }
+.login-tile-6  { grid-area: 3 / 3 / 6 / 6;  --i: 5;  --tile: linear-gradient(135deg, #e8dfe9, #9a7ea3); }
+.login-tile-7  { grid-area: 2 / 5 / 3 / 6;  --i: 6;  --tile: linear-gradient(135deg, #f3c9c0, #c55d63); }
+.login-tile-8  { grid-area: 3 / 6 / 4 / 7;  --i: 7;  --tile: linear-gradient(135deg, #d4e3e0, #5f9a92); }
+.login-tile-9  { grid-area: 4 / 7 / 6 / 9;  --i: 8;  --tile: linear-gradient(135deg, #ede3cf, #a88d5f); }
+.login-tile-10 { grid-area: 5 / 1 / 6 / 2;  --i: 9;  --tile: linear-gradient(135deg, #b7c6e6, #4a5f9e); }
+.login-tile-11 { grid-area: 1 / 8 / 2 / 9;  --i: 10; --tile: linear-gradient(135deg, #f0e2b8, #c9a23b); }
+.login-tile-12 { grid-area: 5 / 6 / 6 / 7;  --i: 11; --tile: linear-gradient(135deg, #e7cbb5, #8c5a3c); }
+.login-word {
+  position: absolute;
+  left: 4vw;
+  top: 50%;
+  margin: 0;
+  transform: translateY(-58%);
+  color: rgba(255, 255, 255, 0.92);
+  font: italic 400 clamp(150px, 27vw, 460px) / 0.9 Georgia, "Palatino Linotype", "Times New Roman", serif;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.login-screen .login-panel {
+  position: relative;
+  z-index: 1;
+  background: rgba(253, 252, 249, 0.96);
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.06), 0 30px 80px rgba(40, 30, 20, 0.18);
+}
+@keyframes login-tile-in {
+  from { opacity: 0; transform: scale(0.96); }
+}
+@media (max-width: 760px) {
+  .login-screen { justify-items: center; align-items: end; padding: 16px 16px 32px; }
+  .login-collage { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 25vw; }
+  .login-tile-1  { grid-area: 1 / 1 / 2 / 2; }
+  .login-tile-2  { grid-area: 1 / 2 / 3 / 4; }
+  .login-tile-3  { grid-area: 2 / 4 / 3 / 5; }
+  .login-tile-4  { grid-area: 3 / 1 / 4 / 3; }
+  .login-tile-5  { grid-area: 3 / 3 / 5 / 5; }
+  .login-tile-6  { grid-area: 4 / 1 / 6 / 3; }
+  .login-tile-7  { grid-area: 1 / 4 / 2 / 5; }
+  .login-tile-8  { grid-area: 5 / 4 / 6 / 5; }
+  .login-tile-9, .login-tile-10, .login-tile-11, .login-tile-12 { display: none; }
+  .login-word { left: 3vw; top: 22vh; font-size: 38vw; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-tile { animation: none; }
+}
+/* Login: no card. Word in the middle, a single row of fields along the bottom edge. */
+.login-screen { justify-items: stretch; align-items: end; padding: 0; }
+.login-word { left: 50%; top: 50%; transform: translate(-50%, -55%); }
+.login-screen .login-panel {
+  width: 100%;
+  padding: 18px 7vw calc(18px + env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1px solid rgba(40, 30, 20, 0.08);
+  border-radius: 0;
+  background: rgba(251, 250, 247, 0.94);
+  box-shadow: 0 -12px 40px rgba(40, 30, 20, 0.08);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.login-screen .login-brand {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.login-screen .login-form {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  max-width: 880px;
+  margin: 0 auto;
+  padding-top: 0;
+}
+.login-screen .login-form .form-field > span {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.login-screen .login-form input { height: 48px; border-radius: 999px; padding: 0 20px; }
+.login-screen .login-error {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 0;
+  margin: 0;
+  text-align: center;
+}
+.login-screen .login-error:empty { display: none; }
+.login-screen .login-submit {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 999px;
+}
+.login-screen .login-submit span {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 760px) {
+  .login-screen { padding: 0; }
+  .login-screen .login-panel { padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .login-screen .login-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .login-screen .login-form .form-field:first-child { grid-column: 1 / -1; }
+  .login-word { left: 50%; top: 42%; transform: translate(-50%, -50%); }
+}
+/* Artwork: The Metropolitan Museum of Art Open Access (public domain): Van Gogh x11, Hokusai x1. */
+.login-tile-1 { background-image: url("assets/login/01.webp"); }
+.login-tile-2 { background-image: url("assets/login/02.webp"); }
+.login-tile-3 { background-image: url("assets/login/03.webp"); }
+.login-tile-4 { background-image: url("assets/login/04.webp"); }
+.login-tile-5 { background-image: url("assets/login/05.webp"); }
+.login-tile-6 { background-image: url("assets/login/06.webp"); }
+.login-tile-7 { background-image: url("assets/login/07.webp"); }
+.login-tile-8 { background-image: url("assets/login/08.webp"); }
+.login-tile-9 { background-image: url("assets/login/09.webp"); }
+.login-tile-10 { background-image: url("assets/login/10.webp"); }
+.login-tile-11 { background-image: url("assets/login/11.webp"); }
+.login-tile-12 { background-image: url("assets/login/12.webp"); }
