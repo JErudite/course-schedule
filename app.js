@@ -2999,6 +2999,7 @@ async function loadAdminChallengeRecords() {
 
 async function showStudentChallenge() {
   if (canEdit || !currentUser) return;
+  setStudentTab("challenge");
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
   hideAdminPages();
@@ -3046,6 +3047,7 @@ function hideAdminPages() {
 }
 
 function showScheduleView() {
+  if (!canEdit && currentUser) setStudentTab("schedule");
   scheduleSection.hidden = false;
   pageFooter.hidden = false;
   hideAdminPages();
@@ -3191,6 +3193,7 @@ function showQuestionReview() {
 
 async function showPetLeaderboard(returnView = canEdit ? "admin" : "schedule") {
   petLeaderboardReturnView = returnView;
+  if (!canEdit) setStudentTab("pet");
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
   hideAdminPages();
@@ -3223,6 +3226,7 @@ async function showPetDetail() {
   if (!currentUser || !pet) return;
   if (!canEdit) await Promise.all([loadAdminPetComparison(), loadDailyPetBattleCount()]);
   petDetailReturnView = "schedule";
+  setStudentTab("pet");
   scheduleSection.hidden = true;
   pageFooter.hidden = true;
   hideAdminPages();
@@ -4009,28 +4013,44 @@ function getScheduleNowMinutes() {
 }
 
 // Students mostly open the page on a phone to answer one question: when is my next class?
+// The next (or current) lesson from the course data itself, in Beijing time, up to 120 days ahead.
+// Also read by the theme's hero card (assets/theme/layout.js).
+function findNextLesson() {
+  if (!currentUser) return null;
+  const today = getScheduleToday();
+  const nowMinutes = getScheduleNowMinutes();
+  for (let offset = 0; offset <= 120; offset += 1) {
+    const date = addDays(today, offset);
+    const list = getOccurrencesForDate(date);
+    const index = list.findIndex((course) => offset > 0 || course.startTime + course.duration > nowMinutes);
+    if (index < 0) continue;
+    const course = list[index];
+    return {
+      course,
+      date,
+      offset,
+      inProgress: offset === 0 && course.startTime <= nowMinutes,
+      weekday: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()],
+      dayLabel: offset === 0 ? "今天" : offset === 1 ? "明天" : offset === 2 ? "后天" : `${date.getMonth() + 1}月${date.getDate()}日`,
+      laterThatDay: list.length - index - 1,
+    };
+  }
+  return null;
+}
+
 function renderNextLesson() {
   const card = document.querySelector("#nextLessonCard");
   if (!card) return;
   card.hidden = true;
   if (canEdit || !currentUser) return;
-  const today = getScheduleToday();
-  const nowMinutes = getScheduleNowMinutes();
-  for (let offset = 0; offset <= 120; offset += 1) {
-    const date = addDays(today, offset);
-    const next = getOccurrencesForDate(date).find((course) => offset > 0 || course.startTime + course.duration > nowMinutes);
-    if (!next) continue;
-    const inProgress = offset === 0 && next.startTime <= nowMinutes;
-    const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()];
-    const dayLabel = offset === 0 ? "今天" : offset === 1 ? "明天" : offset === 2 ? "后天" : `${date.getMonth() + 1}月${date.getDate()}日`;
-    card.replaceChildren(
-      createElement("small", "", inProgress ? "正在上课" : "下一节课"),
-      createElement("strong", "", `${dayLabel} ${weekday} ${formatTime(next.startTime)}–${formatTime(next.startTime + next.duration)}`),
-      createElement("span", "", next.name),
-    );
-    card.hidden = false;
-    return;
-  }
+  const next = findNextLesson();
+  if (!next) return;
+  card.replaceChildren(
+    createElement("small", "", next.inProgress ? "正在上课" : "下一节课"),
+    createElement("strong", "", `${next.dayLabel} ${next.weekday} ${formatTime(next.course.startTime)}–${formatTime(next.course.startTime + next.course.duration)}`),
+    createElement("span", "", next.course.name),
+  );
+  card.hidden = false;
 }
 
 function formatWeekRangeTitle(start, end) {

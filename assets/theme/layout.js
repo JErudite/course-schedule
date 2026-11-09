@@ -10,8 +10,6 @@
   function lessons() {
     const headers = $$("#scheduleGrid .day-header");
     const todayIndex = headers.findIndex((h) => h.classList.contains("is-today"));
-    const [h, m] = ($("#scheduleGrid .now-line-time")?.textContent || "").split(":").map(Number);
-    const nowMin = Number.isFinite(h) ? h * 60 + m : 0;
     const all = $$("#scheduleGrid .course-card").map((card) => {
       const label = card.getAttribute("aria-label") || "";
       return {
@@ -24,8 +22,7 @@
         color: getComputedStyle(card).getPropertyValue("--course-color").trim(),
       };
     }).sort((a, b) => a.day - b.day || a.start - b.start);
-    const upcoming = all.filter((c) => todayIndex < 0 || c.day > todayIndex || (c.day === todayIndex && c.end > nowMin));
-    return { all, today: all.filter((c) => c.day === todayIndex), next: upcoming[0], headers, nowMin };
+    return { all, today: all.filter((c) => c.day === todayIndex), headers };
   }
 
   function build() {
@@ -96,7 +93,10 @@
     section.prepend(hero);
     hero.querySelector(".f-title-slot").append($("#scheduleTitle"));
     hero.querySelector(".f-lede-slot").append($("#todayText"));
-    hero.querySelector(".f-card").addEventListener("click", () => lessons().next?.card.click());
+    hero.querySelector(".f-card").addEventListener("click", () => {
+      const next = nextLesson();
+      if (next) window.showCourse(next.course.id, window.toISODate(next.date));
+    });
 
     // Dock: every control that used to sit in the toolbar
     const dock = document.createElement("nav");
@@ -109,6 +109,7 @@
     shell.append(dock);
 
     refresh();
+    setInterval(refresh, 60 * 1000); // "正在上课" → next lesson as time passes
     new MutationObserver(() => { clearTimeout(refresh.t); refresh.t = setTimeout(refresh, 80); })
       .observe($("#scheduleGrid"), { childList: true });
     new MutationObserver(refresh).observe($("#weekRange") || document.body, { characterData: true, childList: true, subtree: true });
@@ -129,12 +130,18 @@
     });
   }
 
+  // The app's own answer (course data, Beijing time, up to 120 days ahead), so a lesson added a moment
+  // ago or one in a later week is picked up; the grid only shows the selected week.
+  const nextLesson = () => (typeof window.findNextLesson === "function" ? window.findNextLesson() : null);
+  const cardFor = (next) => next && document.querySelector(
+    `#scheduleGrid .course-card[data-course-id="${CSS.escape(String(next.course.id))}"][data-occurrence-date="${window.toISODate(next.date)}"]`);
+
   function refresh() {
     const top = $(".f-top");
     if (!top) return;
     paintFlowers();
     top.querySelector(".f-range").textContent = `${$("#weekLabel")?.textContent || ""}  ·  ${$("#weekRange")?.textContent || ""}`;
-    const { all, today, next, headers } = lessons();
+    const { all, today, headers } = lessons();
     const hero = $(".f-hero");
     hero.querySelector(".f-eyebrow").textContent = `本周 ${all.length} 节课`;
 
@@ -160,32 +167,55 @@
     });
 
     const card = hero.querySelector(".f-card");
+    const next = nextLesson();
+    card.classList.toggle("is-current", Boolean(next?.inProgress));
+    card.querySelector("small").textContent = next?.inProgress ? "正在上课" : "下一节课";
     if (!next) {
-      card.querySelector(".f-card-name").textContent = "本周的课都上完了";
-      card.querySelector(".f-card-time").textContent = "翻到下一周看看";
+      card.querySelector(".f-card-name").textContent = "近期没有课";
+      card.querySelector(".f-card-time").textContent = "新建课程后会显示在这里";
       card.querySelector(".f-card-count").textContent = "";
+      card.style.removeProperty("--f-flower");
       return;
     }
-    const head = headers[next.day];
-    const dayText = head ? `${head.querySelector(".day-weekday")?.textContent || ""} ${head.querySelector(".day-number")?.textContent || ""}日` : "";
-    card.style.setProperty("--f-accent", next.color || "#6e1f17");
-    card.querySelector(".f-card-name").textContent = next.name;
-    card.querySelector(".f-card-time").textContent = `${dayText} · ${next.time}`;
-    const later = all.filter((c) => c !== next && (c.day > next.day || (c.day === next.day && c.start > next.start))).length;
-    card.querySelector(".f-card-count").textContent = later ? `之后还有 ${later} 节` : "这是最后一节";
+    const { course } = next;
+    const end = course.startTime + course.duration;
+    const hhmm = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const shown = cardFor(next) || $$("#scheduleGrid .course-card")
+      .find((c) => (c.getAttribute("aria-label") || "").split("，")[0] === course.name);
+    card.style.setProperty("--f-accent", (shown && getComputedStyle(shown).getPropertyValue("--course-color").trim()) || "#6e1f17");
+    const flower = shown?.style.getPropertyValue("--f-flower");
+    if (flower) card.style.setProperty("--f-flower", flower); else card.style.removeProperty("--f-flower");
+    card.querySelector(".f-card-name").textContent = course.name;
+    card.querySelector(".f-card-time").textContent = `${next.dayLabel} ${next.weekday} · ${hhmm(course.startTime)} – ${hhmm(end)}`;
+    const dayWord = next.offset === 0 ? "今天" : "当天";
+    card.querySelector(".f-card-count").textContent = next.laterThatDay ? `${dayWord}之后还有 ${next.laterThatDay} 节` : `${dayWord}最后一节`;
   }
 
   build();
-  // The app scrolls the page to "now" after its first data render (which can come seconds later, after
-  // sign-in); with the hero on top, bring the page back to the hero once that first render has landed.
+  // The app scrolls its grid to today's lesson after its first data render (which can come seconds
+  // later, after sign-in). Desktop: start at the hero. Phone: the hero fills the screen, so go
+  // straight to the next lesson (the agenda list for students, the grid card for teachers).
+  const phone = window.matchMedia("(max-width: 640px)");
+  const landingTarget = () => {
+    const agenda = $("#scheduleAgenda");
+    if (agenda && !agenda.hidden) {
+      return $$(".agenda-day:not(.is-past) .agenda-item:not(.is-done)", agenda)[0] || $(".agenda-day.is-today", agenda);
+    }
+    return cardFor(nextLesson());
+  };
+  const land = () => {
+    const target = phone.matches && landingTarget();
+    if (target) target.scrollIntoView({ block: "center" });
+    else window.scrollTo({ top: 0 });
+  };
   const grid = $("#scheduleGrid");
-  const backToHero = () => [120, 700].forEach((ms) => setTimeout(() => window.scrollTo({ top: 0 }), ms));
-  if (grid?.querySelector(".day-header")) backToHero();
+  const settle = () => [120, 700].forEach((ms) => setTimeout(land, ms));
+  if (grid?.querySelector(".day-header")) settle();
   else if (grid) {
     const once = new MutationObserver(() => {
       if (!grid.querySelector(".day-header")) return;
       once.disconnect();
-      backToHero();
+      settle();
     });
     once.observe(grid, { childList: true });
   }

@@ -4266,3 +4266,6 @@ body.f-layout.has-student-tabbar #appShell :is(.pet-feed-button, .coin-shop-purc
   body.f-layout .f-card:active,
   body.f-layout .f-dock button:active { transform: none; }
 }
+
+/* Students: the hero card already answers "next lesson" (from the same data), so drop the footnote. */
+body.f-layout #nextLessonCard { display: none !important; }
