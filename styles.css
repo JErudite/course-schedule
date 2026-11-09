@@ -13,7 +13,7 @@
   --coral-soft: #f3dfd8;
   --yellow: #826b28;
   --yellow-soft: #f2e9c9;
-  --slot-height: 12px;
+  --slot-height: 6px;
   --time-column: 76px;
   --page-font-scale: 1;
 }
@@ -2523,7 +2523,7 @@ h1 {
   display: grid;
   min-width: 920px;
   grid-template-columns: var(--time-column) repeat(7, minmax(118px, 1fr));
-  grid-template-rows: 64px repeat(108, var(--slot-height));
+  grid-template-rows: 64px repeat(216, var(--slot-height));
 }
 
 .grid-corner,
@@ -5426,7 +5426,7 @@ body.is-admin-view #studentManagerButton {
     width: 100%;
     min-width: 0;
     grid-template-columns: 38px repeat(7, minmax(0, 1fr));
-    grid-template-rows: 56px repeat(108, var(--slot-height));
+    grid-template-rows: 56px repeat(216, var(--slot-height));
   }
 
   .schedule-scroll {
@@ -6642,7 +6642,7 @@ body.can-edit .section-heading { display: none; }
 
 /* ---------- Week grid ---------- */
 .schedule-scroll, .calendar-overview { border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: none; background: #ffffff; }
-.schedule-grid { grid-template-rows: 62px repeat(108, var(--slot-height)); }
+.schedule-grid { grid-template-rows: 62px repeat(216, var(--slot-height)); }
 .grid-corner, .day-header, .time-slot { background: #ffffff; }
 .day-header {
   display: grid;

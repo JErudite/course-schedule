@@ -62,7 +62,7 @@ const petCatalog = [
 ];
 const timelineStart = 6 * 60;
 const timelineEnd = 24 * 60;
-const snapMinutes = 10;
+const snapMinutes = 5;
 const slotCount = (timelineEnd - timelineStart) / snapMinutes;
 const repeatPresets = new Set([1, 7]);
 const studentSortModes = new Set(["manual", "surname", "remaining-asc", "remaining-desc", "class"]);
@@ -3731,7 +3731,7 @@ function renderWeekSchedule() {
 
   for (let slot = 0; slot < slotCount; slot += 1) {
     days.forEach((_, dayIndex) => {
-      const cell = createElement("div", `grid-cell${slot % 6 === 0 ? " is-hour" : ""}`);
+      const cell = createElement("div", `grid-cell${slot % (60 / snapMinutes) === 0 ? " is-hour" : ""}`);
       cell.dataset.dayIndex = String(dayIndex);
       cell.dataset.slot = String(slot);
       cell.style.gridColumn = String(dayIndex + 2);
@@ -3822,7 +3822,7 @@ function autoFocusTodayCourse(occurrences) {
   const target = selectTodayCourseForAutoFocus(todayCourses, currentMinutes);
   autoFocusedScheduleDate = todayKey;
   window.requestAnimationFrame(() => {
-    const slotHeight = grid.querySelector(".grid-cell")?.getBoundingClientRect().height || 12;
+    const slotHeight = grid.querySelector(".grid-cell")?.getBoundingClientRect().height || 6;
     const headerHeight = grid.querySelector(".day-header")?.getBoundingClientRect().height || 64;
     const targetScrollTop = calculateTimelineScrollTop(
       target.course,
@@ -4370,7 +4370,7 @@ function enableCourseInteraction(card, course, occurrence) {
       if (card.classList.contains("is-saving")) return;
       const gridRect = grid.getBoundingClientRect();
       const firstCell = grid.querySelector(".grid-cell");
-      const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 12;
+      const slotHeight = firstCell ? firstCell.getBoundingClientRect().height : 6;
       const timeColumnWidth = parseFloat(getComputedStyle(grid).gridTemplateColumns.split(" ")[0]);
       dragState = {
         pointerId: event.pointerId,
@@ -4497,7 +4497,7 @@ function enableTimelineCreation() {
     const gridRect = grid.getBoundingClientRect();
     const firstCell = grid.querySelector(".grid-cell");
     const firstHeader = grid.querySelector(".day-header");
-    const slotHeight = firstCell?.getBoundingClientRect().height || 12;
+    const slotHeight = firstCell?.getBoundingClientRect().height || 6;
     const headerHeight = firstHeader?.getBoundingClientRect().height || 64;
     return clamp(Math.floor((event.clientY - gridRect.top - headerHeight) / slotHeight), 0, slotCount - 1);
   }
@@ -4674,7 +4674,7 @@ function refreshOpenDialog() {
 }
 
 function populateDurationOptions() {
-  for (let minutes = 10; minutes <= 240; minutes += 10) {
+  for (let minutes = 10; minutes <= 240; minutes += snapMinutes) {
     durationInput.add(new Option(formatDuration(minutes), String(minutes)));
   }
 }
