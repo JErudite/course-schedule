@@ -1,0 +1,18 @@
+Public-domain artwork from The Metropolitan Museum of Art Open Access (https://www.metmuseum.org/about-the-met/policies-and-documents/open-access).
+Numbers are Met object IDs; vg-* are Van Gogh (Irises 436528, Oleanders 436530, Roses 436534, Sunflowers 436524).
+bg-roses = Van Gogh, Roses (436534); bg-irises = Van Gogh, Irises (436528).
+
+flower-01.webp <- Met vg-irises
+flower-02.webp <- Met vg-oleanders
+flower-03.webp <- Met vg-roses
+flower-04.webp <- Met vg-sunflowers
+flower-05.webp <- Met 436525
+flower-06.webp <- Met 437382
+flower-07.webp <- Met 438031
+flower-08.webp <- Met 441104
+flower-09.webp <- Met 922227
+flower-10.webp <- Met 437381
+flower-11.webp <- Met 437148
+flower-12.webp <- Met 435814
+flower-13.webp <- Met 827660
+flower-14.webp <- Met 436634

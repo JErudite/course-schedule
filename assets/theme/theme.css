@@ -1,0 +1,4268 @@
+/* Course schedule theme "府邸" (manor): cream paper, wine accent, public-domain flower paintings.
+ * Built from 设计稿/初稿三版 (d.css + f-*.css). Artwork: The Metropolitan Museum of Art Open Access
+ * (public domain) — Van Gogh, Fantin-Latour, Redon, Renoir, Bosschaert, Brueghel, Peeters, Haverman,
+ * Monticelli, Hokusai; see art/CREDITS.txt. */
+
+/* ===== d ===== */
+/* finesse · register=product · 初稿 D · 府邸壁画（参考 governorsmansion.org 的"左文右画 + 压边卡片"） */
+:root {
+  --d-cream: #f2e9d8;
+  --d-paper: #f8f2e6;
+  --d-ink: #2a1d16;
+  --d-muted: #7d6a5c;
+  --d-wine: #6e1f17;
+  --d-wine-hover: #5a1811;
+  --d-hair: rgba(70, 40, 25, 0.14);
+  --d-serif: Georgia, "Songti SC", "STSong", "SimSun", serif;
+  --background: var(--d-cream);
+  --surface: var(--d-paper);
+  --ink: var(--d-ink);
+  --muted: var(--d-muted);
+  --line: var(--d-hair);
+  --line-soft: rgba(70, 40, 25, 0.08);
+  --green: var(--d-wine);
+  --green-soft: #eadcc6;
+  --green-tint: #efe3cf;
+  --today: var(--d-wine);
+  --today-tint: rgba(110, 31, 23, 0.04);
+  --today-head: rgba(110, 31, 23, 0.07);
+  --now: #a3392b;
+}
+body, .app-shell { background: var(--d-cream); color: var(--d-ink); }
+.app-shell.has-sidebar > .app-sidebar { background: #ece1cc; border-right: 1px solid var(--d-hair); }
+
+/* ---------- Hero: copy left, painted panel right, a card pinned across the seam ---------- */
+.d-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 30%);
+  min-height: 360px;
+  margin: 0 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--d-paper);
+}
+.d-copy {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  max-width: 560px;
+  padding: 44px 0 44px 56px;
+}
+.d-eyebrow {
+  margin: 0 0 14px;
+  color: var(--d-muted);
+  font: 600 12px/1 "Segoe UI", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.14em;
+}
+.d-hero #scheduleTitle {
+  margin: 0;
+  color: var(--d-ink);
+  font: 400 clamp(40px, 4.2vw, 64px)/1.05 var(--d-serif);
+  letter-spacing: -0.02em;
+}
+.d-lede { margin: 16px 0 0; }
+.d-hero #todayText {
+  margin: 0;
+  color: #4a3a2f;
+  font: 400 16px/1.7 "Microsoft YaHei", sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.d-actions { display: flex; align-items: center; gap: 22px; margin-top: 26px; }
+.d-hero #todayButton {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--d-ink);
+  font: 600 13px/1 "Segoe UI", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.08em;
+}
+.d-hero #todayButton::after { content: "  →"; }
+.d-hero #todayButton:hover { color: var(--d-wine); }
+.d-hero #addCourse {
+  height: 44px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font-size: 15px;
+  box-shadow: 0 6px 18px rgba(110, 31, 23, 0.22);
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+.d-hero #addCourse:hover { background: var(--d-wine-hover); }
+.d-hero #addCourse:active { transform: scale(0.97); }
+
+.d-art {
+  background:
+    linear-gradient(90deg, rgba(248, 242, 230, 0.35), transparent 18%),
+    url("../login/05.webp") center / cover no-repeat;
+}
+.d-card {
+  position: absolute;
+  z-index: 3;
+  right: calc(30% - 150px);
+  top: 50%;
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  width: 380px;
+  min-height: 150px;
+  padding: 0;
+  overflow: hidden;
+  transform: translateY(-50%);
+  border: 6px solid #fbf6ec;
+  border-radius: 2px;
+  background: #fbf6ec;
+  color: var(--d-ink);
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(60, 30, 15, 0.08), 0 22px 50px rgba(60, 30, 15, 0.22);
+  cursor: pointer;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease;
+}
+.d-card:hover { transform: translateY(calc(-50% - 3px)); box-shadow: 0 2px 4px rgba(60, 30, 15, 0.08), 0 28px 60px rgba(60, 30, 15, 0.28); }
+.d-card-art { background: url("../login/06.webp") 30% 60% / 260% no-repeat; }
+.d-card-body { display: grid; align-content: center; gap: 6px; padding: 14px 16px; border-left: 4px solid var(--d-accent, var(--d-wine)); }
+.d-card-kicker { color: var(--d-wine); font: 700 11px/1 "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: 0.16em; }
+.d-card-name { overflow: hidden; font: 400 22px/1.2 var(--d-serif); text-overflow: ellipsis; white-space: nowrap; }
+.d-card-time { color: var(--d-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.d-watermark {
+  position: absolute;
+  z-index: 1;
+  left: 24px;
+  bottom: -38px;
+  margin: 0;
+  color: rgba(110, 31, 23, 0.05);
+  font: italic 400 150px/1 Georgia, "Palatino Linotype", serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---------- Controls row under the hero ---------- */
+.schedule-toolbar {
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--d-hair);
+}
+.schedule-toolbar .schedule-title:empty { display: none; }
+.week-controls .icon-button,
+.week-picker { border-color: var(--d-hair); background: var(--d-paper); }
+.schedule-view-switcher { background: #e9dcc6; }
+.schedule-view-switcher button.is-active { background: var(--d-wine); color: #fbf4ea; box-shadow: none; }
+
+/* ---------- Week grid on paper ---------- */
+.schedule-scroll, .schedule-grid { background: var(--d-paper); border-color: var(--d-hair); }
+.day-header, .grid-corner { background: var(--d-paper); }
+.day-weekday { color: var(--d-muted); letter-spacing: 0.08em; }
+.day-number { font-family: var(--d-serif); font-weight: 400; }
+.day-header.is-today .day-number { background: var(--d-wine); color: #fbf4ea; }
+.grid-cell.is-hour { border-top-color: rgba(70, 40, 25, 0.09); }
+.grid-cell { border-right-color: rgba(70, 40, 25, 0.06); }
+.time-slot { color: var(--d-muted); font-variant-numeric: tabular-nums; }
+.course-card {
+  border-radius: 3px;
+  background: #fcf8f0;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--course-color, #6e1f17) 55%, #3a2418), 0 1px 2px rgba(60, 30, 15, 0.08);
+  color: var(--d-ink);
+}
+.course-card strong { font-family: var(--d-serif); font-weight: 400; font-size: 14px; }
+.course-card:hover { box-shadow: inset 3px 0 0 var(--d-wine), 0 6px 16px rgba(60, 30, 15, 0.14); }
+.now-line { background: var(--now); }
+.now-line-time { background: var(--now); }
+
+/* Sidebar */
+.sidebar-day.is-today { background: var(--d-wine); color: #fbf4ea; }
+.sidebar-day.is-in-week { background: rgba(110, 31, 23, 0.07); }
+.sidebar-heading { color: var(--d-muted); letter-spacing: 0.1em; }
+
+@media (max-width: 900px) {
+  .d-hero { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .d-copy { padding: 28px 20px 0; }
+  .d-art { height: 150px; margin-top: 90px; }
+  .d-card { position: relative; right: auto; top: auto; width: auto; margin: -210px 20px 20px; transform: none; grid-row: 3; }
+  .d-card:hover { transform: none; }
+  .d-watermark { font-size: 96px; bottom: auto; top: 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .d-card, .d-hero #addCourse { transition: none; }
+}
+
+/* Time column: same paper as the grid (was hard white), darker numerals that are easy to scan */
+#scheduleGrid .time-slot,
+#scheduleGrid .grid-corner {
+  background: #f1e7d5;
+  border-right: 1px solid rgba(70, 40, 25, 0.12);
+}
+#scheduleGrid .time-slot strong {
+  color: #5a4434;
+  font: 500 13px/1 Georgia, "Palatino Linotype", serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ===== f-base ===== */
+/* finesse · register=product · 初稿 F · 府邸重塑（D 的配色 + 全新结构：顶栏 / 抽屉 / 首屏 / 底部工具条） */
+
+/* ---------- Shell: no resident sidebar ---------- */
+body.f-layout .app-shell,
+body.f-layout .app-shell.has-sidebar {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0 clamp(16px, 3vw, 48px) 120px;
+}
+body.f-layout .app-shell > .topbar { display: none; }
+
+/* ---------- Top bar ---------- */
+.f-top {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin: 0 calc(-1 * clamp(16px, 3vw, 48px)) 22px;
+  padding: 10px clamp(16px, 3vw, 48px);
+  border-bottom: 1px solid var(--d-hair);
+  background: rgba(242, 233, 216, 0.92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.f-brand { justify-self: start; width: max-content; min-width: 190px; }
+.f-brand .f-term { display: block; color: var(--d-muted); font-size: 12px; }
+.f-range {
+  margin: 0;
+  color: var(--d-ink);
+  font: 400 15px/1 var(--d-serif);
+  letter-spacing: 0.06em;
+  white-space: pre;
+}
+.f-menu-button {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--d-ink);
+  font: 600 12px/1 "Segoe UI", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+}
+.f-menu-lines, .f-menu-lines::before {
+  display: block;
+  width: 28px;
+  height: 1.5px;
+  background: currentColor;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.f-menu-lines { position: relative; transform: translateY(-4px); }
+.f-menu-lines::before { content: ""; position: absolute; top: 8px; }
+.f-drawer-open .f-menu-lines { transform: translateY(0) rotate(45deg); }
+.f-drawer-open .f-menu-lines::before { transform: translateY(-8px) rotate(-90deg); }
+
+/* ---------- Drawer (the old sidebar) ---------- */
+body.f-layout .app-shell > .app-sidebar,
+body.f-layout .app-shell.has-sidebar > .app-sidebar {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: min(340px, 88vw);
+  height: auto;
+  margin: 0;
+  padding: 24px 22px 18px;
+  overflow-y: auto;
+  border: 0;
+  border-left: 1px solid var(--d-hair);
+  border-radius: 0;
+  background: var(--d-paper);
+  box-shadow: none;
+  transform: translateX(105%);
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+body.f-layout.f-drawer-open .app-shell > .app-sidebar,
+body.f-layout.f-drawer-open .app-shell.has-sidebar > .app-sidebar { transform: translateX(0); box-shadow: -30px 0 80px rgba(60, 30, 15, 0.18); }
+body.f-layout .app-sidebar > .sidebar-brand { display: none; }
+.f-scrim {
+  position: fixed;
+  z-index: 45;
+  inset: 0;
+  background: rgba(42, 29, 22, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+.f-drawer-open .f-scrim { opacity: 1; pointer-events: auto; }
+.f-drawer-tools {
+  position: fixed;
+  z-index: 51;
+  right: 0;
+  bottom: 86px;
+  width: min(340px, 88vw);
+  padding: 16px 22px;
+  border-top: 1px solid var(--d-hair);
+  transform: translateX(105%);
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.f-drawer-open .f-drawer-tools { transform: translateX(0); }
+.f-drawer-tools .calendar-view-toolbar { display: grid; gap: 12px; margin: 0; }
+.f-drawer-tools .holiday-legend { justify-items: start; text-align: left; }
+
+/* ---------- Hero ---------- */
+.f-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 32%);
+  min-height: 400px;
+  margin-bottom: 28px;
+  overflow: hidden;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--d-paper);
+}
+.f-copy { position: relative; z-index: 2; align-self: center; max-width: 620px; padding: 48px 0 48px clamp(24px, 4vw, 64px); }
+.f-eyebrow { margin: 0 0 14px; color: var(--d-muted); font: 600 12px/1 "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: 0.16em; }
+.f-hero #scheduleTitle { margin: 0; color: var(--d-ink); font: 400 clamp(42px, 4.6vw, 70px)/1.04 var(--d-serif); letter-spacing: -0.02em; }
+.f-hero #todayText { margin: 14px 0 0; color: #4a3a2f; font: 400 16px/1.7 "Microsoft YaHei", sans-serif; letter-spacing: 0; text-transform: none; }
+.f-today { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.f-today-empty { margin: 0; color: var(--d-muted); font-style: italic; }
+.f-stub {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px 10px 14px;
+  border: 1px solid var(--d-hair);
+  border-left: 3px solid color-mix(in srgb, var(--f-accent) 60%, #3a2418);
+  border-radius: 2px 999px 999px 2px;
+  background: #fbf6ec;
+  color: var(--d-ink);
+  cursor: pointer;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease;
+}
+.f-stub time { font: 400 18px/1 var(--d-serif); font-variant-numeric: tabular-nums; }
+.f-stub span { font-size: 14px; }
+.f-stub:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(60, 30, 15, 0.14); }
+.f-art { background: linear-gradient(90deg, rgba(248, 242, 230, 0.35), transparent 18%), url("../login/05.webp") center / cover no-repeat; }
+.f-card {
+  position: absolute;
+  z-index: 3;
+  right: calc(32% - 170px);
+  top: 50%;
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  width: 410px;
+  min-height: 170px;
+  padding: 0;
+  overflow: hidden;
+  transform: translateY(-50%);
+  border: 7px solid #fbf6ec;
+  border-radius: 2px;
+  background: #fbf6ec;
+  color: var(--d-ink);
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(60, 30, 15, 0.08), 0 26px 60px rgba(60, 30, 15, 0.24);
+  cursor: pointer;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms ease;
+}
+.f-card:hover { transform: translateY(calc(-50% - 4px)); }
+.f-card-art { background: url("../login/06.webp") 30% 60% / 260% no-repeat; }
+.f-card-body { display: grid; align-content: center; gap: 7px; padding: 16px 18px; border-left: 4px solid color-mix(in srgb, var(--f-accent, #6e1f17) 60%, #3a2418); }
+.f-card-body small { color: var(--d-wine); font: 700 11px/1 "Segoe UI", "Microsoft YaHei", sans-serif; letter-spacing: 0.18em; }
+.f-card-name { overflow: hidden; font: 400 26px/1.15 var(--d-serif); text-overflow: ellipsis; white-space: nowrap; }
+.f-card-time { color: var(--d-ink); font-size: 14px; font-variant-numeric: tabular-nums; }
+.f-card-count { color: var(--d-muted); font-size: 12px; }
+.f-watermark {
+  position: absolute;
+  z-index: 1;
+  left: 20px;
+  bottom: -46px;
+  margin: 0;
+  color: rgba(110, 31, 23, 0.05);
+  font: italic 400 180px/1 Georgia, "Palatino Linotype", serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The old toolbar is now empty */
+body.f-layout .schedule-toolbar { display: none; }
+body.f-layout .schedule-scroll { border-radius: 4px; }
+
+/* ---------- Floating dock ---------- */
+.f-dock {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 245, 230, 0.12);
+  border-radius: 14px;
+  background: rgba(38, 24, 18, 0.9);
+  color: #f3e8d6;
+  box-shadow: 0 18px 50px rgba(40, 20, 10, 0.35);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.f-dock-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 10px;
+  background: #1a100c;
+  font: 700 18px/1 var(--d-serif);
+}
+.f-dock-group { display: flex; align-items: center; padding: 0 2px; }
+.f-dock .schedule-view-switcher { gap: 4px; padding: 0; border: 0; background: none; box-shadow: none; }
+.f-dock .schedule-view-switcher button,
+.f-dock .week-controls .icon-button,
+.f-dock .week-controls .today-button,
+.f-dock .week-picker {
+  height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 245, 230, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 245, 230, 0.06);
+  color: #f3e8d6;
+  font-size: 14px;
+  box-shadow: none;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+.f-dock .schedule-view-switcher button:hover,
+.f-dock .week-controls button:hover { background: rgba(255, 245, 230, 0.14); }
+.f-dock .schedule-view-switcher button.is-active { border-color: #f1d77a; background: transparent; color: #f1d77a; }
+.f-dock .week-controls { display: flex; gap: 4px; }
+.f-dock .week-picker small { display: none; }
+.f-dock button:active { transform: scale(0.96); }
+.f-dock #addCourse {
+  height: 44px;
+  margin-left: 4px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: #f6e27a;
+  color: #2a1d16;
+  font-weight: 700;
+  box-shadow: none;
+}
+.f-dock #addCourse:hover { background: #fbeb93; }
+
+@media (max-width: 900px) {
+  .f-top { grid-template-columns: 1fr auto; }
+  .f-range { display: none; }
+  .f-hero { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .f-copy { padding: 26px 20px 0; }
+  .f-art { height: 140px; margin-top: 110px; }
+  .f-card { position: relative; right: auto; top: auto; width: auto; margin: -230px 16px 16px; transform: none; grid-template-columns: 96px minmax(0, 1fr); grid-row: 3; }
+  .f-card:hover { transform: none; }
+  .f-watermark { display: none; }
+  .f-dock { left: 12px; right: 12px; justify-content: space-between; transform: none; }
+  .f-dock-mark, .f-dock .week-picker, .f-dock #addCourse span { display: none; }
+  .f-dock .schedule-view-switcher button, .f-dock .week-controls .icon-button, .f-dock .week-controls .today-button { padding: 0 10px; min-width: 40px; }
+  .f-dock #addCourse { padding: 0 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar, .f-scrim, .f-card, .f-stub, .f-menu-lines, .f-menu-lines::before { transition: none !important; }
+}
+
+/* 用户 11-08：首屏不要"今天的课"票根 */
+.f-today { display: none !important; }
+
+/* Week grid: a faint Van Gogh "Roses" (Met Open Access, public domain) washed under paper */
+body.f-layout .schedule-scroll {
+  background:
+    linear-gradient(rgba(248, 242, 230, 0.80), rgba(248, 242, 230, 0.80)),
+    url("art/bg-roses.webp") center 30% / cover no-repeat;
+}
+body.f-layout .schedule-grid,
+body.f-layout .day-header,
+body.f-layout .grid-cell { background-color: transparent; }
+body.f-layout .day-header { background: rgba(248, 242, 230, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+body.f-layout #scheduleGrid .time-slot,
+body.f-layout #scheduleGrid .grid-corner { background: rgba(241, 231, 213, 0.82); }
+body.f-layout .grid-cell.is-today { background: rgba(110, 31, 23, 0.035); }
+body.f-layout .course-card { background: rgba(252, 248, 240, 0.94); }
+
+/* Cards melt into the painting: frosted, tinted by the lesson colour, no floating shadow */
+body.f-layout .course-card {
+  border: 1px solid rgba(255, 250, 240, 0.55);
+  background: color-mix(in srgb, var(--course-color, #6e1f17) 12%, rgba(248, 242, 230, 0.52));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--course-color, #6e1f17) 60%, #3a2418);
+  -webkit-backdrop-filter: blur(7px) saturate(1.15);
+  backdrop-filter: blur(7px) saturate(1.15);
+}
+body.f-layout .course-card:hover {
+  background: color-mix(in srgb, var(--course-color, #6e1f17) 16%, rgba(250, 245, 235, 0.68));
+  box-shadow: inset 3px 0 0 var(--d-wine);
+}
+body.f-layout .course-card strong { color: #241812; }
+body.f-layout .course-card .course-time { color: #3d2c22; opacity: 1; }
+
+/* Less milky: the painting is multiplied into the cream instead of veiled by a white layer */
+body.f-layout .schedule-scroll {
+  background:
+    linear-gradient(rgba(246, 238, 224, 0.30), rgba(246, 238, 224, 0.30)),
+    url("art/bg-roses.webp") center 30% / cover no-repeat,
+    #efe2c9;
+  background-blend-mode: normal, multiply, normal;
+}
+body.f-layout .day-header { background: rgba(244, 235, 219, 0.78); }
+body.f-layout #scheduleGrid .time-slot,
+body.f-layout #scheduleGrid .grid-corner { background: rgba(239, 228, 208, 0.86); }
+body.f-layout .course-card { background: color-mix(in srgb, var(--course-color, #6e1f17) 14%, rgba(248, 241, 228, 0.66)); }
+
+/* 用户 11-08：网格回到纯色；花改为印在每张课程卡片上 */
+body.f-layout .schedule-scroll { background: var(--d-paper); background-blend-mode: normal; }
+body.f-layout .day-header { background: var(--d-paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.f-layout #scheduleGrid .time-slot,
+body.f-layout #scheduleGrid .grid-corner { background: #f1e7d5; }
+body.f-layout .course-card,
+body.f-layout .course-card:hover {
+  border: 1px solid rgba(70, 40, 25, 0.10);
+  background:
+    linear-gradient(90deg, rgba(252, 248, 240, 0.82) 0%, rgba(252, 248, 240, 0.62) 45%, rgba(252, 248, 240, 0.40) 100%),
+    linear-gradient(color-mix(in srgb, var(--course-color, #6e1f17) 10%, transparent), color-mix(in srgb, var(--course-color, #6e1f17) 10%, transparent)),
+    var(--f-flower, url("art/flower-03.webp")) center / cover no-repeat,
+    #f6efe2;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body.f-layout .course-card { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--course-color, #6e1f17) 60%, #3a2418), 0 1px 2px rgba(60, 30, 15, 0.08); }
+body.f-layout .course-card:hover { box-shadow: inset 3px 0 0 var(--d-wine), 0 6px 16px rgba(60, 30, 15, 0.14); }
+/* Each card shows a different part of the painting */
+body.f-layout .course-card:nth-of-type(4n + 1) { --f-flower-pos: 20% 20%; }
+body.f-layout .course-card:nth-of-type(4n + 2) { --f-flower-pos: 70% 45%; }
+body.f-layout .course-card:nth-of-type(4n + 3) { --f-flower-pos: 35% 75%; }
+body.f-layout .course-card:nth-of-type(4n + 4) { --f-flower-pos: 85% 10%; }
+
+/* Drawer mini calendar: today must win over the in-week band */
+body.f-layout .sidebar-day.is-today,
+body.f-layout .sidebar-day.is-today.is-in-week { background: var(--d-wine); color: #fbf4ea; }
+
+/* Dock: keep the "今天" label visible at tablet widths too */
+body.f-layout .f-dock .today-button span { display: inline; }
+
+/* ===== f-calendar ===== */
+/* 初稿 F · calendar（由子助手负责） */
+
+/* =====================================================================
+   月视图 + 年视图
+   思路：月视图是一张印在纸上的月历（周末一条浅褐色带、节假日酒红淡洗、调休赭黄淡洗），
+   课程条目和周视图的卡片同一做法：左边课程色细线 + 一幅淡淡的花卉名画；
+   年视图像一本挂历，12 个月各配一幅名画做月头，直接放在奶油纸上，不再套一层白框。
+   ===================================================================== */
+
+body.f-layout {
+  --fc-paper: var(--d-paper);
+  --fc-weekend: #f3eadb;
+  --fc-outside: #eee4d1;
+  --fc-line: rgba(70, 40, 25, 0.10);
+  --fc-line-strong: rgba(70, 40, 25, 0.18);
+  --fc-holiday-wash: rgba(150, 45, 32, 0.075);
+  --fc-holiday-ink: #8e2a1f;
+  --fc-holiday-chip: #f1d9d2;
+  --fc-work-wash: rgba(160, 118, 30, 0.10);
+  --fc-work-ink: #74560f;
+  --fc-work-chip: #efe0b8;
+  --fc-course-day: #eadcc6;
+  --fc-weekend-ink: #8a4a3e;
+  --fc-shadow: 0 1px 2px rgba(60, 30, 15, 0.06), 0 22px 44px -30px rgba(60, 30, 15, 0.30);
+  --fc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fc-num: Georgia, "Palatino Linotype", serif;
+  --fc-sans: "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+/* ---------- 首屏在月/年视图下：压矮一些，让日历进入第一屏；眉题不再写"本周 N 节课" ---------- */
+body.f-layout:has(.calendar-overview:not([hidden]):is(.is-month-view, .is-year-view)) .f-eyebrow {
+  font-size: 0;
+  letter-spacing: 0;
+}
+body.f-layout:has(.calendar-overview:not([hidden]):is(.is-month-view, .is-year-view)) .f-eyebrow::before {
+  font: 600 12px/1 var(--fc-sans);
+  letter-spacing: 0.16em;
+}
+body.f-layout:has(.calendar-overview.is-month-view:not([hidden])) .f-eyebrow::before { content: "月历 · 点日期进入那一周"; }
+body.f-layout:has(.calendar-overview.is-year-view:not([hidden])) .f-eyebrow::before { content: "年历 · 点月份进入那个月"; }
+
+@media (min-width: 901px) {
+  body.f-layout:has(.calendar-overview:not([hidden]):is(.is-month-view, .is-year-view)) .f-hero {
+    min-height: 300px;
+    margin-bottom: 22px;
+  }
+  body.f-layout:has(.calendar-overview:not([hidden]):is(.is-month-view, .is-year-view)) .f-copy {
+    padding-top: 34px;
+    padding-bottom: 34px;
+  }
+  body.f-layout:has(.calendar-overview:not([hidden]):is(.is-month-view, .is-year-view)) .f-hero #scheduleTitle {
+    font-size: clamp(40px, 4vw, 60px);
+  }
+}
+
+/* ---------- 节假日 / 调休小章（月、年视图共用） ---------- */
+body.f-layout .calendar-overview .calendar-status-badge {
+  border-radius: 2px;
+  font: 700 10px/1 var(--fc-sans);
+}
+body.f-layout .calendar-overview .calendar-status-badge.is-holiday { background: var(--fc-holiday-ink); color: #fbf4ea; }
+body.f-layout .calendar-overview .calendar-status-badge.is-workday { background: var(--fc-work-chip); color: var(--fc-work-ink); box-shadow: inset 0 0 0 1px rgba(116, 86, 15, 0.25); }
+
+/* =====================================================================
+   月视图
+   ===================================================================== */
+body.f-layout .calendar-overview.is-month-view {
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--fc-paper);
+  box-shadow: var(--fc-shadow);
+  scrollbar-color: rgba(70, 40, 25, 0.25) transparent;
+}
+
+/* 星期行 */
+body.f-layout .is-month-view .calendar-weekday {
+  min-height: 42px;
+  border-right: 1px solid var(--fc-line);
+  border-bottom: 1px solid var(--fc-line-strong);
+  background: var(--fc-paper);
+  color: var(--d-muted);
+  font: 400 13px/1 var(--d-serif);
+  letter-spacing: 0.14em;
+}
+body.f-layout .is-month-view .calendar-weekday:nth-child(6),
+body.f-layout .is-month-view .calendar-weekday:nth-child(7) {
+  background: var(--fc-weekend);
+  color: var(--fc-weekend-ink);
+}
+body.f-layout .is-month-view .calendar-weekday:nth-child(7),
+body.f-layout .is-month-view .month-day:nth-child(7n) { border-right: 0; }
+
+/* 日格 */
+body.f-layout .is-month-view .month-day {
+  position: relative;
+  min-height: 132px;
+  padding: 8px 8px 10px;
+  border-right: 1px solid var(--fc-line);
+  border-bottom: 1px solid var(--fc-line);
+  background: var(--fc-paper);
+  opacity: 1;
+}
+body.f-layout .is-month-view .month-day:nth-child(7n + 6),
+body.f-layout .is-month-view .month-day:nth-child(7n) { background: var(--fc-weekend); }
+body.f-layout .is-month-view .month-day:nth-last-child(-n + 7) { border-bottom: 0; }
+
+/* 不属于本月的日子：退到底色里，斜纹提示"这是别的月" */
+body.f-layout .is-month-view .month-day.is-outside-month {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 7px, rgba(70, 40, 25, 0.035) 7px 8px),
+    var(--fc-outside);
+}
+body.f-layout .is-month-view .month-day.is-outside-month .month-day-number { color: rgba(42, 29, 22, 0.38); }
+body.f-layout .is-month-view .month-day.is-outside-month .month-course-list { opacity: 0.55; }
+
+/* 节假日、调休 */
+body.f-layout .is-month-view .month-day.is-holiday { background: linear-gradient(var(--fc-holiday-wash), var(--fc-holiday-wash)), var(--fc-paper); }
+body.f-layout .is-month-view .month-day.is-workday { background: linear-gradient(var(--fc-work-wash), var(--fc-work-wash)), var(--fc-paper); }
+body.f-layout .is-month-view .month-day.is-holiday .month-day-number { color: var(--fc-holiday-ink); }
+body.f-layout .is-month-view .month-day.is-workday .month-day-number { color: var(--fc-work-ink); }
+body.f-layout .is-month-view .month-day-heading .calendar-day-status { color: var(--fc-holiday-ink); }
+body.f-layout .is-month-view .month-day-heading .calendar-day-status.is-workday { color: var(--fc-work-ink); }
+body.f-layout .is-month-view .month-day-heading .calendar-day-status small {
+  font: 600 11px/1.2 var(--fc-sans);
+  letter-spacing: 0.04em;
+}
+
+/* 日期数字 */
+body.f-layout .is-month-view .month-day-heading { min-height: 28px; margin-bottom: 7px; }
+body.f-layout .is-month-view .month-day-number {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  color: var(--d-ink);
+  font: 400 16px/1 var(--fc-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  transition: transform 180ms var(--fc-ease);
+}
+body.f-layout .is-month-view .month-day:nth-child(7n + 6) .month-day-number,
+body.f-layout .is-month-view .month-day:nth-child(7n) .month-day-number { color: var(--fc-weekend-ink); }
+body.f-layout .is-month-view .month-day-number:hover { background: rgba(110, 31, 23, 0.09); color: var(--d-wine); }
+body.f-layout .is-month-view .month-day-number:active { transform: scale(0.94); }
+body.f-layout .is-month-view .month-day-number:focus-visible { outline: 2px solid var(--d-wine); outline-offset: 2px; }
+
+/* 今天：酒红实心日期 + 顶上一条酒红细线 + "今天"小字 */
+body.f-layout .is-month-view .month-day.is-today {
+  background: linear-gradient(rgba(110, 31, 23, 0.045), rgba(110, 31, 23, 0.045)), var(--fc-paper);
+  box-shadow: inset 0 2px 0 var(--d-wine);
+}
+body.f-layout .is-month-view .month-day.is-today .month-day-number,
+body.f-layout .is-month-view .month-day.is-today .month-day-number:hover {
+  display: grid;
+  background: var(--d-wine);
+  color: #fbf4ea;
+}
+body.f-layout .is-month-view .month-day.is-today .month-day-heading::after {
+  content: "今天";
+  margin-left: auto;
+  color: var(--d-wine);
+  font: 700 11px/1 var(--fc-sans);
+  letter-spacing: 0.2em;
+}
+
+/* 课程条目：和周视图卡片同一套做法——纸面渐隐 + 课程色淡染 + 一幅淡淡的名画 + 左边课程色细线 */
+body.f-layout .is-month-view .month-course-list { gap: 5px; }
+body.f-layout .is-month-view .calendar-course-chip {
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 8px 4px 9px;
+  border: 1px solid rgba(70, 40, 25, 0.10);
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(252, 248, 240, 0.92) 0%, rgba(252, 248, 240, 0.80) 50%, rgba(252, 248, 240, 0.52) 100%),
+    linear-gradient(color-mix(in srgb, var(--course-color, #6e1f17) 10%, transparent), color-mix(in srgb, var(--course-color, #6e1f17) 10%, transparent)),
+    var(--f-flower, var(--fc-flower, url("art/flower-03.webp"))) var(--fc-pos, 50% 35%) / 220% auto no-repeat,
+    #f6efe2;
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--course-color, #6e1f17) 65%, #3a2418), 0 1px 2px rgba(60, 30, 15, 0.06);
+  color: var(--d-ink);
+  filter: none;
+  transition: transform 180ms var(--fc-ease);
+}
+body.f-layout .is-month-view .calendar-course-chip:hover {
+  border-color: rgba(110, 31, 23, 0.28);
+  box-shadow: inset 2px 0 0 var(--d-wine), 0 4px 12px rgba(60, 30, 15, 0.12);
+  transform: translateY(-1px);
+}
+body.f-layout .is-month-view .calendar-course-chip:active { transform: scale(0.98); }
+body.f-layout .is-month-view .calendar-course-chip:focus-visible { outline: 2px solid var(--d-wine); outline-offset: 1px; }
+body.f-layout .is-month-view .calendar-course-chip span {
+  color: #5a4434;
+  font: 400 12px/1 var(--fc-num);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+body.f-layout .is-month-view .calendar-course-chip strong {
+  color: #241812;
+  font: 400 13.5px/1.25 var(--d-serif);
+}
+body.f-layout .is-month-view .calendar-course-chip:has(.course-attendance) { grid-template-columns: 38px minmax(0, 1fr) auto; }
+
+/* 已上完：整体淡下去，名画几乎看不见 */
+body.f-layout .is-month-view .calendar-course-chip.is-past {
+  background:
+    linear-gradient(rgba(246, 239, 226, 0.86), rgba(246, 239, 226, 0.86)),
+    var(--f-flower, var(--fc-flower, url("art/flower-03.webp"))) var(--fc-pos, 50% 35%) / 220% auto no-repeat,
+    #f1e8d8;
+  box-shadow: inset 2px 0 0 rgba(70, 40, 25, 0.22);
+  color: #8b7a6c;
+}
+body.f-layout .is-month-view .calendar-course-chip.is-past span,
+body.f-layout .is-month-view .calendar-course-chip.is-past strong { color: #8b7a6c; }
+/* 正在上：课程色描边 */
+body.f-layout .is-month-view .calendar-course-chip.is-current {
+  border-color: color-mix(in srgb, var(--course-color, #6e1f17) 70%, #3a2418);
+  box-shadow: inset 3px 0 0 var(--d-wine), 0 0 0 1px color-mix(in srgb, var(--course-color, #6e1f17) 45%, transparent);
+}
+
+body.f-layout .is-month-view .month-more-count {
+  padding: 1px 2px;
+  color: var(--d-muted);
+  font: 400 12px/1.4 var(--fc-sans);
+}
+
+/* 名画轮换：同一列（星期几）同一顺位的课每周都是同一幅，周周固定的课自然对得上；
+   f.js 若以后给条目设了 --f-flower，会优先用它 */
+body.f-layout .is-month-view .calendar-course-chip:nth-of-type(1) { --fc-pos: 50% 30%; }
+body.f-layout .is-month-view .calendar-course-chip:nth-of-type(2) { --fc-pos: 28% 62%; }
+body.f-layout .is-month-view .calendar-course-chip:nth-of-type(3) { --fc-pos: 76% 48%; }
+body.f-layout .is-month-view .month-day:nth-child(7n + 1) .calendar-course-chip:nth-of-type(1) { --fc-flower: url("art/flower-01.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 1) .calendar-course-chip:nth-of-type(2) { --fc-flower: url("art/flower-02.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 1) .calendar-course-chip:nth-of-type(3) { --fc-flower: url("art/flower-03.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 2) .calendar-course-chip:nth-of-type(1) { --fc-flower: url("art/flower-04.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 2) .calendar-course-chip:nth-of-type(2) { --fc-flower: url("art/flower-05.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 2) .calendar-course-chip:nth-of-type(3) { --fc-flower: url("art/flower-06.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 3) .calendar-course-chip:nth-of-type(1) { --fc-flower: url("art/flower-07.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 3) .calendar-course-chip:nth-of-type(2) { --fc-flower: url("art/flower-08.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 3) .calendar-course-chip:nth-of-type(3) { --fc-flower: url("art/flower-09.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 4) .calendar-course-chip:nth-of-type(1) { --fc-flower: url("art/flower-10.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 4) .calendar-course-chip:nth-of-type(2) { --fc-flower: url("art/flower-11.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 4) .calendar-course-chip:nth-of-type(3) { --fc-flower: url("art/flower-12.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 5) .calendar-course-chip:nth-of-type(1) { --fc-flower: url("art/flower-13.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 5) .calendar-course-chip:nth-of-type(2) { --fc-flower: url("art/flower-14.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 5) .calendar-course-chip:nth-of-type(3) { --fc-flower: url("art/flower-01.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 6) .calendar-course-chip:nth-of-type(1) { --fc-flower: url("art/flower-02.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 6) .calendar-course-chip:nth-of-type(2) { --fc-flower: url("art/flower-03.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n + 6) .calendar-course-chip:nth-of-type(3) { --fc-flower: url("art/flower-04.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n) .calendar-course-chip:nth-of-type(1) { --fc-flower: url("art/flower-05.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n) .calendar-course-chip:nth-of-type(2) { --fc-flower: url("art/flower-06.webp"); }
+body.f-layout .is-month-view .month-day:nth-child(7n) .calendar-course-chip:nth-of-type(3) { --fc-flower: url("art/flower-07.webp"); }
+
+/* =====================================================================
+   年视图：一本挂历。外层不再套白框，12 张月卡直接放在奶油纸上
+   ===================================================================== */
+body.f-layout .calendar-overview.is-year-view {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body.f-layout .is-year-view .year-calendar-grid {
+  gap: 20px;
+  padding: 0;
+}
+body.f-layout .is-year-view .year-month-card {
+  position: relative;
+  padding: 0 0 14px;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--fc-paper);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.06);
+  transition: transform 240ms var(--fc-ease);
+}
+/* 悬停阴影放在伪元素上，只动 opacity */
+body.f-layout .is-year-view .year-month-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: 4px;
+  box-shadow: 0 18px 40px -16px rgba(60, 30, 15, 0.30);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+body.f-layout .is-year-view .year-month-card:hover { border-color: rgba(110, 31, 23, 0.26); box-shadow: 0 1px 2px rgba(60, 30, 15, 0.06); transform: translateY(-3px); }
+body.f-layout .is-year-view .year-month-card:hover::after,
+body.f-layout .is-year-view .year-month-card:focus-visible::after { opacity: 1; }
+body.f-layout .is-year-view .year-month-card:active { transform: translateY(-1px) scale(0.995); }
+body.f-layout .is-year-view .year-month-card:focus-visible { outline: 2px solid var(--d-wine); outline-offset: 3px; }
+body.f-layout .is-year-view .year-month-card { isolation: isolate; scroll-margin-top: 84px; }
+
+/* 月头：左边月份，右边一幅名画从纸里渐显出来 */
+body.f-layout .is-year-view .year-month-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 68px;
+  margin: 0 0 12px;
+  padding: 22px 18px 14px;
+  border-bottom: 1px solid var(--fc-line);
+  border-radius: 3px 3px 0 0;
+  background:
+    linear-gradient(90deg, var(--fc-paper) 0%, var(--fc-paper) 30%, rgba(248, 242, 230, 0.62) 62%, rgba(248, 242, 230, 0.18) 100%),
+    var(--fc-month-flower, url("art/flower-01.webp")) 55% 42% / 150% auto no-repeat,
+    #efe4cf;
+  color: var(--d-ink);
+  font: 400 28px/1 var(--d-serif);
+  letter-spacing: 0.02em;
+}
+body.f-layout .is-year-view .year-month-title::after {
+  color: var(--d-muted);
+  font: italic 400 14px/1 var(--fc-num);
+  letter-spacing: 0.04em;
+}
+body.f-layout .is-year-view .year-month-card:hover .year-month-title,
+body.f-layout .is-year-view .year-month-card:focus-visible .year-month-title { color: var(--d-wine); }
+
+body.f-layout .is-year-view .year-month-card:nth-child(1)  { --fc-month-flower: url("art/flower-01.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(2)  { --fc-month-flower: url("art/flower-02.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(3)  { --fc-month-flower: url("art/flower-03.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(4)  { --fc-month-flower: url("art/flower-04.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(5)  { --fc-month-flower: url("art/flower-05.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(6)  { --fc-month-flower: url("art/flower-06.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(7)  { --fc-month-flower: url("art/flower-07.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(8)  { --fc-month-flower: url("art/flower-08.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(9)  { --fc-month-flower: url("art/flower-09.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(10) { --fc-month-flower: url("art/flower-10.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(11) { --fc-month-flower: url("art/flower-11.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(12) { --fc-month-flower: url("art/flower-12.webp"); }
+body.f-layout .is-year-view .year-month-card:nth-child(1)  .year-month-title::after { content: "January" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(2)  .year-month-title::after { content: "February" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(3)  .year-month-title::after { content: "March" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(4)  .year-month-title::after { content: "April" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(5)  .year-month-title::after { content: "May" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(6)  .year-month-title::after { content: "June" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(7)  .year-month-title::after { content: "July" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(8)  .year-month-title::after { content: "August" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(9)  .year-month-title::after { content: "September" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(10) .year-month-title::after { content: "October" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(11) .year-month-title::after { content: "November" / ""; }
+body.f-layout .is-year-view .year-month-card:nth-child(12) .year-month-title::after { content: "December" / ""; }
+
+/* 今天所在的月：月头下一条酒红线 + "本月"小章 */
+body.f-layout .is-year-view .year-month-card:has(.year-day.is-today) { border-color: rgba(110, 31, 23, 0.30); }
+body.f-layout .is-year-view .year-month-card:has(.year-day.is-today) .year-month-title { border-bottom: 2px solid var(--d-wine); }
+body.f-layout .is-year-view .year-month-card:has(.year-day.is-today) .year-month-title::before {
+  content: "本月";
+  order: 2;
+  align-self: center;
+  margin-left: auto;
+  padding: 4px 8px;
+  border-radius: 2px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font: 700 11px/1 var(--fc-sans);
+  letter-spacing: 0.2em;
+}
+body.f-layout .is-year-view .year-month-title::after { order: 1; }
+
+/* 小月历 */
+body.f-layout .is-year-view .year-month-grid { gap: 3px; padding: 0 14px; }
+body.f-layout .is-year-view .year-weekday {
+  height: 22px;
+  color: var(--d-muted);
+  font: 400 12px/1 var(--d-serif);
+}
+body.f-layout .is-year-view .year-weekday:nth-child(6),
+body.f-layout .is-year-view .year-weekday:nth-child(7) { color: var(--fc-weekend-ink); }
+body.f-layout .is-year-view .year-day {
+  height: 32px;
+  border-radius: 2px;
+  color: var(--d-ink);
+  font: 400 13px/1 var(--fc-num);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+body.f-layout .is-year-view .year-day b { font-weight: 400; }
+body.f-layout .is-year-view .year-day:nth-child(7n + 6),
+body.f-layout .is-year-view .year-day:nth-child(7n) { color: var(--fc-weekend-ink); }
+/* 有课的日子：一块浅褐色底 + 下方酒红小点（多节课时小点里写节数） */
+body.f-layout .is-year-view .year-day.has-course { background: var(--fc-course-day); color: var(--d-ink); }
+body.f-layout .is-year-view .year-day.has-course b { font-weight: 700; }
+body.f-layout .is-year-view .year-day.is-holiday { background: var(--fc-holiday-wash); color: var(--fc-holiday-ink); }
+body.f-layout .is-year-view .year-day.is-workday { background: var(--fc-work-wash); color: var(--fc-work-ink); }
+body.f-layout .is-year-view .year-day.has-course.is-holiday { background: linear-gradient(90deg, var(--fc-course-day) 0 50%, var(--fc-holiday-chip) 50% 100%); }
+body.f-layout .is-year-view .year-day.has-course.is-workday { background: linear-gradient(90deg, var(--fc-course-day) 0 50%, var(--fc-work-chip) 50% 100%); }
+body.f-layout .is-year-view .year-day.is-today,
+body.f-layout .is-year-view .year-day.is-today.has-course {
+  background: var(--d-wine);
+  box-shadow: 0 3px 8px rgba(110, 31, 23, 0.28);
+  color: #fbf4ea;
+}
+body.f-layout .is-year-view .year-day .calendar-day-status { top: -3px; right: -3px; }
+body.f-layout .is-year-view .year-day .calendar-status-badge {
+  width: 14px;
+  height: 14px;
+  flex-basis: 14px;
+  font-size: 8px;
+}
+body.f-layout .is-year-view .year-course-dot {
+  right: auto;
+  bottom: 3px;
+  left: 50%;
+  min-width: 4px;
+  height: 4px;
+  transform: translateX(-50%);
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font: 700 8px/1 var(--fc-sans);
+}
+body.f-layout .is-year-view .year-course-dot:not(:empty) {
+  right: 2px;
+  bottom: 2px;
+  left: auto;
+  min-width: 13px;
+  height: 12px;
+  padding: 0 3px;
+  border-radius: 6px;
+  transform: none;
+}
+body.f-layout .is-year-view .year-day.has-course b { transform: translateY(-2px); }
+body.f-layout .is-year-view .year-day.is-today .year-course-dot { background: #fbf4ea; color: var(--d-wine); }
+
+/* =====================================================================
+   窄屏
+   ===================================================================== */
+@media (max-width: 860px) {
+  body.f-layout .is-year-view .year-calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}
+@media (max-width: 560px) {
+  body.f-layout .is-month-view .calendar-weekday { min-height: 32px; font-size: 11px; letter-spacing: 0.1em; }
+  body.f-layout .is-month-view .month-day { min-height: 84px; padding: 4px 3px 6px; }
+  body.f-layout .is-month-view .month-day-heading { min-height: 0; margin-bottom: 4px; }
+  body.f-layout .is-month-view .month-day-number { width: 22px; height: 22px; flex-basis: 22px; font-size: 13px; }
+  body.f-layout .is-month-view .month-day.is-today .month-day-heading::after { display: none; }
+  body.f-layout .is-month-view .month-course-list { gap: 3px; }
+  body.f-layout .is-month-view .calendar-course-chip {
+    display: block;
+    min-height: 18px;
+    padding: 2px 3px 2px 4px;
+  }
+  body.f-layout .is-month-view .calendar-course-chip:not(.is-past) {
+    background:
+      linear-gradient(90deg, rgba(252, 248, 240, 0.94) 0%, rgba(252, 248, 240, 0.86) 60%, rgba(252, 248, 240, 0.66) 100%),
+      linear-gradient(color-mix(in srgb, var(--course-color, #6e1f17) 12%, transparent), color-mix(in srgb, var(--course-color, #6e1f17) 12%, transparent)),
+      var(--f-flower, var(--fc-flower, url("art/flower-03.webp"))) var(--fc-pos, 50% 35%) / 300% auto no-repeat,
+      #f6efe2;
+  }
+  body.f-layout .is-month-view .calendar-course-chip strong { font: 600 9px/1.25 var(--fc-sans); }
+  body.f-layout .is-month-view .calendar-course-chip:hover { transform: none; }
+  body.f-layout .is-month-view .month-more-count { font-size: 9px; }
+  body.f-layout .is-year-view .year-calendar-grid { grid-template-columns: minmax(0, 1fr); }
+  body.f-layout .is-year-view .year-month-title { min-height: 60px; padding: 18px 14px 12px; font-size: 24px; }
+  body.f-layout .is-year-view .year-month-grid { padding: 0 10px; }
+  body.f-layout .is-year-view .year-day { height: 34px; font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.f-layout .is-month-view .month-day-number,
+  body.f-layout .is-month-view .calendar-course-chip,
+  body.f-layout .is-year-view .year-month-card,
+  body.f-layout .is-year-view .year-month-card::after { transition: none !important; }
+  body.f-layout .is-month-view .calendar-course-chip:hover,
+  body.f-layout .is-month-view .calendar-course-chip:active,
+  body.f-layout .is-month-view .month-day-number:active,
+  body.f-layout .is-year-view .year-month-card:hover,
+  body.f-layout .is-year-view .year-month-card:active { transform: none; }
+}
+
+/* ===== f-dialog ===== */
+/* 初稿 F · dialog（由子助手负责） */
+
+/* ==========================================================================
+   弹窗与表单：纸面、衬线标题、酒红强调；课程弹窗顶部印一幅花卉名画，
+   画面向下溶进纸色，标题压在溶开的地方，不做成"两层图层"。
+   只改外观，不动结构与文字。
+   ========================================================================== */
+:root {
+  --fd-surface: var(--d-paper);
+  --fd-field: #fcf8f1;
+  --fd-mat: #f1e7d5;
+  --fd-mat-soft: rgba(110, 31, 23, 0.045);
+  --fd-line: rgba(70, 40, 25, 0.2);
+  --fd-line-strong: rgba(70, 40, 25, 0.34);
+  --fd-ink-2: #4a3a2f;
+  --fd-icon: rgba(110, 31, 23, 0.62);
+  --fd-wine-tint: rgba(110, 31, 23, 0.08);
+  --fd-ring: 0 0 0 3px rgba(110, 31, 23, 0.14);
+  --fd-on-wine: #fbf4ea;
+  --fd-danger: #a3392b;
+  --fd-danger-hover: #8c2e22;
+  --fd-danger-tint: rgba(163, 57, 43, 0.08);
+  --fd-warn: #8a5a12;
+  --fd-warn-tint: rgba(196, 140, 48, 0.16);
+  --fd-mute-layer: rgba(58, 36, 24, 0.36);
+  --fd-scrim: rgba(42, 29, 22, 0.46);
+  --fd-shadow: 0 2px 4px rgba(60, 30, 15, 0.08), 0 30px 80px rgba(60, 30, 15, 0.3);
+  --fd-present: #4d6a3a;
+  --fd-present-tint: #e5ead3;
+  --fd-makeup: #3f5f84;
+  --fd-makeup-tint: #e1e6ea;
+  --fd-leave: #94561a;
+  --fd-leave-tint: #f3e3c9;
+  --fd-sans: "Segoe UI", "Microsoft YaHei", sans-serif;
+  --fd-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fd-painting: url("art/flower-07.webp");
+  --fd-painting-wide: url("art/bg-irises.webp");
+  --fd-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%236e1f17' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* ---------- 1. 所有弹窗的纸面 ---------- */
+body.f-layout :is(.course-dialog, .week-overview-dialog, .confirm-dialog, .student-dialog) {
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--fd-surface);
+  color: var(--d-ink);
+  box-shadow: var(--fd-shadow);
+  scrollbar-color: rgba(70, 40, 25, 0.28) transparent;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+body.f-layout :is(.course-dialog, .week-overview-dialog, .confirm-dialog, .student-dialog)::backdrop {
+  background: var(--fd-scrim);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+body.f-layout dialog h3 { color: var(--d-ink); letter-spacing: 0; }
+body.f-layout dialog .eyebrow {
+  margin: 0 0 8px;
+  color: var(--d-wine);
+  font: 700 11px/1.2 var(--fd-sans);
+  letter-spacing: 0.18em;
+}
+
+/* 打开时轻轻浮起（只动 transform / opacity） */
+@keyframes fd-rise { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes fd-sheet { from { opacity: 0.4; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@keyframes fd-fade { from { opacity: 0; } to { opacity: 1; } }
+body.f-layout :is(.course-dialog, .week-overview-dialog, .confirm-dialog, .student-dialog)[open] { animation: fd-rise 280ms var(--fd-ease); }
+body.f-layout :is(.course-dialog, .week-overview-dialog, .confirm-dialog, .student-dialog)[open]::backdrop { animation: fd-fade 240ms ease; }
+
+/* ---------- 2. 按钮（只在弹窗里换） ---------- */
+body.f-layout dialog :is(.primary-button, .secondary-button, .danger-button) {
+  display: inline-flex;
+  min-height: 44px;
+  height: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font: 600 14px/1.2 var(--fd-sans);
+  letter-spacing: 0.04em;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+body.f-layout dialog .primary-button {
+  border: 1px solid var(--d-wine);
+  background: var(--d-wine);
+  color: var(--fd-on-wine);
+  box-shadow: 0 6px 18px rgba(110, 31, 23, 0.2);
+}
+body.f-layout dialog .primary-button:hover:not(:disabled) { border-color: var(--d-wine-hover); background: var(--d-wine-hover); }
+body.f-layout dialog .secondary-button {
+  border: 1px solid var(--fd-line);
+  background: transparent;
+  color: var(--d-ink);
+}
+body.f-layout dialog .secondary-button:hover:not(:disabled) { border-color: var(--fd-line-strong); background: var(--fd-wine-tint); }
+body.f-layout dialog .danger-button {
+  border: 1px solid var(--fd-danger);
+  background: var(--fd-danger);
+  color: var(--fd-on-wine);
+}
+body.f-layout dialog .danger-button:hover:not(:disabled) { border-color: var(--fd-danger-hover); background: var(--fd-danger-hover); }
+body.f-layout dialog :is(.primary-button, .secondary-button, .danger-button):active:not(:disabled) { transform: scale(0.97); }
+body.f-layout dialog :is(.primary-button, .secondary-button, .danger-button):disabled { opacity: 0.5; }
+body.f-layout dialog :is(.primary-button, .danger-button) svg { width: 16px; height: 16px; }
+body.f-layout dialog :is(button, input, select, textarea):focus-visible { outline: 0; box-shadow: var(--fd-ring); }
+
+body.f-layout dialog .icon-button {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 1px solid var(--fd-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--d-ink);
+  box-shadow: none;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+body.f-layout dialog .icon-button:hover { border-color: var(--fd-line-strong); background: var(--fd-wine-tint); }
+body.f-layout dialog .icon-button:active { transform: scale(0.94); }
+body.f-layout dialog .icon-button svg { width: 17px; height: 17px; stroke-width: 1.7; }
+
+/* ---------- 3. 课程弹窗：画作页眉 ---------- */
+body.f-layout .course-dialog {
+  width: min(540px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0 30px 30px;
+}
+/* #dialogAccent 由 app.js 写入课程颜色（行内 background）。这里把它做成画作页眉：
+   顶部 4px 露出课程颜色（压暗，和周视图卡片的色条一致），下面是画，画向下溶进纸色。 */
+body.f-layout .course-dialog #dialogAccent {
+  height: 176px;
+  margin: 0 -30px;
+  padding-top: 4px;
+  box-sizing: border-box;
+  background-image:
+    linear-gradient(180deg, rgba(248, 242, 230, 0) 18%, rgba(248, 242, 230, 0.5) 52%, rgba(248, 242, 230, 0.9) 80%, var(--fd-surface) 100%),
+    var(--f-flower, var(--fd-painting)),
+    linear-gradient(var(--fd-mute-layer), var(--fd-mute-layer)) !important;
+  /* 画布扫描件边缘发暗，放大一点把边裁掉 */
+  background-size: auto, calc(100% + 32px) auto, auto !important;
+  background-position: center, center 38%, center !important;
+  background-repeat: no-repeat !important;
+  background-origin: content-box, content-box, border-box !important;
+  background-clip: content-box, content-box, border-box !important;
+}
+/* 新建课程时 app.js 给的是白色：换成酒红 */
+body.f-layout .course-dialog #dialogAccent[style*="255, 255, 255"] { background-color: var(--d-wine) !important; }
+body.f-layout .course-dialog.is-editing #dialogAccent { height: 112px; background-position: center, center 45%, center !important; }
+
+body.f-layout .course-dialog .dialog-header {
+  position: static;
+  align-items: flex-end;
+  margin-top: -40px;
+  margin-bottom: 18px;
+}
+body.f-layout .course-dialog .dialog-heading-copy { position: relative; flex: 1 1 auto; text-shadow: 0 0 10px var(--fd-surface), 0 0 2px var(--fd-surface); }
+body.f-layout .course-dialog .dialog-heading-copy .icon-button { text-shadow: none; background: rgba(248, 242, 230, 0.7); }
+body.f-layout .course-dialog .dialog-title-row { flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+body.f-layout .course-dialog .dialog-header h3,
+body.f-layout .course-dialog .dialog-title-row h3 {
+  margin: 0;
+  color: var(--d-ink);
+  font: 400 32px/1.15 var(--d-serif);
+  letter-spacing: -0.01em;
+}
+body.f-layout .course-dialog.is-editing .dialog-title-row h3 { margin: 0; color: var(--d-ink); font-size: 26px; }
+body.f-layout .course-dialog .dialog-course-actions { gap: 6px; margin: 0; }
+body.f-layout .course-dialog .dialog-course-actions .icon-button { width: 38px; height: 38px; flex-basis: 38px; }
+body.f-layout .course-dialog .copy-course-button,
+body.f-layout .course-dialog .edit-course-button { color: var(--fd-ink-2); }
+body.f-layout .course-dialog .delete-course-button { color: var(--fd-danger); }
+body.f-layout .course-dialog .delete-course-button:hover { border-color: rgba(163, 57, 43, 0.4); background: var(--fd-danger-tint); }
+/* 关闭按钮挂在画的右上角，一枚纸色小圆片 */
+body.f-layout .course-dialog .dialog-close {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  border-color: rgba(255, 250, 240, 0.6);
+  background: rgba(248, 242, 230, 0.88);
+  box-shadow: 0 4px 14px rgba(40, 20, 10, 0.18);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+body.f-layout .course-dialog .dialog-close:hover { background: var(--fd-surface); }
+
+/* ---------- 4. 课程详情 ---------- */
+body.f-layout .course-dialog .dialog-details { gap: 0; }
+body.f-layout .course-dialog .dialog-details > p {
+  gap: 12px;
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--d-hair);
+  color: var(--fd-ink-2);
+  font: 400 14px/1.6 var(--fd-sans);
+  font-variant-numeric: tabular-nums;
+}
+body.f-layout .course-dialog .dialog-details > p:first-child {
+  padding: 0 0 14px;
+  border-top: 0;
+  color: var(--d-ink);
+  font: 400 17px/1.5 var(--d-serif);
+}
+body.f-layout .course-dialog .dialog-details svg { flex: 0 0 17px; width: 17px; height: 17px; color: var(--fd-icon); }
+body.f-layout .course-dialog .dialog-notes {
+  grid-template-columns: 17px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--d-hair);
+}
+body.f-layout .course-dialog .dialog-notes small {
+  margin-bottom: 4px;
+  color: var(--d-muted);
+  font: 600 11px/1.4 var(--fd-sans);
+  letter-spacing: 0.14em;
+}
+body.f-layout .course-dialog .dialog-notes p { color: var(--fd-ink-2); font-size: 14px; line-height: 1.7; }
+body.f-layout .course-dialog .dialog-notes p.is-empty { color: var(--d-muted); font-style: italic; }
+
+/* 本节打卡：一块垫纸，不用白卡片 */
+body.f-layout .dialog-attendance {
+  gap: 10px;
+  margin: 2px 0 14px;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--d-hair);
+  border-radius: 3px;
+  background: var(--fd-mat);
+}
+body.f-layout .dialog-attendance-head strong { color: var(--d-ink); font: 400 16px/1.3 var(--d-serif); }
+body.f-layout .dialog-attendance-head span { color: var(--d-muted); font-size: 12px; }
+body.f-layout .dialog-attendance-all {
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--d-wine);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--d-wine);
+  font: 600 13px/1 var(--fd-sans);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+body.f-layout .dialog-attendance-all:hover:not(:disabled) { background: var(--d-wine); color: var(--fd-on-wine); }
+body.f-layout .dialog-attendance-list { gap: 6px; }
+body.f-layout .dialog-attendance-row {
+  padding: 8px 8px 8px 12px;
+  border: 1px solid rgba(70, 40, 25, 0.08);
+  border-radius: 3px;
+  background: var(--fd-surface);
+}
+body.f-layout .dialog-attendance-identity strong { color: var(--d-ink); font-size: 14px; }
+body.f-layout .dialog-attendance-identity small { color: var(--d-muted); }
+body.f-layout .dialog-attendance-identity small.is-low { color: var(--fd-warn); }
+body.f-layout .dialog-attendance-identity small.is-empty { color: var(--fd-danger); }
+body.f-layout .dialog-attendance-controls { gap: 4px; }
+body.f-layout .dialog-attendance-choice {
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--fd-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fd-ink-2);
+  font-size: 13px;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+body.f-layout .dialog-attendance-choice:hover:not(:disabled) { border-color: var(--fd-line-strong); background: var(--fd-wine-tint); }
+body.f-layout .dialog-attendance-choice.is-present.is-selected { border-color: var(--fd-present); background: var(--fd-present-tint); color: var(--fd-present); }
+body.f-layout .dialog-attendance-choice.is-makeup.is-selected { border-color: var(--fd-makeup); background: var(--fd-makeup-tint); color: var(--fd-makeup); }
+body.f-layout .dialog-attendance-choice.is-leave.is-selected { border-color: var(--fd-leave); background: var(--fd-leave-tint); color: var(--fd-leave); }
+body.f-layout .dialog-attendance-choice.is-selected::before { content: "\2713\00a0"; }
+body.f-layout .dialog-attendance-undo { height: 34px; color: var(--d-muted); }
+body.f-layout .dialog-attendance .student-color-indicator { border-radius: 50%; }
+
+/* ---------- 5. 新建 / 编辑课程表单 ---------- */
+body.f-layout .course-dialog.is-editing { padding-bottom: 0; }
+body.f-layout .dialog-form { gap: 18px 14px; }
+body.f-layout dialog .form-field { gap: 7px; }
+body.f-layout dialog .form-field > span,
+body.f-layout dialog :is(.custom-weekday-field, .color-field, .student-assignment-field) > legend {
+  color: var(--d-muted);
+  font: 600 12px/1.3 var(--fd-sans);
+  letter-spacing: 0.08em;
+}
+body.f-layout dialog .form-field :is(input, select, textarea),
+body.f-layout dialog .period-year-jump input {
+  min-height: 44px;
+  border: 1px solid var(--fd-line);
+  border-radius: 3px;
+  background-color: var(--fd-field);
+  color: var(--d-ink);
+  font: 400 15px/1.4 var(--fd-sans);
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 1px 2px rgba(60, 30, 15, 0.05);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+body.f-layout dialog .form-field :is(input, select) { height: 44px; padding: 0 12px; }
+body.f-layout dialog .form-field textarea { min-height: 96px; padding: 11px 12px; line-height: 1.65; }
+body.f-layout dialog .form-field :is(input, select, textarea):hover { border-color: var(--fd-line-strong); }
+body.f-layout dialog .form-field :is(input, select, textarea):focus,
+body.f-layout dialog .period-year-jump input:focus {
+  border-color: var(--d-wine);
+  outline: 0;
+  box-shadow: var(--fd-ring);
+}
+body.f-layout dialog .form-field :is(input, textarea)::placeholder { color: rgba(125, 106, 92, 0.75); }
+body.f-layout dialog .form-field select {
+  padding-right: 36px;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: var(--fd-caret);
+  background-position: right 13px center;
+  background-repeat: no-repeat;
+  background-size: 12px 8px;
+  cursor: pointer;
+}
+body.f-layout dialog .form-field input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
+body.f-layout dialog .number-field-with-suffix > span { color: var(--d-muted); font-size: 13px; }
+
+/* 预计结束：一行带底色的小注 */
+body.f-layout .course-dialog .course-expected-end-preview {
+  margin: -4px 0 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(110, 31, 23, 0.12);
+  border-radius: 3px;
+  background: var(--fd-mat-soft);
+  color: var(--fd-ink-2);
+  font: 400 14px/1.5 var(--d-serif);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 每周几：七枚小签 */
+body.f-layout .weekday-selector { gap: 6px; }
+body.f-layout .weekday-selector span {
+  min-height: 44px;
+  border: 1px solid var(--fd-line);
+  border-radius: 3px;
+  background: var(--fd-field);
+  color: var(--fd-ink-2);
+  font: 600 13px/1 var(--fd-sans);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+body.f-layout .weekday-selector label:hover span { border-color: var(--fd-line-strong); }
+body.f-layout .weekday-selector input:checked + span { border-color: var(--d-wine); background: var(--d-wine); color: var(--fd-on-wine); }
+body.f-layout .weekday-selector input:focus-visible + span { outline: 0; box-shadow: var(--fd-ring); }
+body.f-layout .weekday-selector-hint { margin-top: 8px; color: var(--d-muted); font-size: 12px; }
+
+/* 颜色、学生两组：上方一条发丝线分开，组名用小衬线 */
+body.f-layout .course-dialog :is(.color-field, .student-assignment-field) {
+  padding-top: 18px;
+  border-top: 1px solid var(--d-hair);
+}
+body.f-layout .course-dialog :is(.color-field, .student-assignment-field) > legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 12px;
+  color: var(--d-ink);
+  font: 400 17px/1.3 var(--d-serif);
+  letter-spacing: 0;
+}
+body.f-layout .course-dialog :is(.color-field, .student-assignment-field) > legend ~ * { clear: both; }
+
+/* 颜色：两行七格；色块按周视图卡片的压暗方式显示，选中有对勾 */
+body.f-layout .color-palette {
+  display: grid;
+  grid-template-columns: repeat(7, 40px);
+  gap: 8px;
+}
+body.f-layout .color-swatch {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 1px solid rgba(42, 29, 22, 0.16);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--swatch-color) 72%, #3a2418);
+  transition: transform 160ms var(--fd-ease), box-shadow 160ms ease;
+}
+body.f-layout .color-swatch:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(60, 30, 15, 0.18); }
+body.f-layout .color-swatch.is-selected { outline: 0; box-shadow: 0 0 0 2px var(--fd-surface), 0 0 0 4px var(--d-ink); }
+body.f-layout .color-swatch.is-selected:not(.is-auto)::before {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--fd-on-wine);
+  content: "\2713";
+  font: 700 16px/1 var(--fd-sans);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+body.f-layout .color-swatch.is-auto { background: var(--fd-field); }
+body.f-layout .color-swatch.is-auto::after { top: 50%; left: 6px; width: calc(100% - 12px); height: 1.5px; margin-top: -1px; background: var(--d-wine); }
+body.f-layout .color-swatch:focus-visible { box-shadow: 0 0 0 2px var(--fd-surface), 0 0 0 4px var(--d-wine); }
+
+/* 学生：班级快捷选择 + 勾选名单 */
+body.f-layout .student-assignment-field #operationsClassPicker { margin: 0 0 12px; }
+body.f-layout dialog #operationsClassPicker select {
+  height: 44px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--fd-line);
+  border-radius: 3px;
+  background: var(--fd-field) var(--fd-caret) right 13px center / 12px 8px no-repeat;
+  font: 400 15px/1.4 var(--fd-sans);
+}
+body.f-layout dialog .operations-hint { margin: 2px 0 0; color: var(--d-muted); font-size: 12px; line-height: 1.6; }
+body.f-layout .course-dialog .student-checklist { max-height: 200px; gap: 8px; padding: 1px; }
+body.f-layout .student-check-item {
+  min-height: 44px;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--fd-line);
+  border-radius: 3px;
+  background: var(--fd-field);
+  color: var(--fd-ink-2);
+  font-size: 14px;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+body.f-layout .student-check-item:hover { border-color: var(--fd-line-strong); }
+body.f-layout .student-check-item:has(input:checked) { border-color: var(--d-wine); background: var(--fd-wine-tint); color: var(--d-ink); font-weight: 600; }
+body.f-layout .student-check-item input { width: 17px; height: 17px; flex-basis: 17px; accent-color: var(--d-wine); }
+body.f-layout .student-check-item .student-color-indicator { border-radius: 50%; }
+body.f-layout .student-assignment-field .empty-list-hint { border: 1px dashed var(--fd-line); border-radius: 3px; background: var(--fd-mat-soft); color: var(--d-muted); }
+
+/* 底部操作条：贴在弹窗底边，长表单滚动时也一直能点到 */
+body.f-layout .course-dialog .form-actions {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  gap: 10px;
+  margin: 4px -30px 0;
+  padding: 14px 30px 18px;
+  border-top: 1px solid var(--d-hair);
+  background: rgba(248, 242, 230, 0.94);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+body.f-layout .course-dialog .form-actions .primary-button { min-width: 140px; }
+
+/* ---------- 6. 确认类小弹窗（删除、停用、重叠、修改范围、商城、运营表单） ---------- */
+body.f-layout .confirm-dialog {
+  width: min(430px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 30px 30px 26px;
+  overflow-y: auto;
+  text-align: left;
+  outline: 1px solid rgba(70, 40, 25, 0.1);
+  outline-offset: -8px;
+}
+body.f-layout .confirm-dialog-icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 0 16px;
+  border: 1px solid rgba(163, 57, 43, 0.2);
+  border-radius: 3px;
+  background: var(--fd-danger-tint);
+  color: var(--fd-danger);
+}
+body.f-layout .confirm-dialog-icon.is-warning { border-color: rgba(138, 90, 18, 0.24); background: var(--fd-warn-tint); color: var(--fd-warn); }
+body.f-layout .confirm-dialog h3 { margin: 0 0 10px; font: 400 25px/1.25 var(--d-serif); }
+body.f-layout .confirm-dialog > p,
+body.f-layout .confirm-dialog .operations-hint {
+  margin: 0 0 22px;
+  color: var(--fd-ink-2);
+  font-size: 14px;
+  line-height: 1.75;
+}
+body.f-layout .confirm-dialog p strong { color: var(--d-ink); font-weight: 700; }
+body.f-layout .confirm-actions { gap: 10px; }
+body.f-layout .confirm-actions > button { width: 100%; padding: 0 14px; }
+body.f-layout .operations-dialog .form-field { margin: 0 0 14px; }
+body.f-layout .operations-dialog h3 + .operations-hint { margin-bottom: 18px; }
+body.f-layout .operations-dialog [role="alert"]:empty { display: none; }
+body.f-layout .operations-dialog [role="alert"]:not(:empty) {
+  margin: 0 0 16px;
+  padding: 9px 12px;
+  border-radius: 3px;
+  background: var(--fd-danger-tint);
+  color: var(--fd-danger);
+}
+body.f-layout .operations-dialog .confirm-actions { margin-top: 6px; }
+
+/* 删除重复课程：两张可选的卡，后面那张是危险项 */
+body.f-layout .delete-series-options { gap: 10px; margin: -6px 0 12px; }
+body.f-layout dialog .delete-series-button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-items: start;
+  min-height: 64px;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 3px;
+  text-align: left;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+body.f-layout dialog .delete-series-button.secondary-button { border-color: var(--fd-line); background: var(--fd-field); }
+body.f-layout dialog .delete-series-button.danger-button { border-color: rgba(163, 57, 43, 0.45); background: var(--fd-danger-tint); color: var(--fd-danger); }
+body.f-layout dialog .delete-series-button.danger-button:hover:not(:disabled) { border-color: var(--fd-danger); background: var(--fd-danger); color: var(--fd-on-wine); }
+body.f-layout dialog .delete-series-button > svg { width: 20px; height: 20px; }
+body.f-layout dialog .delete-series-button strong { font-size: 15px; }
+body.f-layout dialog .delete-series-button small { font-size: 12px; opacity: 0.85; }
+body.f-layout dialog .delete-series-cancel { width: 100%; }
+
+/* 修改范围：两个选项做成可点的行，取消退到最后 */
+body.f-layout .course-change-scope-actions { gap: 10px; }
+body.f-layout dialog .course-change-scope-actions .primary-button {
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 0 18px;
+  border: 1px solid var(--fd-line);
+  border-radius: 3px;
+  background: var(--fd-field);
+  color: var(--d-ink);
+  letter-spacing: 0.02em;
+  text-align: left;
+  box-shadow: none;
+}
+body.f-layout dialog .course-change-scope-actions .primary-button::after { color: var(--d-wine); content: "\2192"; font-weight: 400; transition: transform 160ms var(--fd-ease); }
+body.f-layout dialog .course-change-scope-actions .primary-button:hover:not(:disabled) { border-color: var(--d-wine); background: var(--fd-wine-tint); }
+body.f-layout dialog .course-change-scope-actions .primary-button:hover::after { transform: translateX(3px); }
+body.f-layout dialog .course-change-scope-actions .secondary-button { margin-top: 4px; }
+
+/* 学生端"我的"底部抽屉 */
+body.f-layout .me-sheet .me-sheet-item { min-height: 52px; border-bottom-color: var(--d-hair); color: var(--d-ink); }
+body.f-layout .me-sheet .me-sheet-item:hover { background: var(--fd-wine-tint); }
+
+/* ---------- 7. 选周 / 选月 / 选年 ---------- */
+body.f-layout .week-overview-dialog {
+  width: min(940px, calc(100% - 32px));
+  max-height: min(800px, calc(100dvh - 32px));
+  padding: 0 30px 26px;
+  overflow-y: auto;
+}
+body.f-layout .week-overview-dialog[open] { display: flex; flex-direction: column; }
+body.f-layout .week-overview-dialog > * { flex: 0 0 auto; }
+body.f-layout .week-overview-header {
+  position: relative;
+  align-items: flex-start;
+  min-height: 132px;
+  margin: 0 -30px 6px;
+  padding: 30px 24px 22px 30px;
+  border-bottom: 1px solid var(--d-hair);
+  background:
+    linear-gradient(90deg, var(--fd-surface) 34%, rgba(248, 242, 230, 0.72) 58%, rgba(248, 242, 230, 0.08) 100%),
+    var(--fd-painting-wide) right 30% / cover no-repeat;
+}
+body.f-layout .week-overview-header h3 { margin: 0; font: 400 34px/1.1 var(--d-serif); letter-spacing: -0.01em; }
+body.f-layout .week-overview-header .icon-button {
+  border-color: rgba(255, 250, 240, 0.6);
+  background: rgba(248, 242, 230, 0.88);
+  box-shadow: 0 4px 14px rgba(40, 20, 10, 0.18);
+}
+body.f-layout .week-year-controls {
+  gap: 18px;
+  margin: 0 0 14px;
+  padding: 12px 0;
+  border-top: 0;
+  border-bottom: 1px solid var(--d-hair);
+}
+body.f-layout .week-year-controls strong { min-width: 120px; color: var(--d-ink); font: 400 24px/1 var(--d-serif); font-variant-numeric: lining-nums tabular-nums; }
+body.f-layout .period-year-jump {
+  grid-template-columns: auto 140px auto minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--d-hair);
+  border-radius: 3px;
+  background: var(--fd-mat);
+}
+body.f-layout .period-year-jump label { color: var(--d-muted); font: 600 12px/1 var(--fd-sans); letter-spacing: 0.08em; }
+body.f-layout .period-year-jump input { height: 44px; padding: 0 12px; font-weight: 600; }
+body.f-layout dialog .period-year-jump .secondary-button { min-height: 44px; padding: 0 16px; background: var(--fd-surface); }
+body.f-layout .period-year-jump small { color: var(--d-muted); font-size: 12px; }
+
+body.f-layout .week-thumbnail-grid {
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: none;
+  gap: 10px;
+  margin: -4px -4px 0;
+  padding: 8px 4px;
+  overflow-y: auto;
+  scrollbar-color: rgba(70, 40, 25, 0.28) transparent;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+body.f-layout .week-thumbnail {
+  position: relative;
+  height: 84px;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--d-hair);
+  border-radius: 3px;
+  background: var(--fd-field);
+  color: var(--d-ink);
+  transition: transform 200ms var(--fd-ease), box-shadow 200ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+body.f-layout .week-thumbnail:hover { border-color: var(--fd-line-strong); background: var(--fd-field); transform: translateY(-2px); box-shadow: 0 10px 22px rgba(60, 30, 15, 0.12); }
+body.f-layout .week-thumbnail strong { font: 400 16px/1.15 var(--d-serif); }
+body.f-layout .week-thumbnail small { color: var(--d-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+body.f-layout .week-miniature i,
+body.f-layout .period-thumbnail-line { background: rgba(70, 40, 25, 0.13); }
+/* 今天所在的周：酒红细框 + 角上小点 */
+body.f-layout .week-thumbnail.is-current { border-color: rgba(110, 31, 23, 0.5); box-shadow: none; }
+body.f-layout .week-thumbnail.is-current::after {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--d-wine);
+  content: "";
+}
+body.f-layout .week-thumbnail.is-current .week-miniature i,
+body.f-layout .period-thumbnail.is-current .period-thumbnail-line { background: rgba(110, 31, 23, 0.4); }
+/* 正在看的周：整块酒红 */
+body.f-layout .week-thumbnail.is-selected { border-color: var(--d-wine); background: var(--d-wine); color: var(--fd-on-wine); }
+body.f-layout .week-thumbnail.is-selected:hover { background: var(--d-wine-hover); }
+body.f-layout .week-thumbnail.is-selected small { color: rgba(251, 244, 234, 0.78); }
+body.f-layout .week-thumbnail.is-selected::after { background: var(--fd-on-wine); }
+body.f-layout .week-thumbnail.is-selected .week-miniature i,
+body.f-layout .period-thumbnail.is-selected .period-thumbnail-line { background: rgba(251, 244, 234, 0.45); }
+body.f-layout .period-thumbnail { height: 96px; }
+body.f-layout .period-thumbnail strong { font-size: 19px; }
+
+/* ---------- 8. 手机：课程弹窗与选周改成底部抽屉，按钮 ≥44px ---------- */
+@media (max-width: 640px) {
+  body.f-layout :is(.course-dialog, .week-overview-dialog) {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 20px);
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    border-radius: 6px 6px 0 0;
+  }
+  body.f-layout :is(.course-dialog, .week-overview-dialog)[open] { animation-name: fd-sheet; }
+  body.f-layout .course-dialog { padding: 0 20px calc(22px + env(safe-area-inset-bottom)); }
+  body.f-layout .course-dialog #dialogAccent { height: 150px; margin: 0 -20px; }
+  body.f-layout .course-dialog.is-editing #dialogAccent { height: 96px; }
+  body.f-layout .course-dialog .dialog-header { margin-top: -40px; }
+  body.f-layout .course-dialog .dialog-header h3,
+  body.f-layout .course-dialog .dialog-title-row h3 { font-size: 27px; }
+  body.f-layout .course-dialog.is-editing .dialog-title-row h3 { font-size: 23px; }
+  body.f-layout dialog .icon-button,
+  body.f-layout .course-dialog .dialog-course-actions .icon-button { width: 44px; height: 44px; flex-basis: 44px; }
+  body.f-layout .course-dialog .dialog-close { top: 12px; right: 12px; }
+  body.f-layout .course-dialog.is-editing { padding-bottom: 0; }
+  body.f-layout .dialog-form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 10px; }
+  body.f-layout .dialog-form > :is(.form-field-wide, .form-actions) { grid-column: 1 / -1; }
+  body.f-layout dialog #operationsClassPicker select { font-size: 16px; }
+  body.f-layout dialog .form-field :is(input, select, textarea),
+  body.f-layout dialog .period-year-jump input { font-size: 16px; }
+  body.f-layout .weekday-selector { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  body.f-layout .weekday-selector span { padding: 0; font-size: 12px; }
+  body.f-layout .color-palette { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  body.f-layout .color-swatch { width: 100%; height: auto; min-height: 44px; aspect-ratio: 1; }
+  body.f-layout .course-dialog .student-checklist { max-height: 240px; }
+  body.f-layout .course-dialog .form-actions {
+    margin: 4px -20px 0;
+    padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
+  }
+  body.f-layout .course-dialog .form-actions > button { flex: 1 1 0; min-width: 0; }
+  body.f-layout .course-dialog .course-expected-end-preview { font-size: 13px; }
+  body.f-layout .dialog-attendance { padding: 12px 10px 10px; }
+  body.f-layout .dialog-attendance-all { height: 44px; }
+  body.f-layout .dialog-attendance-choice,
+  body.f-layout .dialog-attendance-undo { height: 44px; }
+
+  body.f-layout .confirm-dialog { width: calc(100% - 24px); padding: 26px 22px 22px; }
+  body.f-layout .confirm-dialog h3 { font-size: 23px; }
+
+  body.f-layout .week-overview-dialog { padding: 0 16px calc(20px + env(safe-area-inset-bottom)); }
+  body.f-layout .week-overview-header { min-height: 112px; margin: 0 -16px 4px; padding: 22px 14px 18px 18px; }
+  body.f-layout .week-overview-header h3 { font-size: 27px; }
+  body.f-layout .week-year-controls strong { min-width: 96px; font-size: 21px; }
+  body.f-layout .period-year-jump { grid-template-columns: minmax(0, 1fr) auto; }
+  body.f-layout .week-thumbnail-grid { gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.f-layout :is(.course-dialog, .week-overview-dialog, .confirm-dialog, .student-dialog)[open],
+  body.f-layout :is(.course-dialog, .week-overview-dialog, .confirm-dialog, .student-dialog)[open]::backdrop { animation: none; }
+  body.f-layout dialog *,
+  body.f-layout dialog *::before,
+  body.f-layout dialog *::after { transition: none !important; }
+  body.f-layout .week-thumbnail:hover,
+  body.f-layout .color-swatch:hover { transform: none; }
+}
+
+/* ===== f-admin ===== */
+/* 初稿 F · admin（由子助手负责） */
+
+/* =====================================================================
+   管理后台 · 府邸重塑
+   - 首页：和课表首屏同一套"左边大标题 + 右边名画 + 压在画边上的卡片"，
+     压边卡片 = 今日待办；功能入口是一排挂着小幅名画的"房间卡"。
+   - 子页：整页一张纸；纸的上沿是编辑感页头（返回 · 小标题 · 衬线大标题 · 右侧名画 · 淡水印）。
+     每个子页的画和首页对应入口卡片上的是同一幅，进门前后对得上。
+   - 所有选择器都挂在 #appShell 下，盖过 styles.css 里的类名长链；只改外观。
+   ===================================================================== */
+
+/* ---------- Tokens (admin only) ---------- */
+body.f-layout #appShell .admin-page {
+  --fa-sheet: #fbf6ec;
+  --fa-tint: #f1e7d5;
+  --fa-line: rgba(70, 40, 25, 0.14);
+  --fa-line-soft: rgba(70, 40, 25, 0.08);
+  --fa-field: rgba(70, 40, 25, 0.2);
+  --fa-wine-soft: rgba(110, 31, 23, 0.06);
+  --fa-ring: 0 0 0 3px rgba(110, 31, 23, 0.14);
+  --fa-gutter: clamp(20px, 3vw, 40px);
+  --fa-copy-x: clamp(24px, 4vw, 56px);
+  --fa-sans: "Segoe UI", "Microsoft YaHei", sans-serif;
+  --fa-art: url("art/flower-07.webp");
+  --fa-art-pos: center;
+  --fa-mark: "Admin";
+  /* styles.css 里共用的变量，在后台范围内换成府邸色 */
+  --surface-muted: #f4ecdd;
+  --hover: rgba(110, 31, 23, 0.05);
+  --green-hover: var(--d-wine-hover);
+  --focus-ring: var(--fa-ring);
+  --radius: 3px;
+  --radius-lg: 4px;
+  color: var(--d-ink);
+}
+
+/* Each room has its own painting; the hub card for that room shows the same one */
+body.f-layout #appShell #studentManagementPage { --fa-art: url("art/flower-07.webp"); --fa-mark: "Students"; }
+body.f-layout #appShell #attendanceManagementPage { --fa-art: url("art/flower-02.webp"); --fa-art-pos: 50% 40%; --fa-mark: "Attendance"; }
+body.f-layout #appShell #petManagementPage { --fa-art: url("art/flower-06.webp"); --fa-mark: "Pets"; }
+body.f-layout #appShell #petBattleHistoryPage { --fa-art: url("art/flower-11.webp"); --fa-mark: "Battles"; }
+body.f-layout #appShell #petLeaderboardPage { --fa-art: url("art/flower-04.webp"); --fa-art-pos: 40% 50%; --fa-mark: "Honours"; }
+body.f-layout #appShell #challengeRecordsPage { --fa-art: url("art/flower-05.webp"); --fa-mark: "Records"; }
+body.f-layout #appShell #questionBankPage { --fa-art: url("art/flower-03.webp"); --fa-mark: "Questions"; }
+body.f-layout #appShell #questionReviewPage { --fa-art: url("art/flower-13.webp"); --fa-mark: "Review"; }
+body.f-layout #appShell #coinShopPage { --fa-art: url("art/flower-12.webp"); --fa-art-pos: 50% 60%; --fa-mark: "Shop"; }
+body.f-layout #appShell #courseHolidayPage { --fa-art: url("art/flower-08.webp"); --fa-art-pos: 50% 35%; --fa-mark: "Holiday"; }
+body.f-layout #appShell #operationsPage { --fa-art: url("art/flower-14.webp"); --fa-mark: "Ledger"; }
+
+/* ---------- Shell while a back-office page is open ---------- */
+/* The dock's controls belong to the timetable (it used to live inside the now-hidden schedule section). */
+body.f-layout.is-admin-view .f-dock { display: none; }
+body.f-layout.is-admin-view .app-shell { padding-bottom: 72px; }
+/* Top bar: the week range means nothing here — say where we are instead */
+body.f-layout.can-edit.is-admin-view .f-range { font-size: 0; letter-spacing: 0; }
+body.f-layout.can-edit.is-admin-view .f-range::before {
+  content: "课程表  ·  管理后台";
+  font: 400 15px/1 var(--d-serif);
+  letter-spacing: 0.06em;
+  white-space: pre;
+}
+
+/* ---------- Page sheet ---------- */
+body.f-layout #appShell .admin-page:not(.admin-hub) {
+  margin: 0 0 24px;
+  padding: 0 var(--fa-gutter) 40px;
+  border: 1px solid var(--fa-line);
+  border-radius: 4px;
+  background: var(--d-paper);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.04);
+  animation: fa-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---------- Editorial page header (every sub-page) ---------- */
+body.f-layout #appShell .admin-page > .admin-page-header {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-items: start;
+  gap: 0;
+  min-height: 236px;
+  margin: 0 calc(-1 * var(--fa-gutter)) 30px;
+  padding: 34px calc(34% + 32px) 36px var(--fa-copy-x);
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--fa-line);
+  border-radius: 4px 4px 0 0;
+  background: var(--d-paper);
+}
+/* The painting, washed into the paper on its left edge */
+body.f-layout #appShell .admin-page > .admin-page-header::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  /* bleed a few px past the clip so scanned-frame edges in the paintings never show */
+  top: -4px;
+  right: -4px;
+  bottom: -4px;
+  width: calc(34% + 4px);
+  background:
+    linear-gradient(90deg, var(--d-paper) 0%, rgba(248, 242, 230, 0.9) 5%, rgba(248, 242, 230, 0.72) 11%, rgba(248, 242, 230, 0.48) 17%, rgba(248, 242, 230, 0.26) 23%, rgba(248, 242, 230, 0.1) 29%, rgba(248, 242, 230, 0) 36%),
+    var(--fa-art) var(--fa-art-pos) / cover no-repeat;
+}
+/* Faint italic watermark, like "Schedule" on the timetable hero — parked by the painting, clear of the title */
+body.f-layout #appShell .admin-page > .admin-page-header::before {
+  content: var(--fa-mark);
+  position: absolute;
+  z-index: -1;
+  right: calc(34% + 18px);
+  bottom: -34px;
+  color: rgba(110, 31, 23, 0.05);
+  font: italic 400 104px/1 Georgia, "Palatino Linotype", serif;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+body.f-layout #appShell .admin-page-header > div { order: 2; min-width: 0; }
+body.f-layout #appShell .admin-page-header .eyebrow {
+  margin: 0 0 12px;
+  color: var(--d-muted);
+  font: 600 12px/1 var(--fa-sans);
+  letter-spacing: 0.16em;
+}
+body.f-layout #appShell .admin-page-header h2 {
+  margin: 0;
+  color: var(--d-ink);
+  font: 400 clamp(34px, 3.6vw, 54px)/1.08 var(--d-serif);
+  letter-spacing: -0.015em;
+}
+body.f-layout #appShell .admin-page-header h2:focus { outline: 0; }
+body.f-layout #appShell .admin-page-header .operations-hint { max-width: 46ch; margin: 12px 0 0; color: #4a3a2f; font-size: 14px; line-height: 1.7; }
+/* Back = a quiet pill above the title, where a breadcrumb would sit */
+body.f-layout #appShell .admin-page-header > button {
+  order: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: 34px;
+  min-height: 34px;
+  margin: 0 0 22px;
+  padding: 0 15px 0 11px;
+  border: 1px solid var(--fa-line);
+  border-radius: 999px;
+  background: rgba(251, 246, 236, 0.75);
+  color: var(--d-ink);
+  font: 600 13px/1 var(--fa-sans);
+  letter-spacing: 0.04em;
+  box-shadow: none;
+}
+body.f-layout #appShell .admin-page-header > button span { display: inline; }
+body.f-layout #appShell .admin-page-header > button svg { width: 16px; height: 16px; transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+body.f-layout #appShell .admin-page-header > button:hover { border-color: rgba(110, 31, 23, 0.35); background: var(--fa-sheet); color: var(--d-wine); }
+body.f-layout #appShell .admin-page-header > button:hover svg { transform: translateX(-3px); }
+
+/* =====================================================================
+   Hub: hero (title · painting · today's to-do pinned across the seam)
+   ===================================================================== */
+body.f-layout #appShell #adminHub:not([hidden]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+body.f-layout #appShell #adminHub { --fa-art: url("../login/08.webp"); --fa-art-pos: 50% 40%; --fa-mark: "Admin"; }
+body.f-layout #appShell #adminHub > .admin-page-header {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: stretch;
+  align-content: start;
+  min-height: 430px;
+  margin: 0;
+  padding: 46px calc(32% + 280px) 120px var(--fa-copy-x);
+  border: 1px solid var(--fa-line);
+  border-radius: 4px;
+  animation: fa-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+body.f-layout #appShell #adminHub > .admin-page-header::after { width: 32%; }
+body.f-layout #appShell #adminHub > .admin-page-header::before { right: auto; left: 18px; bottom: -46px; font-size: 180px; opacity: 0.8; }
+body.f-layout #appShell #adminHub .admin-page-header > button { margin-bottom: 44px; }
+body.f-layout #appShell #adminHub .admin-page-header h2 { font-size: clamp(46px, 5vw, 76px); line-height: 1.02; }
+body.f-layout #appShell #adminHub .admin-page-header .eyebrow { margin-bottom: 16px; }
+
+/* Account tools sit at the foot of the hero copy, as plain text links */
+body.f-layout #appShell #adminHub > .admin-hub-tools {
+  position: relative;
+  z-index: 2;
+  grid-row: 1;
+  grid-column: 1;
+  align-self: end;
+  justify-self: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 26px;
+  margin: 0 0 44px var(--fa-copy-x);
+  animation: fa-rise 460ms 60ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+body.f-layout #appShell #adminHub .admin-hub-tools .secondary-button {
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--d-ink);
+  font: 600 13px/1 var(--fa-sans);
+  letter-spacing: 0.06em;
+}
+body.f-layout #appShell #adminHub .admin-hub-tools .secondary-button svg { width: 16px; height: 16px; color: var(--d-wine); }
+body.f-layout #appShell #adminHub .admin-hub-tools .secondary-button span { border-bottom: 1px solid rgba(110, 31, 23, 0.3); padding-bottom: 3px; }
+body.f-layout #appShell #adminHub .admin-hub-tools .secondary-button:hover { color: var(--d-wine); }
+body.f-layout #appShell #adminHub .admin-hub-tools .secondary-button:hover span { border-bottom-color: var(--d-wine); }
+
+/* Today's to-do: the card pinned on the painting's edge (same recipe as "下一节课") */
+body.f-layout #appShell #adminHub > .operations-dashboard:not([hidden]) {
+  position: relative;
+  z-index: 3;
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 450px;
+  max-width: calc(100% - 32px);
+  min-height: 210px;
+  margin: 40px calc(32% - 200px) 40px 0;
+  padding: 20px 22px 20px 136px;
+  overflow: hidden;
+  border: 7px solid var(--fa-sheet);
+  border-radius: 2px;
+  background: var(--fa-sheet);
+  box-shadow: 0 2px 4px rgba(60, 30, 15, 0.08), 0 26px 60px rgba(60, 30, 15, 0.24);
+  animation: fa-rise 520ms 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Painting strip down the card's left side, edged in wine like the "下一节课" card */
+body.f-layout #appShell #adminHub > .operations-dashboard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 112px;
+  border-right: 4px solid var(--d-wine);
+  background: url("../login/03.webp") 50% 30% / cover no-repeat;
+}
+body.f-layout #appShell #adminHub > .operations-dashboard > * { min-width: 0; margin: 0; }
+body.f-layout #appShell #adminHub > .operations-dashboard h3 {
+  color: var(--d-wine);
+  font: 700 11px/1 var(--fa-sans);
+  letter-spacing: 0.2em;
+}
+body.f-layout #appShell #adminHub .operations-tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+body.f-layout #appShell #adminHub .operations-tiles button {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--d-ink);
+  font: 400 21px/1.3 var(--d-serif);
+  text-align: left;
+  letter-spacing: 0;
+}
+body.f-layout #appShell #adminHub .operations-tiles button:hover { color: var(--d-wine); background: none; }
+body.f-layout #appShell #adminHub .operations-dashboard .operations-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--fa-line-soft);
+}
+body.f-layout #appShell #adminHub .operations-dashboard .operations-inline .form-field { flex: 1 1 130px; gap: 6px; }
+body.f-layout #appShell #adminHub .operations-dashboard .operations-inline input { height: 36px; min-height: 36px; }
+body.f-layout #appShell #adminHub .operations-dashboard .operations-inline .secondary-button { height: 36px; min-height: 36px; padding: 0 14px; font-size: 13px; }
+body.f-layout #appShell #adminHub .operations-dashboard .operations-hint { color: var(--d-muted); font-size: 12.5px; line-height: 1.6; }
+body.f-layout #appShell #adminHub .operations-dashboard .operations-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+body.f-layout #appShell #adminHub .operations-dashboard .operations-chips button { height: 30px; min-height: 30px; padding: 0 12px; font-size: 12.5px; }
+
+/* Hint line becomes the caption above the rooms */
+body.f-layout #appShell #adminHub > .admin-layout-hint {
+  grid-row: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin: 34px 0 16px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--fa-line);
+  color: var(--d-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+body.f-layout #appShell #adminHub > .admin-layout-hint::before {
+  content: "各个房间";
+  flex: 0 0 auto;
+  color: var(--d-ink);
+  font: 400 24px/1 var(--d-serif);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Rooms (feature cards) ---------- */
+body.f-layout #appShell #adminHub > .admin-feature-grid {
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 0;
+}
+body.f-layout #appShell .admin-feature-item { animation: fa-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+body.f-layout #appShell .admin-feature-item:nth-child(2) { animation-delay: 40ms; }
+body.f-layout #appShell .admin-feature-item:nth-child(3) { animation-delay: 80ms; }
+body.f-layout #appShell .admin-feature-item:nth-child(4) { animation-delay: 120ms; }
+body.f-layout #appShell .admin-feature-item:nth-child(5) { animation-delay: 160ms; }
+body.f-layout #appShell .admin-feature-item:nth-child(6) { animation-delay: 200ms; }
+body.f-layout #appShell .admin-feature-item:nth-child(n + 7) { animation-delay: 240ms; }
+body.f-layout #appShell .admin-feature-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 4px 18px;
+  min-height: 118px;
+  padding: 18px 20px 18px 18px;
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.05);
+  color: var(--d-ink);
+  text-align: left;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+body.f-layout #appShell .admin-feature-item > .admin-feature-button { padding-right: 56px; }
+body.f-layout #appShell .admin-feature-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 22px 44px -22px rgba(60, 30, 15, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+body.f-layout #appShell .admin-feature-button:hover {
+  border-color: rgba(110, 31, 23, 0.22);
+  background: var(--fa-sheet);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.05);
+  transform: translateY(-3px);
+}
+body.f-layout #appShell .admin-feature-button:hover::after { opacity: 1; }
+body.f-layout #appShell .admin-feature-button:active { transform: translateY(-1px) scale(0.99); }
+body.f-layout #appShell .admin-feature-button:focus-visible { outline: 2px solid var(--d-wine); outline-offset: 3px; }
+body.f-layout #appShell .admin-feature-button > strong {
+  align-self: end;
+  color: var(--d-ink);
+  font: 400 21px/1.2 var(--d-serif);
+  letter-spacing: 0.01em;
+}
+body.f-layout #appShell .admin-feature-button > span:not(.admin-feature-icon) {
+  grid-column: 2;
+  align-self: start;
+  color: var(--d-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+body.f-layout #appShell .admin-feature-button > svg {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  width: 18px;
+  height: 18px;
+  color: var(--d-muted);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+body.f-layout #appShell .admin-feature-button:hover > svg { color: var(--d-wine); transform: translateX(3px); }
+/* The icon chip becomes a small framed painting with the icon on a cream seal */
+body.f-layout #appShell .admin-feature-button .admin-feature-icon {
+  position: relative;
+  grid-row: 1 / span 2;
+  width: 76px;
+  height: 76px;
+  border: 4px solid #fdf9f1;
+  border-radius: 2px;
+  background: var(--fa-room, url("art/flower-14.webp")) center / cover no-repeat;
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.12), 0 8px 18px -8px rgba(60, 30, 15, 0.35);
+  color: var(--d-wine);
+}
+body.f-layout #appShell .admin-feature-button .admin-feature-icon svg {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  padding: 7px;
+  border: 1px solid var(--fa-line);
+  border-radius: 50%;
+  background: #fdf9f1;
+  stroke-width: 2.2;
+}
+body.f-layout #appShell #openStudentManagement { --fa-room: url("art/flower-07.webp"); }
+body.f-layout #appShell #openAttendanceManagement { --fa-room: url("art/flower-02.webp"); }
+body.f-layout #appShell #openPetManagement { --fa-room: url("art/flower-06.webp"); }
+body.f-layout #appShell #openPetRankingManagement { --fa-room: url("art/flower-04.webp"); }
+body.f-layout #appShell #openCoinShopManagement { --fa-room: url("art/flower-12.webp"); }
+body.f-layout #appShell #openChallengeRecords { --fa-room: url("art/flower-05.webp"); }
+body.f-layout #appShell #openQuestionBank { --fa-room: url("art/flower-03.webp"); }
+body.f-layout #appShell #openCourseHoliday { --fa-room: url("art/flower-08.webp"); }
+body.f-layout #appShell .admin-drag-handle {
+  right: 8px;
+  width: 30px;
+  height: 40px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(70, 40, 25, 0.32);
+  font-size: 18px;
+}
+body.f-layout #appShell .admin-drag-handle:hover { background: var(--fa-wine-soft); color: var(--d-wine); }
+body.f-layout #appShell .admin-drag-handle:focus-visible { outline: 2px solid var(--d-wine); outline-offset: 1px; }
+body.f-layout #appShell .admin-feature-item.is-dragging { outline: 1px dashed var(--d-wine); outline-offset: 3px; border-radius: 3px; opacity: 0.7; }
+
+/* =====================================================================
+   Shared parts inside every sub-page
+   ===================================================================== */
+
+/* Section titles: serif, like the hero */
+body.f-layout #appShell .admin-page :is(
+  .student-list-heading > div > strong, .pet-list-heading > div > strong, .attendance-history-heading strong,
+  .question-bank-heading strong, .coin-shop-list-heading strong, .coin-shop-section-heading h3,
+  .question-import-heading h3, .holiday-history h3, .challenge-records-toolbar strong, .operations-card h3
+) {
+  color: var(--d-ink);
+  font: 400 22px/1.25 var(--d-serif);
+  letter-spacing: 0.01em;
+}
+body.f-layout #appShell .admin-page :is(
+  .student-list-heading > div > span, .pet-list-heading small, .attendance-history-heading > div > span,
+  .question-bank-heading > div > span, .coin-shop-list-heading > div > span, .coin-shop-section-heading span:not(.admin-feature-icon),
+  .question-import-heading span:not(.admin-feature-icon), .holiday-help, .operations-hint
+) {
+  color: var(--d-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* Fields */
+body.f-layout #appShell .admin-page .form-field > span,
+body.f-layout #appShell .admin-page .attendance-date-picker > span,
+body.f-layout #appShell .admin-page .pet-resource-field > span,
+body.f-layout #appShell .admin-page legend {
+  color: var(--d-muted);
+  font: 600 12px/1.3 var(--fa-sans);
+  letter-spacing: 0.06em;
+}
+body.f-layout #appShell .admin-page :is(input:not([type]), input[type="text"], input[type="number"], input[type="search"], input[type="date"], input[type="password"], select, textarea) {
+  min-height: 40px;
+  border: 1px solid var(--fa-field);
+  border-radius: 3px;
+  background-color: var(--fa-sheet);
+  color: var(--d-ink);
+  font-size: 14px;
+  box-shadow: none;
+}
+body.f-layout #appShell .admin-page :is(input, select, textarea)::placeholder { color: #a8968a; }
+body.f-layout #appShell .admin-page :is(input:not([type]), input[type="text"], input[type="number"], input[type="search"], input[type="date"], input[type="password"], select, textarea):hover { border-color: rgba(70, 40, 25, 0.32); }
+body.f-layout #appShell .admin-page :is(input:not([type]), input[type="text"], input[type="number"], input[type="search"], input[type="date"], input[type="password"], select, textarea):focus {
+  border-color: var(--d-wine);
+  outline: 0;
+  box-shadow: var(--fa-ring);
+}
+body.f-layout #appShell .admin-page :is(input:not([type]), input[type="text"], input[type="number"], input[type="search"], input[type="date"], input[type="password"], select, textarea):disabled { background-color: rgba(241, 231, 213, 0.6); color: var(--d-muted); }
+body.f-layout #appShell .admin-page :is(.question-bank-list, .question-preview-list, .question-sub-bank-actions, .student-list) :is(input, select) { font-size: 13px; }
+body.f-layout #appShell .admin-page input[readonly] { background-color: var(--fa-tint); }
+body.f-layout #appShell .admin-page input[type="checkbox"],
+body.f-layout #appShell .admin-page input[type="radio"] { accent-color: var(--d-wine); }
+
+/* Buttons: wine pill = do it · hairline pill = secondary · round hairline = icon */
+body.f-layout #appShell .admin-page .primary-button {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 20px;
+  border: 1px solid var(--d-wine);
+  border-radius: 999px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font: 600 14px/1 var(--fa-sans);
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 16px -8px rgba(110, 31, 23, 0.55);
+  transition: transform 160ms ease;
+}
+body.f-layout #appShell .admin-page .primary-button:hover { border-color: var(--d-wine-hover); background: var(--d-wine-hover); }
+body.f-layout #appShell .admin-page .primary-button:disabled { border-color: #c9b7a3; background: #c9b7a3; color: #fbf4ea; box-shadow: none; opacity: 1; }
+body.f-layout #appShell .admin-page .secondary-button,
+body.f-layout #appShell .admin-page .file-picker-button {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--fa-field);
+  border-radius: 999px;
+  background: rgba(251, 246, 236, 0.8);
+  color: var(--d-ink);
+  font: 600 13.5px/1 var(--fa-sans);
+  box-shadow: none;
+  transition: transform 160ms ease;
+}
+body.f-layout #appShell .admin-page .secondary-button:hover,
+body.f-layout #appShell .admin-page .file-picker-button:hover { border-color: rgba(110, 31, 23, 0.4); background: var(--fa-sheet); color: var(--d-wine); }
+body.f-layout #appShell .admin-page .secondary-button:disabled { opacity: 0.5; }
+body.f-layout #appShell .admin-page .icon-button {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--fa-line);
+  border-radius: 999px;
+  background: rgba(251, 246, 236, 0.8);
+  color: var(--d-ink);
+  box-shadow: none;
+  transition: transform 160ms ease;
+}
+body.f-layout #appShell .admin-page .icon-button svg { width: 17px; height: 17px; }
+body.f-layout #appShell .admin-page .icon-button:hover { border-color: rgba(110, 31, 23, 0.4); background: var(--fa-sheet); color: var(--d-wine); }
+body.f-layout #appShell .admin-page :is(.primary-button, .secondary-button, .icon-button, .file-picker-button):active:not(:disabled) { transform: scale(0.96); }
+body.f-layout #appShell .admin-page :is(.primary-button, .secondary-button, .icon-button, .file-picker-button):focus-visible { outline: 2px solid var(--d-wine); outline-offset: 2px; }
+body.f-layout #appShell .admin-page :is(.delete-student, .coin-shop-delete-button, .danger-button) { color: #9b2c22; }
+body.f-layout #appShell .admin-page :is(.delete-student, .coin-shop-delete-button):hover { border-color: rgba(155, 44, 34, 0.45); background: rgba(155, 44, 34, 0.06); color: #8a2118; }
+
+/* Notes and alerts: cream slip with a wine edge instead of yellow boxes */
+body.f-layout #appShell .admin-page :is(.shared-password-note, .attendance-overdue-alert, .question-review-alert:not(:empty)) {
+  border: 1px solid var(--fa-line-soft);
+  border-left: 3px solid var(--d-wine);
+  border-radius: 2px;
+  background: var(--fa-wine-soft);
+  color: #4a3a2f;
+  font-size: 13px;
+  line-height: 1.6;
+}
+body.f-layout #appShell .admin-page .shared-password-note svg { color: var(--d-wine); }
+
+/* Empty states: an italic line under a short wine rule */
+body.f-layout #appShell .admin-page .empty-list-hint {
+  margin: 0;
+  padding: 34px 16px 30px;
+  color: var(--d-muted);
+  font: 400 15px/1.6 var(--d-serif);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+body.f-layout #appShell .admin-page .empty-list-hint::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 1px;
+  margin: 0 auto 14px;
+  background: rgba(110, 31, 23, 0.4);
+}
+/* The big "nothing here yet" lists get the room's painting, framed */
+body.f-layout #appShell :is(#petLeaderboardEmpty, #challengeRecordEmpty, #coinShopProductEmpty, #questionBankEmpty, #petStudentListEmpty, #studentListEmpty, #petBattleHistoryEmpty)::before {
+  width: 184px;
+  height: 116px;
+  margin: 8px auto 18px;
+  border: 6px solid #fdf9f1;
+  border-radius: 2px;
+  background: var(--fa-art) var(--fa-art-pos) / cover no-repeat;
+  box-shadow: 0 2px 4px rgba(60, 30, 15, 0.08), 0 18px 36px -16px rgba(60, 30, 15, 0.4);
+}
+
+/* Table heads: small tracked captions on a hairline */
+body.f-layout #appShell .admin-page :is(.student-table-head, .leaderboard-table-head) {
+  border: 0;
+  border-top: 1px solid var(--fa-line);
+  border-bottom: 1px solid var(--fa-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--d-muted);
+  font: 600 11.5px/1 var(--fa-sans);
+  letter-spacing: 0.12em;
+}
+
+/* =====================================================================
+   学生管理
+   ===================================================================== */
+body.f-layout #appShell .admin-create-band {
+  padding: 4px 0 26px;
+  border-top: 0;
+  border-bottom: 1px solid var(--fa-line);
+}
+body.f-layout #appShell .admin-create-band .shared-password-note { align-self: end; padding: 10px 14px; }
+body.f-layout #appShell .admin-page .student-sort-toolbar {
+  min-height: 64px;
+  gap: 12px;
+  border-bottom: 1px solid var(--fa-line);
+  color: var(--d-ink);
+}
+body.f-layout #appShell .admin-page .student-sort-toolbar > div { color: var(--d-ink); font-weight: 600; font-size: 13px; }
+body.f-layout #appShell .admin-page .student-sort-toolbar svg { color: var(--d-wine); }
+body.f-layout #appShell .admin-page .student-sort-toolbar select,
+body.f-layout #appShell .admin-page .student-search-input { min-height: 36px; height: 36px; font-size: 13px; }
+body.f-layout #appShell .admin-page :is(#studentDragHint, #petDragHint) { color: var(--d-muted); font-size: 12px; }
+body.f-layout #appShell .admin-page .student-list-heading { min-height: 0; padding: 26px 0 16px; border: 0; }
+body.f-layout #appShell .admin-page .student-list-heading > span,
+body.f-layout #appShell .admin-page .pet-list-heading > span {
+  color: var(--d-wine);
+  font: 400 15px/1 var(--d-serif);
+  font-variant-numeric: tabular-nums;
+}
+body.f-layout #appShell .admin-page .student-list { border: 0; background: transparent; }
+body.f-layout #appShell .admin-page .student-row {
+  border: 0;
+  border-bottom: 1px solid var(--fa-line-soft);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body.f-layout #appShell .admin-page .student-row:hover { background: rgba(110, 31, 23, 0.025); }
+body.f-layout #appShell .admin-page .student-name-link { color: var(--d-ink); font: 400 17px/1.3 var(--d-serif); text-decoration-color: rgba(110, 31, 23, 0.35); }
+body.f-layout #appShell .admin-page .student-name-link:hover { color: var(--d-wine); }
+body.f-layout #appShell .admin-page .student-remaining-count { color: var(--d-ink); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .admin-page .student-remaining-count.is-empty { color: #9b2c22; }
+body.f-layout #appShell .admin-page .student-color-button { border-radius: 3px; }
+body.f-layout #appShell .admin-page .student-drag-handle { color: rgba(70, 40, 25, 0.3); }
+body.f-layout #appShell .admin-page .student-row .student-count-field input { text-align: center; font-variant-numeric: tabular-nums; }
+
+/* =====================================================================
+   上课打卡
+   ===================================================================== */
+body.f-layout #appShell .attendance-toolbar {
+  padding: 0 0 22px;
+  border: 0;
+  border-bottom: 1px solid var(--fa-line);
+  background: none;
+}
+body.f-layout #appShell .attendance-date-copy strong { color: var(--d-ink); font: 400 28px/1.15 var(--d-serif); }
+body.f-layout #appShell .attendance-date-copy span { color: var(--d-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .attendance-toolbar-actions { align-items: flex-end; gap: 10px; }
+body.f-layout #appShell .attendance-date-picker { gap: 6px; }
+body.f-layout #appShell .attendance-row {
+  padding: 18px 0;
+  border: 0;
+  border-bottom: 1px solid var(--fa-line-soft);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body.f-layout #appShell .attendance-identity strong { color: var(--d-ink); font: 400 17px/1.3 var(--d-serif); }
+body.f-layout #appShell .attendance-identity small,
+body.f-layout #appShell .attendance-identity span { color: var(--d-muted); }
+body.f-layout #appShell .attendance-current-count { color: var(--d-muted); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .attendance-current-count.is-low { color: #9a5b12; }
+body.f-layout #appShell .attendance-current-count.is-empty { color: #9b2c22; }
+body.f-layout #appShell .attendance-status-button { height: 38px; min-height: 38px; padding: 0 14px; }
+body.f-layout #appShell .attendance-status-button.is-selected { border-color: var(--d-wine); background: var(--d-wine); color: #fbf4ea; }
+body.f-layout #appShell .attendance-status-button.is-selected:hover { color: #fbf4ea; background: var(--d-wine-hover); }
+body.f-layout #appShell .student-attendance-status { border-radius: 2px; }
+body.f-layout #appShell .attendance-history-section { margin-top: 34px; border: 0; }
+body.f-layout #appShell .attendance-history-heading { padding: 0 0 16px; border-bottom: 1px solid var(--fa-line); }
+body.f-layout #appShell .attendance-overdue-alert { margin: 16px 0 0; padding: 10px 14px; }
+body.f-layout #appShell .attendance-history-list { gap: 12px; margin-top: 16px; }
+body.f-layout #appShell .attendance-history-day {
+  padding: 16px 18px;
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: none;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+body.f-layout #appShell .attendance-history-day:hover { transform: translateY(-2px); border-color: rgba(110, 31, 23, 0.22); }
+body.f-layout #appShell .attendance-history-day.has-pending { border-left: 3px solid var(--d-wine); background: linear-gradient(90deg, rgba(110, 31, 23, 0.045), rgba(110, 31, 23, 0) 60%), var(--fa-sheet); }
+body.f-layout #appShell .attendance-history-day.is-selected { border-color: rgba(110, 31, 23, 0.35); transform: none; }
+body.f-layout #appShell .attendance-history-date { color: var(--d-ink); font: 400 18px/1.3 var(--d-serif); }
+body.f-layout #appShell .attendance-history-day-heading { border-color: var(--fa-line-soft); }
+body.f-layout #appShell .attendance-history-day-heading :is(span, small) { color: var(--d-muted); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .attendance-history-status-row strong,
+body.f-layout #appShell .attendance-history-status-row > span:first-child { color: var(--d-ink); }
+body.f-layout #appShell .attendance-history-names :is(span, button) {
+  border: 1px solid var(--fa-line);
+  border-radius: 2px;
+  background: rgba(251, 246, 236, 0.9);
+  color: var(--d-ink);
+}
+body.f-layout #appShell .attendance-history-day.has-pending .attendance-history-status-row:last-child .attendance-history-names :is(span, button) { border-color: rgba(110, 31, 23, 0.3); background: var(--fa-wine-soft); color: var(--d-wine); }
+
+/* =====================================================================
+   宠物分配 / 对战档案
+   ===================================================================== */
+body.f-layout #appShell .pet-list-heading { padding: 24px 0 16px; border-top: 0; border-bottom: 1px solid var(--fa-line); }
+body.f-layout #appShell .pet-list-heading small { width: auto; height: auto; flex-basis: auto; border-radius: 0; background: none; box-shadow: none; font-size: 12.5px; }
+body.f-layout #appShell .pet-student-list { gap: 14px; padding-top: 16px; }
+body.f-layout #appShell .pet-student-row {
+  padding: 16px 18px 18px;
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: none;
+}
+body.f-layout #appShell .pet-student-identity strong { color: var(--d-ink); font: 400 19px/1.3 var(--d-serif); }
+body.f-layout #appShell .pet-admin-label,
+body.f-layout #appShell .pet-exclusive-label { border: 1px solid rgba(110, 31, 23, 0.2); border-radius: 2px; background: var(--fa-wine-soft); color: var(--d-wine); }
+body.f-layout #appShell .pet-empty-preview { border: 1px dashed rgba(70, 40, 25, 0.25); border-radius: 3px; background: rgba(241, 231, 213, 0.5); color: var(--d-muted); }
+body.f-layout #appShell .pet-resource-editor { padding: 16px 0 0; border: 0; border-top: 1px solid var(--fa-line-soft); border-radius: 0; background: transparent; box-shadow: none; }
+body.f-layout #appShell .pet-resource-level strong { color: var(--d-wine); font: 400 26px/1 var(--d-serif); }
+body.f-layout #appShell .pet-resource-level :is(small, span) { color: var(--d-muted); }
+body.f-layout #appShell .pet-resource-input { border-color: var(--fa-field); border-radius: 3px; background: var(--fa-sheet); }
+body.f-layout #appShell .pet-resource-input input { border: 0; background: transparent; box-shadow: none; }
+body.f-layout #appShell .pet-resource-input:focus-within { border-color: var(--d-wine); box-shadow: var(--fa-ring); }
+body.f-layout #appShell .pet-resource-input input:focus { box-shadow: none; }
+body.f-layout #appShell .pet-battle-history-summary {
+  gap: 0;
+  border: 0;
+  border-top: 1px solid var(--fa-line);
+  border-bottom: 1px solid var(--fa-line);
+  border-radius: 0;
+  background: transparent;
+}
+body.f-layout #appShell .pet-battle-history-summary > div { background: transparent; border-color: var(--fa-line-soft); }
+body.f-layout #appShell .pet-battle-history-summary strong { color: var(--d-ink); font: 400 30px/1 var(--d-serif); font-variant-numeric: tabular-nums; }
+
+/* =====================================================================
+   宠物排行榜
+   ===================================================================== */
+body.f-layout #appShell .leaderboard-status-band {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 26px;
+  padding: 0;
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+}
+body.f-layout #appShell .leaderboard-status-band > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 14px;
+  padding: 18px 22px;
+}
+body.f-layout #appShell .leaderboard-status-band > div + div { border-left: 1px solid var(--fa-line); }
+body.f-layout #appShell .leaderboard-status-band svg { grid-row: 1 / span 2; width: 22px; height: 22px; color: var(--d-wine); }
+body.f-layout #appShell .leaderboard-status-band strong { color: var(--d-ink); font: 400 20px/1.2 var(--d-serif); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .leaderboard-status-band span { color: var(--d-muted); font-size: 12.5px; }
+body.f-layout #appShell .pet-leaderboard-list { gap: 0; }
+body.f-layout #appShell .pet-leaderboard-row {
+  border: 0;
+  border-bottom: 1px solid var(--fa-line-soft);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body.f-layout #appShell .pet-leaderboard-row.rank-1 { background: linear-gradient(90deg, rgba(196, 150, 60, 0.12), rgba(196, 150, 60, 0) 55%); }
+body.f-layout #appShell .pet-leaderboard-row.is-self { box-shadow: inset 3px 0 0 var(--d-wine); }
+body.f-layout #appShell .pet-leaderboard-rank { color: var(--d-muted); font: 400 16px/1 var(--d-serif); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .pet-leaderboard-rank strong { color: var(--d-ink); font: 400 17px/1 var(--d-serif); }
+body.f-layout #appShell .rank-1 .pet-leaderboard-rank svg { color: #b0812a; }
+body.f-layout #appShell .rank-2 .pet-leaderboard-rank svg { color: #8a8278; }
+body.f-layout #appShell .rank-3 .pet-leaderboard-rank svg { color: #9a5b33; }
+body.f-layout #appShell .pet-leaderboard-identity img { border-radius: 3px; background: var(--fa-tint); }
+body.f-layout #appShell .pet-leaderboard-identity strong { color: var(--d-ink); font: 400 18px/1.3 var(--d-serif); }
+body.f-layout #appShell .pet-leaderboard-identity small,
+body.f-layout #appShell .pet-leaderboard-level :is(span, small),
+body.f-layout #appShell .pet-leaderboard-reward small { color: var(--d-muted); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .pet-leaderboard-level strong { color: var(--d-wine); font: 400 18px/1 var(--d-serif); }
+body.f-layout #appShell .pet-leaderboard-progress { height: 4px; border-radius: 999px; background: rgba(70, 40, 25, 0.1); }
+body.f-layout #appShell .pet-leaderboard-progress span { border-radius: 999px; background: var(--d-wine); }
+body.f-layout #appShell .pet-leaderboard-reward strong { color: var(--d-ink); }
+
+/* =====================================================================
+   挑战记录
+   ===================================================================== */
+body.f-layout #appShell .challenge-records-toolbar {
+  padding: 0 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--fa-line);
+  border-radius: 0;
+  background: none;
+}
+body.f-layout #appShell .challenge-records-toolbar > div { gap: 12px; }
+body.f-layout #appShell .challenge-records-toolbar > div > svg { color: var(--d-wine); }
+body.f-layout #appShell #challengeRecordTotal { color: var(--d-wine); font: 400 15px/1 var(--d-serif); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .challenge-record-list { gap: 0; }
+body.f-layout #appShell .challenge-record-row {
+  border: 0;
+  border-bottom: 1px solid var(--fa-line-soft);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body.f-layout #appShell .challenge-record-result { border-radius: 50%; font-family: var(--d-serif); font-weight: 400; }
+body.f-layout #appShell .challenge-record-row.is-correct .challenge-record-result { border: 1px solid rgba(47, 110, 64, 0.35); background: rgba(47, 110, 64, 0.08); color: #2f6e40; }
+body.f-layout #appShell .challenge-record-row.is-wrong .challenge-record-result { border: 1px solid rgba(110, 31, 23, 0.35); background: var(--fa-wine-soft); color: var(--d-wine); }
+body.f-layout #appShell .challenge-record-identity strong { color: var(--d-ink); font: 400 17px/1.3 var(--d-serif); }
+body.f-layout #appShell .challenge-record-question strong { color: var(--d-ink); }
+body.f-layout #appShell :is(.challenge-record-identity, .challenge-record-question, .challenge-record-metrics) small { color: var(--d-muted); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .challenge-record-metrics strong { color: var(--d-ink); font-variant-numeric: tabular-nums; }
+
+/* =====================================================================
+   题库设置 / 识别审核
+   ===================================================================== */
+/* Three numbers set like a ledger heading, not three boxes */
+body.f-layout #appShell .question-bank-dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 34px;
+  border-top: 1px solid var(--fa-line);
+  border-bottom: 1px solid var(--fa-line);
+}
+body.f-layout #appShell .question-bank-dashboard article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body.f-layout #appShell .question-bank-dashboard article + article { border-left: 1px solid var(--fa-line); }
+body.f-layout #appShell .question-bank-dashboard article > span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--fa-line);
+  border-radius: 50%;
+  background: var(--fa-sheet);
+  color: var(--d-wine);
+}
+body.f-layout #appShell .question-bank-dashboard article > span svg { width: 18px; height: 18px; }
+body.f-layout #appShell .question-bank-dashboard small { display: block; color: var(--d-muted); font: 600 12px/1 var(--fa-sans); letter-spacing: 0.1em; }
+body.f-layout #appShell .question-bank-dashboard strong { display: block; margin-top: 8px; color: var(--d-ink); font: 400 40px/1 var(--d-serif); font-variant-numeric: tabular-nums lining-nums; }
+body.f-layout #appShell .question-bank-section { padding: 0 0 30px; border: 0; background: none; }
+body.f-layout #appShell .question-bank-section + .question-import-band,
+body.f-layout #appShell .question-import-band + .question-bank-section { margin-top: 0; }
+body.f-layout #appShell .question-bank-heading { padding: 0 0 16px; border-bottom: 1px solid var(--fa-line); }
+body.f-layout #appShell .question-bank-create-form { padding-top: 18px; align-items: flex-end; gap: 10px; }
+body.f-layout #appShell .question-sub-bank-list { gap: 10px; }
+body.f-layout #appShell .question-sub-bank-row {
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: none;
+}
+body.f-layout #appShell .question-sub-bank-copy strong { color: var(--d-ink); font: 400 18px/1.3 var(--d-serif); }
+body.f-layout #appShell .question-sub-bank-stat {
+  border: 1px solid var(--fa-line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--d-muted);
+  font-variant-numeric: tabular-nums;
+}
+body.f-layout #appShell .question-sub-bank-stat.is-choice { border-color: rgba(110, 31, 23, 0.25); color: var(--d-wine); }
+body.f-layout #appShell .question-sub-bank-stat.is-word { border-color: rgba(50, 80, 110, 0.25); color: #33506e; }
+/* Import band: a tinted slip across the sheet */
+body.f-layout #appShell .question-import-band {
+  margin: 0 calc(-1 * var(--fa-gutter)) 32px;
+  padding: 24px var(--fa-gutter);
+  border: 0;
+  border-top: 1px solid var(--fa-line);
+  border-bottom: 1px solid var(--fa-line);
+  border-radius: 0;
+  background: var(--fa-tint);
+}
+body.f-layout #appShell :is(.question-import-heading, .coin-shop-section-heading) .admin-feature-icon {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--fa-line);
+  border-radius: 50%;
+  background: var(--fa-sheet);
+  color: var(--d-wine);
+}
+body.f-layout #appShell .question-import-controls { gap: 10px; }
+body.f-layout #appShell .file-picker-button { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+body.f-layout #appShell .question-bank-filters { gap: 12px; padding-top: 18px; }
+body.f-layout #appShell .question-bank-list { gap: 10px; }
+body.f-layout #appShell :is(.question-bank-list, .question-preview-list) > * {
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: none;
+}
+body.f-layout #appShell .question-review-summary,
+body.f-layout #appShell .question-review-bank-tools {
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: none;
+}
+body.f-layout #appShell .question-review-summary strong { color: var(--d-ink); font: 400 22px/1.2 var(--d-serif); }
+body.f-layout #appShell .question-review-actions { border-top: 1px solid var(--fa-line); background: rgba(248, 242, 230, 0.94); }
+
+/* =====================================================================
+   金币商城
+   ===================================================================== */
+body.f-layout #appShell .coin-shop-orders-section { padding: 0 0 28px; border: 0; border-bottom: 1px solid var(--fa-line); }
+body.f-layout #appShell .coin-shop-list-heading { padding: 0 0 14px; border-bottom: 1px solid var(--fa-line-soft); }
+body.f-layout #appShell .coin-shop-orders-section .coin-shop-list-heading > div { display: grid; gap: 6px; }
+body.f-layout #appShell #coinShopOrdersList { padding-top: 16px; }
+body.f-layout #appShell #coinShopOrdersList .form-field { max-width: 320px; }
+body.f-layout #appShell #coinShopOrdersList .operations-hint { margin: 14px 0 0; font-family: var(--d-serif); font-size: 14px; letter-spacing: 0.04em; }
+body.f-layout #appShell .coin-shop-create-section {
+  margin: 0 calc(-1 * var(--fa-gutter));
+  padding: 28px var(--fa-gutter);
+  border: 0;
+  border-bottom: 1px solid var(--fa-line);
+  border-radius: 0;
+  background: var(--fa-tint);
+  box-shadow: none;
+}
+body.f-layout #appShell .coin-shop-section-heading { align-items: center; gap: 14px; }
+body.f-layout #appShell .coin-shop-image-preview {
+  border: 1px dashed rgba(70, 40, 25, 0.3);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  color: var(--d-muted);
+}
+body.f-layout #appShell .coin-shop-image-field:hover .coin-shop-image-preview { border-color: var(--d-wine); }
+body.f-layout #appShell .coin-shop-image-preview svg { color: var(--d-wine); }
+body.f-layout #appShell .coin-shop-image-preview strong { color: var(--d-ink); }
+body.f-layout #appShell .coin-shop-list-section { padding-top: 28px; border: 0; }
+body.f-layout #appShell .coin-shop-list-section .coin-shop-list-heading > div { display: flex; align-items: baseline; gap: 12px; }
+body.f-layout #appShell #coinShopProductCount { color: var(--d-wine); font: 400 15px/1 var(--d-serif); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .coin-shop-product-grid { gap: 18px; padding-top: 18px; }
+body.f-layout #appShell .coin-shop-product-card {
+  overflow: hidden;
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: none;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+body.f-layout #appShell .coin-shop-product-card:hover { transform: translateY(-3px); }
+body.f-layout #appShell .coin-shop-product-card { position: relative; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; padding: 14px; }
+body.f-layout #appShell .coin-shop-product-copy { grid-column: 2 / -1; padding-right: 44px; }
+body.f-layout #appShell .coin-shop-product-card > .coin-shop-delete-button { position: absolute; top: 14px; right: 14px; }
+body.f-layout #appShell .coin-shop-product-image {
+  border: 4px solid #fdf9f1;
+  border-radius: 2px;
+  background: var(--fa-tint);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.12), 0 8px 18px -10px rgba(60, 30, 15, 0.4);
+}
+/* Stock editor (added by operations.js): one row under the product, label / field / save */
+body.f-layout #appShell .coin-shop-product-card > .operations-hint { grid-column: 1 / -1; margin: 2px 0 0; padding-top: 12px; border-top: 1px solid var(--fa-line-soft); font-size: 12px; }
+body.f-layout #appShell .coin-shop-product-card > .form-field { grid-column: 1 / 3; margin: 0; gap: 6px; }
+body.f-layout #appShell .coin-shop-product-card > .form-field input { height: 36px; min-height: 36px; font-size: 13px; }
+body.f-layout #appShell .coin-shop-product-card > .secondary-button { grid-column: 3; align-self: end; height: 36px; min-height: 36px; margin: 0; padding: 0 14px; font-size: 13px; white-space: nowrap; }
+body.f-layout #appShell .coin-shop-product-copy strong { color: var(--d-ink); font: 400 18px/1.3 var(--d-serif); }
+body.f-layout #appShell .coin-shop-product-price { color: #8a6a1e; }
+body.f-layout #appShell .coin-shop-product-price strong { color: var(--d-ink); font: 400 20px/1 var(--d-serif); font-variant-numeric: tabular-nums; }
+body.f-layout #appShell .coin-shop-product-price svg { color: #b0812a; }
+body.f-layout #appShell .coin-shop-delete-button { background: rgba(251, 246, 236, 0.92); }
+
+/* =====================================================================
+   假期停课与顺延
+   ===================================================================== */
+body.f-layout #appShell .holiday-form {
+  gap: 18px 20px;
+  padding: 0 0 30px;
+  border: 0;
+  border-bottom: 1px solid var(--fa-line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+body.f-layout #appShell .holiday-form fieldset {
+  margin: 0;
+  padding: 14px 18px 16px;
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+}
+body.f-layout #appShell .holiday-form legend { padding: 0 8px; }
+body.f-layout #appShell .holiday-form .holiday-help { margin: 0; padding-left: 12px; border-left: 2px solid rgba(110, 31, 23, 0.3); color: #4a3a2f; }
+body.f-layout #appShell :is(.holiday-select-all, .holiday-course-option) { color: var(--d-ink); }
+body.f-layout #appShell .holiday-select-all { padding-bottom: 10px; border-bottom: 1px solid var(--fa-line-soft); font-weight: 600; }
+body.f-layout #appShell #previewCourseHoliday { justify-self: start; width: auto; min-width: 160px; }
+body.f-layout #appShell .holiday-preview:not([hidden]) {
+  margin-top: 22px;
+  padding: 18px 20px;
+  border: 1px solid var(--fa-line);
+  border-left: 3px solid var(--d-wine);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+}
+body.f-layout #appShell :is(.holiday-preview-row, .holiday-history-row) { border-color: var(--fa-line-soft); background: transparent; }
+body.f-layout #appShell #holidayStatus:not(:empty) { color: var(--d-wine); }
+body.f-layout #appShell #applyCourseHoliday { margin-top: 12px; }
+body.f-layout #appShell .holiday-history {
+  margin-top: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+body.f-layout #appShell .holiday-history h3 { margin: 0 0 6px; }
+body.f-layout #appShell #holidayHistoryList { margin-top: 14px; color: var(--d-muted); font: 400 15px/1.6 var(--d-serif); letter-spacing: 0.04em; }
+body.f-layout #appShell #holidayHistoryList > * { font: 400 14px/1.6 "Microsoft YaHei", sans-serif; color: var(--d-ink); }
+
+/* =====================================================================
+   Operations sub-pages (课时明细 · 单个学生打卡记录 …)
+   ===================================================================== */
+body.f-layout #appShell .operations-page .operations-content { display: grid; gap: 16px; }
+body.f-layout #appShell .operations-page .operations-card {
+  padding: 20px 22px;
+  border: 1px solid var(--fa-line);
+  border-radius: 3px;
+  background: var(--fa-sheet);
+  box-shadow: none;
+}
+body.f-layout #appShell .operations-page .operations-list > * { border-color: var(--fa-line-soft); }
+
+/* =====================================================================
+   Motion
+   ===================================================================== */
+@keyframes fa-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* =====================================================================
+   Narrow screens
+   ===================================================================== */
+@media (max-width: 1100px) {
+  body.f-layout #appShell #adminHub > .admin-page-header { padding-right: calc(32% + 220px); }
+  body.f-layout #appShell #adminHub > .operations-dashboard:not([hidden]) { width: 400px; margin-right: calc(32% - 180px); padding-left: 112px; }
+  body.f-layout #appShell #adminHub > .operations-dashboard::before { width: 90px; }
+}
+
+@media (max-width: 900px) {
+  body.f-layout.is-admin-view .app-shell { padding-bottom: 48px; }
+
+  /* Sub-page header: painting becomes a narrow column on the right */
+  body.f-layout #appShell .admin-page > .admin-page-header {
+    min-height: 0;
+    margin-bottom: 22px;
+    padding: 18px calc(30% + 14px) 24px 18px;
+  }
+  body.f-layout #appShell .admin-page > .admin-page-header::after {
+    width: 30%;
+    background:
+      linear-gradient(90deg, var(--d-paper) 0%, rgba(248, 242, 230, 0) 30%),
+      var(--fa-art) var(--fa-art-pos) / cover no-repeat;
+  }
+  body.f-layout #appShell .admin-page > .admin-page-header::before { display: none; }
+  body.f-layout #appShell .admin-page-header > button { margin-bottom: 16px; }
+  body.f-layout #appShell .admin-page-header > button span { display: inline; }
+  body.f-layout #appShell .admin-page-header h2 { font-size: 30px; line-height: 1.15; }
+  body.f-layout #appShell .admin-page-header .eyebrow { margin-bottom: 8px; font-size: 11px; }
+
+  /* Hub: title + painting strip, to-do card pinned over the strip, then tools and rooms */
+  body.f-layout #appShell #adminHub > .admin-page-header {
+    min-height: 0;
+    padding: 18px 18px 150px;
+  }
+  body.f-layout #appShell #adminHub > .admin-page-header::after {
+    top: auto;
+    left: 0;
+    width: auto;
+    height: 130px;
+    background:
+      linear-gradient(180deg, var(--d-paper) 0%, rgba(248, 242, 230, 0) 40%),
+      var(--fa-art) 50% 45% / cover no-repeat;
+  }
+  body.f-layout #appShell #adminHub .admin-page-header > button { margin-bottom: 22px; }
+  body.f-layout #appShell #adminHub .admin-page-header h2 { font-size: 44px; }
+  body.f-layout #appShell #adminHub > .operations-dashboard:not([hidden]) {
+    grid-row: 2;
+    justify-self: stretch;
+    align-self: start;
+    gap: 10px;
+    width: auto;
+    max-width: none;
+    min-height: 0;
+    margin: -78px 12px 0;
+    padding: 16px 16px 16px 88px;
+  }
+  body.f-layout #appShell #adminHub > .operations-dashboard::before { width: 70px; border-right-width: 3px; }
+  body.f-layout #appShell #adminHub .operations-tiles button { font-size: 18px; }
+  body.f-layout #appShell #adminHub > .admin-hub-tools {
+    grid-row: 3;
+    align-self: start;
+    margin: 18px 4px 0;
+    gap: 4px 22px;
+  }
+  body.f-layout #appShell #adminHub > .admin-layout-hint { grid-row: 4; flex-direction: column; gap: 8px; margin-top: 22px; }
+  body.f-layout #appShell #adminHub > .admin-feature-grid { grid-row: 5; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  body.f-layout #appShell .admin-feature-button { grid-template-columns: 60px minmax(0, 1fr) auto; gap: 2px 14px; min-height: 96px; padding: 14px 16px 14px 14px; }
+  body.f-layout #appShell .admin-feature-button .admin-feature-icon { width: 60px; height: 60px; border-width: 3px; }
+  body.f-layout #appShell .admin-feature-button .admin-feature-icon svg { right: -8px; bottom: -8px; width: 26px; height: 26px; padding: 6px; }
+  body.f-layout #appShell .admin-feature-button > strong { font-size: 19px; }
+
+  /* Shared sections */
+  body.f-layout #appShell .question-bank-dashboard { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.f-layout #appShell .question-bank-dashboard article { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 16px 10px; }
+  body.f-layout #appShell .question-bank-dashboard article > span { width: 32px; height: 32px; }
+  body.f-layout #appShell .question-bank-dashboard strong { font-size: 30px; }
+  /* Pet rows: identity, current pet and actions stack instead of squeezing three columns */
+  body.f-layout #appShell .pet-student-row { padding: 14px 14px 16px; }
+  body.f-layout #appShell .pet-student-header { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  body.f-layout #appShell .pet-student-identity { min-width: 0; flex-wrap: wrap; }
+  body.f-layout #appShell .pet-assignment-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+  body.f-layout #appShell .pet-list-heading { gap: 12px; }
+  body.f-layout #appShell .pet-list-heading > span { flex: 0 0 auto; white-space: nowrap; font-size: 13px; }
+  /* Question row actions wrapped instead of running off the right edge (was cut off in the base styles too) */
+  body.f-layout #appShell .question-bank-actions { flex-wrap: wrap; align-items: center; gap: 8px; }
+  body.f-layout #appShell .question-bank-actions select { flex: 1 1 100%; min-width: 0; max-width: 100%; }
+  body.f-layout #appShell .question-active-toggle { white-space: nowrap; }
+  body.f-layout #appShell .pet-leaderboard-rank,
+  body.f-layout #appShell .pet-leaderboard-rank strong { white-space: nowrap; font-size: 15px; }
+  body.f-layout #appShell .pet-leaderboard-rank { gap: 4px; }
+  body.f-layout #appShell .leaderboard-status-band { grid-template-columns: minmax(0, 1fr); }
+  body.f-layout #appShell .leaderboard-status-band > div + div { border-left: 0; border-top: 1px solid var(--fa-line); }
+  body.f-layout #appShell .attendance-date-copy strong { font-size: 24px; }
+  body.f-layout #appShell .admin-page :is(
+    .student-list-heading > div > strong, .pet-list-heading > div > strong, .attendance-history-heading strong,
+    .question-bank-heading strong, .coin-shop-list-heading strong, .coin-shop-section-heading h3,
+    .question-import-heading h3, .holiday-history h3, .challenge-records-toolbar strong, .operations-card h3
+  ) { font-size: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.f-layout #appShell :is(.admin-page, .admin-page-header, .admin-hub-tools, .operations-dashboard, .admin-feature-item) { animation: none !important; }
+  body.f-layout #appShell :is(.admin-feature-button, .admin-feature-button::after, .admin-feature-button > svg, .admin-page-header > button svg,
+    .attendance-history-day, .coin-shop-product-card, .primary-button, .secondary-button, .icon-button, .file-picker-button) { transition: none !important; }
+  body.f-layout #appShell :is(.admin-feature-button, .attendance-history-day, .coin-shop-product-card):hover { transform: none; }
+}
+
+/* ===== f-student ===== */
+/* 初稿 F · student（由子助手负责） */
+/* finesse · register=product · 学生端：同一套府邸语言（奶油纸 / 深棕墨 / 酒红 / 发丝线 / 衬线标题），
+   给孩子多一点温度：宠物像挂在墙上的小画，金币是暖金色，答题像翻书。
+   所有选择器都挂在 body.has-student-tabbar（只有学生登录才有）下面，不影响老师端。 */
+
+body.has-student-tabbar {
+  --fs-mat: #fbf6ec;            /* 画框衬纸 */
+  --fs-shelf: #f1e7d5;          /* 比纸深一档：脚注条、时间列同色 */
+  --fs-ochre: #8a5f17;          /* 金币：暖金，和酒红同温，不是亮黄 */
+  --fs-ochre-soft: rgba(176, 128, 40, 0.12);
+  --fs-ochre-line: rgba(150, 105, 30, 0.30);
+  --fs-sage: #456236;           /* 答对：灰绿，只做语义色 */
+  --fs-sage-soft: rgba(84, 118, 60, 0.11);
+  --fs-wine-soft: rgba(110, 31, 23, 0.07);
+  --fs-ink-2: #4a3a2f;
+  --fs-shadow: 0 1px 2px rgba(60, 30, 15, 0.06), 0 10px 24px rgba(60, 30, 15, 0.08);
+  --fs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ======================================================================
+   1. 个人服务（课程通知 / 兑换记录 / 账号与安全 / 我的课时明细）
+   电脑宽屏：收进顶栏左侧空位，变成一排安静的文字链接；中屏：首屏上方一行文字链接；
+   手机：原样隐藏（入口在底部"我的"里）。
+   ====================================================================== */
+@media (min-width: 641px) {
+body.f-layout.has-student-tabbar .operations-nav:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 18px;
+  margin: -6px 0 16px;
+}
+body.f-layout.has-student-tabbar .operations-nav button {
+  min-height: 32px;
+  height: auto;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  position: relative;
+  color: var(--d-muted);
+  font: 500 13px/1.2 "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+body.f-layout.has-student-tabbar .operations-nav button::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 220ms var(--fs-ease);
+}
+body.f-layout.has-student-tabbar .operations-nav button:hover,
+body.f-layout.has-student-tabbar .operations-nav button:focus-visible {
+  border: 0;
+  background: transparent;
+  color: var(--d-wine);
+}
+body.f-layout.has-student-tabbar .operations-nav button:hover::after,
+body.f-layout.has-student-tabbar .operations-nav button:focus-visible::after { transform: scaleX(1); }
+}
+@media (min-width: 1000px) {
+  body.f-layout.has-student-tabbar .operations-nav:not([hidden]) {
+    position: fixed;
+    z-index: 31;
+    top: 0;
+    left: clamp(16px, 3vw, 48px);
+    height: 61px;
+    margin: 0;
+    flex-wrap: nowrap;
+    max-width: calc(50vw - 180px);
+    overflow: hidden;
+  }
+  body.f-layout.has-student-tabbar .operations-nav button { min-height: 40px; color: var(--fs-ink-2); }
+}
+
+/* ======================================================================
+   2. 课表页：首屏下面的"学生信息带"
+   一整条纸面：左 = 宠物小画像，中 = 已上 / 应上 / 还剩（大衬线数字），右 = 宠物排行、学习挑战。
+   "下一节课"一行贴在信息带底部当脚注；预计结课挪到课表下面。
+   ====================================================================== */
+body.f-layout.has-student-tabbar #scheduleSection { display: flex; flex-direction: column; }
+body.f-layout.has-student-tabbar #scheduleSection > * { min-width: 0; }
+body.f-layout.has-student-tabbar #courseEndDates { order: 5; }
+
+body.f-layout.has-student-tabbar .section-heading { display: block; margin: 0 0 28px; }
+body.f-layout.has-student-tabbar .section-heading:has(+ .next-lesson-card:not([hidden])) { margin-bottom: 0; }
+body.f-layout.has-student-tabbar .section-actions {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(330px, 1.35fr) auto auto;
+  align-items: stretch;
+  width: 100%;
+  max-width: none;
+  gap: 0;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--d-paper);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.05);
+}
+body.f-layout.has-student-tabbar .section-heading:has(+ .next-lesson-card:not([hidden])) .section-actions { border-radius: 4px 4px 0 0; }
+body.f-layout.has-student-tabbar #visitorPet { order: 1; }
+body.f-layout.has-student-tabbar #lessonSummary { order: 2; }
+body.f-layout.has-student-tabbar .section-actions > .secondary-button { order: 3; }
+
+/* 宠物：挂在纸上的一幅小画 */
+body.f-layout.has-student-tabbar .visitor-pet {
+  display: flex;
+  min-width: 0;
+  min-height: 92px;
+  align-items: center;
+  gap: 16px;
+  width: auto;
+  margin: 0;
+  padding: 14px 22px;
+  border: 0;
+  border-right: 1px solid var(--d-hair);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--d-ink);
+  text-align: left;
+  cursor: pointer;
+}
+body.f-layout.has-student-tabbar .visitor-pet img,
+body.f-layout.has-student-tabbar .visitor-pet.is-unassigned::before {
+  width: 66px;
+  height: 66px;
+  flex: 0 0 66px;
+  padding: 0;
+  border: 1px solid rgba(70, 40, 25, 0.12);
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 50% 70%, rgba(255, 250, 240, 0.9), rgba(241, 231, 213, 0.9) 70%),
+    var(--fs-mat);
+  box-shadow: 0 0 0 4px var(--fs-mat), 0 0 0 5px rgba(70, 40, 25, 0.10), 0 10px 20px rgba(60, 30, 15, 0.14);
+  object-fit: contain;
+  transition: transform 260ms var(--fs-ease);
+}
+body.f-layout.has-student-tabbar .visitor-pet.is-unassigned::before {
+  content: "";
+  border-style: dashed;
+  border-color: rgba(70, 40, 25, 0.22);
+  background: var(--fs-mat);
+  box-shadow: 0 0 0 4px var(--fs-mat), 0 0 0 5px rgba(70, 40, 25, 0.08);
+}
+body.f-layout.has-student-tabbar .visitor-pet.is-unassigned { opacity: 1; cursor: default; }
+body.f-layout.has-student-tabbar .visitor-pet:not(.is-unassigned):hover img { transform: rotate(-2deg) translateY(-2px); }
+body.f-layout.has-student-tabbar .visitor-pet div { display: grid; min-width: 0; flex: 1 1 auto; gap: 5px; margin-left: 6px; }
+body.f-layout.has-student-tabbar .visitor-pet small {
+  overflow: hidden;
+  color: var(--d-muted);
+  font: 500 12px/1.3 "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.f-layout.has-student-tabbar .visitor-pet strong {
+  max-width: none;
+  overflow: hidden;
+  color: var(--d-ink);
+  font: 400 21px/1.2 var(--d-serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.f-layout.has-student-tabbar .visitor-pet.is-unassigned strong { color: var(--d-muted); font-size: 17px; }
+body.f-layout.has-student-tabbar .visitor-pet:not(.is-unassigned):hover strong { color: var(--d-wine); }
+body.f-layout.has-student-tabbar .visitor-pet > svg { width: 16px; height: 16px; flex: 0 0 16px; color: var(--d-muted); }
+body.f-layout.has-student-tabbar .visitor-pet.is-unassigned > svg { display: none; }
+
+/* 课时：三栏大衬线数字 */
+body.f-layout.has-student-tabbar .lesson-summary:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  padding: 14px 0;
+  border: 0;
+  border-right: 1px solid var(--d-hair);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+body.f-layout.has-student-tabbar .lesson-summary .lesson-stat {
+  display: grid;
+  gap: 6px;
+  padding: 2px 24px;
+  border-right: 1px solid rgba(70, 40, 25, 0.08);
+  text-align: left;
+}
+body.f-layout.has-student-tabbar .lesson-summary .lesson-stat:last-child { border-right: 0; }
+body.f-layout.has-student-tabbar .lesson-summary small { color: var(--d-muted); font: 500 12px/1.2 "Microsoft YaHei", sans-serif; letter-spacing: 0.08em; }
+body.f-layout.has-student-tabbar .lesson-summary strong {
+  color: var(--d-ink);
+  font: 400 15px/1 "Microsoft YaHei", sans-serif;
+  white-space: nowrap;
+}
+body.f-layout.has-student-tabbar .lesson-summary strong span {
+  margin-right: 3px;
+  font: 400 32px/1 var(--d-serif);
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.01em;
+}
+body.f-layout.has-student-tabbar .lesson-summary .is-remaining strong { color: var(--d-wine); }
+
+/* 两个入口：排行是描边，学习挑战是这页唯一的酒红主按钮 */
+body.f-layout.has-student-tabbar .section-actions > .secondary-button {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0 0 0 16px;
+  padding: 0 20px;
+  border: 1px solid rgba(70, 40, 25, 0.22);
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--d-ink);
+  font: 600 14px/1 "Microsoft YaHei", sans-serif;
+  white-space: nowrap;
+  transition: transform 160ms ease;
+}
+body.f-layout.has-student-tabbar .section-actions > .secondary-button svg { width: 17px; height: 17px; }
+body.f-layout.has-student-tabbar .section-actions > .secondary-button:hover { border-color: var(--d-wine); background: var(--fs-wine-soft); color: var(--d-wine); }
+body.f-layout.has-student-tabbar .section-actions > .secondary-button:active { transform: scale(0.97); }
+body.f-layout.has-student-tabbar .section-actions > #openStudentChallenge { margin-right: 20px; border-color: var(--d-wine); background: var(--d-wine); color: #fbf4ea; box-shadow: 0 6px 16px rgba(110, 31, 23, 0.2); }
+body.f-layout.has-student-tabbar .section-actions > #openStudentChallenge:hover { background: var(--d-wine-hover); color: #fbf4ea; }
+body.f-layout.has-student-tabbar .section-actions > #openPetLeaderboard:last-child,
+body.f-layout.has-student-tabbar .section-actions > #openPetLeaderboard:has(+ #openStudentChallenge[hidden]) { margin-right: 20px; }
+
+/* "下一节课"：贴在信息带下沿的一条脚注 */
+body.f-layout.has-student-tabbar .next-lesson-card:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0 0 28px;
+  padding: 11px 22px 12px;
+  border: 1px solid var(--d-hair);
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  background: var(--fs-shelf);
+  color: var(--d-ink);
+  box-shadow: none;
+}
+body.f-layout.has-student-tabbar .next-lesson-card small { color: var(--d-wine); font: 700 12px/1 "Microsoft YaHei", sans-serif; letter-spacing: 0.14em; }
+body.f-layout.has-student-tabbar .next-lesson-card small::before { width: 6px; height: 6px; margin-right: 8px; background: var(--d-wine); vertical-align: 2px; }
+body.f-layout.has-student-tabbar .next-lesson-card strong { font: 400 17px/1.3 var(--d-serif); font-variant-numeric: lining-nums tabular-nums; }
+body.f-layout.has-student-tabbar .next-lesson-card span { color: var(--d-muted); font-size: 14px; }
+
+/* 预计结课：课表下面一张"结课时间表"，不再是一堆白卡片 */
+body.f-layout.has-student-tabbar .course-end-dates:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0 36px;
+  margin: 28px 0 0;
+  padding: 22px 28px 14px;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--d-paper);
+}
+body.f-layout.has-student-tabbar .course-end-dates:not([hidden])::before {
+  content: "各门课预计结课";
+  grid-column: 1 / -1;
+  margin: 0 0 6px;
+  color: var(--d-ink);
+  font: 400 21px/1.3 var(--d-serif);
+}
+body.f-layout.has-student-tabbar .course-end-date-item {
+  display: grid;
+  gap: 3px;
+  min-height: 56px;
+  align-content: center;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(70, 40, 25, 0.09);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--d-ink);
+  text-align: left;
+}
+body.f-layout.has-student-tabbar .course-end-date-item strong { overflow: hidden; font: 400 16px/1.3 var(--d-serif); text-overflow: ellipsis; white-space: nowrap; }
+body.f-layout.has-student-tabbar .course-end-date-item span { color: var(--d-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+body.f-layout.has-student-tabbar .course-end-date-item:hover strong { color: var(--d-wine); }
+
+/* 中屏：信息带拆两行（上：宠物 + 两个入口；下：课时三栏） */
+@media (max-width: 1180px) and (min-width: 641px) {
+  body.f-layout.has-student-tabbar .section-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
+  body.f-layout.has-student-tabbar .visitor-pet { border-right: 0; }
+  body.f-layout.has-student-tabbar #lessonSummary { order: 5; grid-column: 1 / -1; border-top: 1px solid var(--d-hair); border-right: 0; }
+  body.f-layout.has-student-tabbar .section-actions > .secondary-button { order: 2; margin-left: 12px; }
+}
+
+/* ======================================================================
+   3. 学生子页面（宠物空间 / 学习挑战 / 金币商城 / 排行榜）
+   外壳（页面纸面、标题、返回）由 f-admin 统一；这里只管学生才有的部件。
+   子页面里课表工具条没有作用，学生端把它收起来。
+   ====================================================================== */
+body.f-layout.has-student-tabbar.is-admin-view .f-dock { display: none; }
+
+/* 学生专属的两个房间各配一幅画（外壳沿用 f-admin 的"左文右画"页头），水印换成学生语境 */
+body.f-layout.has-student-tabbar #appShell #petDetailPage { --fa-art: url("art/flower-01.webp"); --fa-art-pos: 50% 40%; --fa-mark: "My Pet"; }
+body.f-layout.has-student-tabbar #appShell #studentChallengePage { --fa-art: url("../login/04.webp"); --fa-art-pos: 40% 50%; --fa-mark: "Study"; }
+body.f-layout.has-student-tabbar #appShell #petLeaderboardPage { --fa-mark: "Honours"; }
+body.f-layout.has-student-tabbar #appShell #coinShopPage { --fa-mark: "Shop"; }
+
+/* ---------- 宠物空间 ---------- */
+body.f-layout.has-student-tabbar .pet-portrait-stage {
+  position: relative;
+  overflow: hidden;
+  border: 10px solid var(--fs-mat);
+  border-radius: 2px;
+  background:
+    linear-gradient(rgba(248, 241, 228, 0.74), rgba(248, 241, 228, 0.86)),
+    url("art/bg-roses.webp") center 40% / cover no-repeat,
+    var(--fs-shelf);
+  box-shadow: 0 0 0 1px rgba(70, 40, 25, 0.12), 0 2px 4px rgba(60, 30, 15, 0.06), 0 22px 46px rgba(60, 30, 15, 0.16);
+}
+body.f-layout.has-student-tabbar .pet-portrait-stage::after {
+  content: "";
+  position: absolute;
+  inset: auto 18% 9% 18%;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(60, 30, 15, 0.22), transparent);
+  pointer-events: none;
+}
+body.f-layout.has-student-tabbar .pet-detail-image { position: relative; z-index: 1; animation: fs-breathe 4.8s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes fs-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.012); }
+}
+body.f-layout.has-student-tabbar .pet-level-badge {
+  z-index: 2;
+  min-width: 52px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font: 400 15px/1 var(--d-serif);
+  letter-spacing: 0.04em;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(110, 31, 23, 0.25);
+}
+body.f-layout.has-student-tabbar .pet-profile-copy > small,
+body.f-layout.has-student-tabbar .pet-panel-heading small {
+  color: var(--d-muted);
+  font: 600 12px/1.2 "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.12em;
+}
+body.f-layout.has-student-tabbar .pet-profile-copy h3 { color: var(--d-ink); font: 400 34px/1.15 var(--d-serif); letter-spacing: -0.01em; }
+body.f-layout.has-student-tabbar .pet-panel-heading h3 { color: var(--d-ink); font: 400 22px/1.25 var(--d-serif); }
+body.f-layout.has-student-tabbar .pet-name-form input {
+  min-height: 44px;
+  border: 1px solid rgba(70, 40, 25, 0.18);
+  border-radius: 3px;
+  background: var(--fs-mat);
+  box-shadow: none;
+  color: var(--d-ink);
+}
+body.f-layout.has-student-tabbar .pet-name-form input:focus { border-color: var(--d-wine); outline: none; box-shadow: 0 0 0 3px rgba(110, 31, 23, 0.12); }
+body.f-layout.has-student-tabbar .pet-name-save {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid rgba(70, 40, 25, 0.18);
+  border-radius: 3px;
+  background: var(--fs-mat);
+  color: var(--d-ink);
+}
+body.f-layout.has-student-tabbar .pet-name-save:hover { border-color: var(--d-wine); color: var(--d-wine); }
+
+/* 金币、连续签到：暖金小牌 */
+body.f-layout.has-student-tabbar .pet-coin-balance,
+body.f-layout.has-student-tabbar .pet-streak {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 1px solid var(--fs-ochre-line);
+  border-radius: 999px;
+  background: var(--fs-ochre-soft);
+  color: var(--fs-ochre);
+  box-shadow: none;
+}
+body.f-layout.has-student-tabbar .pet-coin-balance svg,
+body.f-layout.has-student-tabbar .pet-streak svg { width: 15px; height: 15px; align-self: center; }
+body.f-layout.has-student-tabbar .pet-coin-balance strong,
+body.f-layout.has-student-tabbar .pet-streak strong { font: 400 19px/1 var(--d-serif); font-variant-numeric: lining-nums tabular-nums; }
+body.f-layout.has-student-tabbar .pet-coin-balance span,
+body.f-layout.has-student-tabbar .pet-streak span { font-size: 12px; }
+
+/* 等级进度：酒红墨线 */
+body.f-layout.has-student-tabbar .pet-level-row strong { color: var(--d-wine); font: 400 40px/1 var(--d-serif); }
+body.f-layout.has-student-tabbar .pet-level-row span { color: var(--d-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+body.f-layout.has-student-tabbar .pet-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(70, 40, 25, 0.09);
+  box-shadow: inset 0 1px 1px rgba(60, 30, 15, 0.06);
+}
+body.f-layout.has-student-tabbar .pet-progress-track span {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8f3426, var(--d-wine));
+}
+body.f-layout.has-student-tabbar .pet-total-experience { color: var(--d-muted); font-size: 13px; }
+body.f-layout.has-student-tabbar .pet-total-experience strong { color: var(--d-ink); font: 400 16px/1 var(--d-serif); }
+
+/* 签到、对战：酒红主按钮（今日已签到时变成安静的纸色） */
+body.f-layout.has-student-tabbar #petCheckinButton,
+body.f-layout.has-student-tabbar #matchPetBattle {
+  min-height: 46px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(110, 31, 23, 0.2);
+  transition: transform 160ms ease;
+}
+body.f-layout.has-student-tabbar #matchPetBattle { padding: 0 22px; }
+body.f-layout.has-student-tabbar #petCheckinButton:hover:not(:disabled),
+body.f-layout.has-student-tabbar #matchPetBattle:hover:not(:disabled) { background: var(--d-wine-hover); }
+body.f-layout.has-student-tabbar #petCheckinButton:active:not(:disabled),
+body.f-layout.has-student-tabbar #matchPetBattle:active:not(:disabled) { transform: scale(0.98); }
+body.f-layout.has-student-tabbar #petCheckinButton:disabled,
+body.f-layout.has-student-tabbar #matchPetBattle:disabled {
+  border: 1px solid var(--d-hair);
+  background: var(--fs-shelf);
+  color: var(--d-muted);
+  box-shadow: none;
+  opacity: 1;
+}
+body.f-layout.has-student-tabbar #petCheckinButton span,
+body.f-layout.has-student-tabbar #matchPetBattle span { color: inherit; }
+
+/* 对战结果 */
+body.f-layout.has-student-tabbar .pet-battle-result { border: 1px solid var(--d-hair); border-radius: 4px; background: var(--fs-mat); }
+body.f-layout.has-student-tabbar .pet-battle-player img { border-radius: 2px; background: var(--fs-shelf); }
+body.f-layout.has-student-tabbar .pet-battle-player strong,
+body.f-layout.has-student-tabbar .pet-battle-outcome strong { font-family: var(--d-serif); font-weight: 400; }
+body.f-layout.has-student-tabbar .pet-battle-versus { color: var(--d-wine); }
+
+/* 曾老师的宠物（对比） */
+body.f-layout.has-student-tabbar .admin-pet-compare-card { border: 1px solid var(--d-hair); border-radius: 4px; background: var(--fs-mat); }
+body.f-layout.has-student-tabbar .admin-pet-compare-card > img { border-radius: 2px; background: var(--fs-shelf); }
+body.f-layout.has-student-tabbar .admin-pet-compare-identity strong,
+body.f-layout.has-student-tabbar .admin-pet-compare-stats dd { font-family: var(--d-serif); font-weight: 400; }
+body.f-layout.has-student-tabbar .pet-exclusive-label { color: var(--d-wine); }
+
+/* 食物补给：像菜单上的一行行条目 */
+body.f-layout.has-student-tabbar .pet-food-grid { gap: 12px; }
+body.f-layout.has-student-tabbar .pet-food-card {
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--fs-mat);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.05);
+  transition: transform 200ms var(--fs-ease);
+}
+body.f-layout.has-student-tabbar .pet-food-card:hover { transform: translateY(-2px); box-shadow: var(--fs-shadow); }
+body.f-layout.has-student-tabbar .pet-food-icon { border-radius: 50%; background: var(--fs-wine-soft); color: var(--d-wine); }
+body.f-layout.has-student-tabbar .pet-food-copy strong { color: var(--d-ink); font: 400 17px/1.25 var(--d-serif); }
+body.f-layout.has-student-tabbar .pet-food-copy small { color: var(--d-muted); font-size: 12px; }
+body.f-layout.has-student-tabbar .pet-food-cost { color: var(--fs-ochre); }
+body.f-layout.has-student-tabbar .pet-food-cost strong { font: 400 17px/1 var(--d-serif); font-variant-numeric: lining-nums tabular-nums; }
+body.f-layout.has-student-tabbar .pet-feed-button {
+  min-height: 44px;
+  border: 1px solid rgba(70, 40, 25, 0.2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--d-ink);
+  box-shadow: none;
+}
+body.f-layout.has-student-tabbar .pet-feed-button:hover:not(:disabled) { border-color: var(--d-wine); background: var(--fs-wine-soft); color: var(--d-wine); }
+body.f-layout.has-student-tabbar .pet-feed-button:disabled { border-style: dashed; background: transparent; color: rgba(125, 106, 92, 0.75); opacity: 1; }
+body.f-layout.has-student-tabbar .pet-shop-panel .pet-panel-heading > svg { color: var(--d-muted); }
+
+/* ---------- 学习挑战 ---------- */
+body.f-layout.has-student-tabbar .challenge-summary-grid { gap: 14px; margin: 22px 0; }
+body.f-layout.has-student-tabbar .challenge-summary-card {
+  min-height: 96px;
+  padding: 18px 20px;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--fs-mat);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.05);
+  color: var(--d-ink);
+}
+body.f-layout.has-student-tabbar .challenge-summary-card > span {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--fs-wine-soft);
+  color: var(--d-wine);
+}
+body.f-layout.has-student-tabbar .challenge-summary-card.is-word > span { background: rgba(70, 40, 25, 0.07); color: var(--fs-ink-2); }
+body.f-layout.has-student-tabbar .challenge-summary-card.is-coin > span { background: var(--fs-ochre-soft); color: var(--fs-ochre); }
+body.f-layout.has-student-tabbar .challenge-summary-card small { color: var(--d-muted); font-size: 12px; letter-spacing: 0.08em; }
+body.f-layout.has-student-tabbar .challenge-summary-card em { color: var(--d-muted); font-size: 12px; text-align: right; }
+body.f-layout.has-student-tabbar .challenge-summary-card strong { font: 400 28px/1.05 var(--d-serif); font-variant-numeric: lining-nums tabular-nums; }
+/* 金币那张能点进商城：暖金描边 + 一点点上浮 */
+body.f-layout.has-student-tabbar .challenge-coin-shop-shortcut {
+  border-color: var(--fs-ochre-line);
+  background: linear-gradient(135deg, rgba(176, 128, 40, 0.10), rgba(176, 128, 40, 0.03) 60%), var(--fs-mat);
+}
+body.f-layout.has-student-tabbar .challenge-coin-shop-shortcut strong { color: var(--fs-ochre); }
+body.f-layout.has-student-tabbar .challenge-coin-shop-shortcut:hover,
+body.f-layout.has-student-tabbar .challenge-coin-shop-shortcut:focus-visible {
+  border-color: rgba(150, 105, 30, 0.55);
+  box-shadow: 0 10px 24px rgba(120, 80, 20, 0.12);
+  transform: translateY(-2px);
+}
+
+body.f-layout.has-student-tabbar .challenge-start-panel { gap: 18px; padding: 8px 0 4px; border-bottom: 0; }
+body.f-layout.has-student-tabbar .challenge-tabs {
+  gap: 3px;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: #e9dcc6;
+  justify-self: start;
+}
+body.f-layout.has-student-tabbar .challenge-tab {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: var(--fs-ink-2);
+  font: 600 14px/1 "Microsoft YaHei", sans-serif;
+}
+body.f-layout.has-student-tabbar .challenge-tab:hover { color: var(--d-wine); }
+body.f-layout.has-student-tabbar .challenge-tab.is-active { background: var(--d-wine); color: #fbf4ea; box-shadow: none; }
+body.f-layout.has-student-tabbar .challenge-tab svg { width: 16px; height: 16px; }
+/* 第二排（选择题 / 单词题）降一级：不用底色，选中的下面一道酒红线 */
+body.f-layout.has-student-tabbar .challenge-tabs[role="tablist"] { gap: 22px; padding: 0; border-bottom: 1px solid var(--d-hair); border-radius: 0; background: none; }
+body.f-layout.has-student-tabbar .challenge-tabs[role="tablist"] .challenge-tab { position: relative; min-height: 44px; padding: 0 2px; border-radius: 0; background: none; color: var(--d-muted); }
+body.f-layout.has-student-tabbar .challenge-tabs[role="tablist"] .challenge-tab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--d-wine);
+  transform: scaleX(0);
+  transition: transform 220ms var(--fs-ease);
+}
+body.f-layout.has-student-tabbar .challenge-tabs[role="tablist"] .challenge-tab.is-active { background: none; color: var(--d-wine); }
+body.f-layout.has-student-tabbar .challenge-tabs[role="tablist"] .challenge-tab.is-active::after { transform: scaleX(1); }
+body.f-layout.has-student-tabbar .challenge-bank-field > span { color: var(--fs-ink-2); font-size: 13px; font-weight: 600; }
+body.f-layout.has-student-tabbar #studentChallengeBank {
+  min-height: 46px;
+  border: 1px solid rgba(70, 40, 25, 0.18);
+  border-radius: 3px;
+  background-color: var(--fs-mat);
+  color: var(--d-ink);
+  font-size: 15px;
+  box-shadow: none;
+}
+body.f-layout.has-student-tabbar #studentChallengeBank:focus { border-color: var(--d-wine); outline: none; box-shadow: 0 0 0 3px rgba(110, 31, 23, 0.12); }
+body.f-layout.has-student-tabbar .challenge-session-rule-note {
+  max-width: 780px;
+  margin: -4px 0 0;
+  color: var(--d-muted);
+  font-size: 13px;
+  line-height: 1.75;
+}
+body.f-layout.has-student-tabbar .challenge-start-copy {
+  padding: 18px 22px;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--fs-shelf);
+}
+body.f-layout.has-student-tabbar .challenge-start-copy strong { color: var(--d-ink); font: 400 22px/1.2 var(--d-serif); }
+body.f-layout.has-student-tabbar .challenge-start-copy span { color: var(--d-muted); font-size: 13px; }
+body.f-layout.has-student-tabbar #startChallengeSession.challenge-start-button,
+body.f-layout.has-student-tabbar .challenge-next-button.primary-button {
+  min-height: 48px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(110, 31, 23, 0.22);
+  transition: transform 160ms ease;
+}
+body.f-layout.has-student-tabbar #startChallengeSession.challenge-start-button span,
+body.f-layout.has-student-tabbar .challenge-next-button.primary-button span { color: #fbf4ea; }
+body.f-layout.has-student-tabbar #startChallengeSession.challenge-start-button:hover,
+body.f-layout.has-student-tabbar .challenge-next-button.primary-button:hover { background: var(--d-wine-hover); }
+body.f-layout.has-student-tabbar #startChallengeSession.challenge-start-button:active,
+body.f-layout.has-student-tabbar .challenge-next-button.primary-button:active { transform: scale(0.97); }
+body.f-layout.has-student-tabbar .challenge-next-button.secondary-button {
+  min-height: 48px;
+  padding: 0 24px;
+  border: 1px solid rgba(70, 40, 25, 0.24);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--d-ink);
+}
+body.f-layout.has-student-tabbar .challenge-next-button.secondary-button:hover { border-color: var(--d-wine); color: var(--d-wine); }
+
+/* 题目卡：像一页书 */
+body.f-layout.has-student-tabbar .challenge-question-card {
+  position: relative;
+  gap: 22px;
+  margin-top: 22px;
+  padding: 34px 40px 30px;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(110, 31, 23, 0.035), transparent 28px),
+    var(--fs-mat);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.06), 0 18px 40px rgba(60, 30, 15, 0.08);
+}
+body.f-layout.has-student-tabbar .challenge-question-head { align-items: baseline; color: var(--d-muted); font-size: 12px; letter-spacing: 0.12em; }
+body.f-layout.has-student-tabbar .challenge-question-head small { font-size: 12px; }
+body.f-layout.has-student-tabbar .challenge-question-head strong { color: var(--d-wine); font: 400 15px/1 var(--d-serif); letter-spacing: 0.04em; }
+body.f-layout.has-student-tabbar .challenge-question-card h3 {
+  color: var(--d-ink);
+  font: 400 clamp(24px, 2.6vw, 34px)/1.3 var(--d-serif);
+  letter-spacing: -0.01em;
+}
+body.f-layout.has-student-tabbar .choice-challenge-options { gap: 12px; }
+body.f-layout.has-student-tabbar .challenge-option {
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+  min-height: 60px;
+  padding: 10px 16px;
+  border: 1px solid rgba(70, 40, 25, 0.14);
+  border-radius: 4px;
+  background: var(--d-paper);
+  color: var(--d-ink);
+  box-shadow: none;
+  transition: transform 180ms var(--fs-ease);
+}
+body.f-layout.has-student-tabbar .challenge-option:hover:not(:disabled) {
+  border-color: rgba(110, 31, 23, 0.45);
+  background: #fcf8f0;
+  box-shadow: 0 8px 18px rgba(60, 30, 15, 0.10);
+  transform: translateY(-2px);
+}
+body.f-layout.has-student-tabbar .challenge-option:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+body.f-layout.has-student-tabbar .challenge-option > span {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(70, 40, 25, 0.2);
+  border-radius: 50%;
+  background: var(--fs-mat);
+  color: var(--d-wine);
+  font: 400 17px/1 var(--d-serif);
+}
+body.f-layout.has-student-tabbar .challenge-option strong { color: var(--d-ink); font-size: 17px; font-weight: 500; }
+body.f-layout.has-student-tabbar .challenge-option:disabled { cursor: default; opacity: 1; }
+body.f-layout.has-student-tabbar .word-challenge-form input {
+  min-height: 48px;
+  border: 1px solid rgba(70, 40, 25, 0.18);
+  border-radius: 3px;
+  background: var(--d-paper);
+  color: var(--d-ink);
+  font-size: 17px;
+}
+body.f-layout.has-student-tabbar .word-challenge-form input:focus { border-color: var(--d-wine); outline: none; box-shadow: 0 0 0 3px rgba(110, 31, 23, 0.12); }
+body.f-layout.has-student-tabbar #submitWordChallenge {
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+}
+
+/* 答题结果：答对灰绿、答错酒红，都是淡底不刺眼 */
+body.f-layout.has-student-tabbar .challenge-result {
+  padding: 18px 20px;
+  border: 1px solid rgba(84, 118, 60, 0.28);
+  border-radius: 4px;
+  background: var(--fs-sage-soft);
+  color: var(--d-ink);
+  box-shadow: none;
+  animation: fs-rise 360ms var(--fs-ease) both;
+}
+body.f-layout.has-student-tabbar .challenge-result.is-wrong { border-color: rgba(110, 31, 23, 0.25); background: var(--fs-wine-soft); }
+body.f-layout.has-student-tabbar .challenge-result > span { border-radius: 50%; background: var(--fs-sage); color: #f6f1e4; }
+body.f-layout.has-student-tabbar .challenge-result.is-wrong > span { background: var(--d-wine); }
+body.f-layout.has-student-tabbar .challenge-result strong { color: var(--fs-sage); font: 400 19px/1.3 var(--d-serif); }
+body.f-layout.has-student-tabbar .challenge-result.is-wrong strong { color: var(--d-wine); }
+body.f-layout.has-student-tabbar .challenge-result small { color: var(--d-muted); font-size: 12.5px; }
+body.f-layout.has-student-tabbar .challenge-answer-feedback { border-top: 1px solid rgba(70, 40, 25, 0.12); }
+body.f-layout.has-student-tabbar .challenge-answer-feedback strong { color: var(--d-ink); font: 600 15px/1.4 "Microsoft YaHei", sans-serif; }
+body.f-layout.has-student-tabbar .challenge-answer-feedback p { color: var(--fs-ink-2); font-size: 14px; line-height: 1.7; }
+@keyframes fs-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- 金币商城（学生看到的部分） ---------- */
+body.f-layout.has-student-tabbar .coin-shop-student-summary:not([hidden]) {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 20px 24px;
+  border: 1px solid var(--fs-ochre-line);
+  border-radius: 4px;
+  background: linear-gradient(120deg, rgba(176, 128, 40, 0.12), rgba(176, 128, 40, 0.03) 55%), var(--fs-mat);
+  box-shadow: 0 1px 2px rgba(60, 30, 15, 0.05);
+}
+body.f-layout.has-student-tabbar .coin-shop-student-summary > span {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--fs-ochre-soft);
+  color: var(--fs-ochre);
+}
+body.f-layout.has-student-tabbar .coin-shop-student-summary small { color: var(--d-muted); font-size: 12px; letter-spacing: 0.08em; }
+body.f-layout.has-student-tabbar .coin-shop-student-summary strong { color: var(--fs-ochre); font: 400 32px/1.1 var(--d-serif); font-variant-numeric: lining-nums tabular-nums; }
+body.f-layout.has-student-tabbar .coin-shop-student-summary p { justify-self: end; max-width: 360px; color: var(--d-muted); font-size: 13px; line-height: 1.6; text-align: right; }
+body.f-layout.has-student-tabbar .coin-shop-purchase-button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--d-wine);
+  color: #fbf4ea;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(110, 31, 23, 0.18);
+  transition: transform 160ms ease;
+}
+body.f-layout.has-student-tabbar .coin-shop-purchase-button span { color: inherit; }
+body.f-layout.has-student-tabbar .coin-shop-purchase-button:hover:not(:disabled) { background: var(--d-wine-hover); }
+body.f-layout.has-student-tabbar .coin-shop-purchase-button:active:not(:disabled) { transform: scale(0.97); }
+body.f-layout.has-student-tabbar .coin-shop-purchase-button:disabled {
+  border: 1px dashed rgba(70, 40, 25, 0.25);
+  background: transparent;
+  color: var(--d-muted);
+  box-shadow: none;
+  opacity: 1;
+}
+body.f-layout.has-student-tabbar .coin-shop-product-price { color: var(--fs-ochre); }
+
+/* ---------- 排行榜：自己那一行 ---------- */
+body.f-layout.has-student-tabbar .pet-leaderboard-row.is-self {
+  position: relative;
+  background: linear-gradient(90deg, rgba(110, 31, 23, 0.09), rgba(110, 31, 23, 0.03) 70%);
+  box-shadow: inset 3px 0 0 var(--d-wine);
+}
+body.f-layout.has-student-tabbar .pet-leaderboard-row.is-self .pet-leaderboard-identity strong { color: var(--d-wine); }
+
+/* ======================================================================
+   4. "我的"抽屉（手机底部弹层；电脑上是居中小窗）
+   ====================================================================== */
+body.f-layout.has-student-tabbar .me-sheet {
+  border: 1px solid var(--d-hair);
+  border-radius: 6px;
+  background: var(--d-paper);
+  color: var(--d-ink);
+  box-shadow: 0 30px 80px rgba(40, 20, 10, 0.3);
+}
+body.f-layout.has-student-tabbar .me-sheet::backdrop { background: rgba(42, 29, 22, 0.32); }
+body.f-layout.has-student-tabbar .me-sheet h3 { margin: 0 0 8px; color: var(--d-ink); font: 400 26px/1.2 var(--d-serif); }
+body.f-layout.has-student-tabbar .me-sheet-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 0 4px;
+  border-bottom: 1px solid rgba(70, 40, 25, 0.09);
+  color: var(--d-ink);
+  font-size: 16px;
+}
+body.f-layout.has-student-tabbar .me-sheet-item::after { content: "›"; color: var(--d-muted); font: 400 22px/1 var(--d-serif); }
+body.f-layout.has-student-tabbar .me-sheet-item:hover { background: transparent; }
+@media (hover: hover) { body.f-layout.has-student-tabbar .me-sheet-item:hover { background: var(--fs-wine-soft); color: var(--d-wine); } }
+body.f-layout.has-student-tabbar .me-sheet-item:last-child { color: var(--d-wine); }
+body.f-layout.has-student-tabbar .me-sheet .confirm-actions { margin-top: 16px; }
+body.f-layout.has-student-tabbar #closeStudentMe {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(70, 40, 25, 0.2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--d-ink);
+  font-weight: 600;
+}
+
+/* ======================================================================
+   5. 手机（≤640）：课表变成按天的列表；底部"课表 / 挑战 / 宠物 / 我的"和工具条拼成一块深色底座
+   ====================================================================== */
+@media (max-width: 640px) {
+  body.f-layout.has-student-tabbar .app-shell { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+
+  /* 底座：工具条在上，导航在下，同一块深棕 */
+  body.f-layout.has-student-tabbar .student-tabbar:not([hidden]) {
+    z-index: 41;
+    padding: 2px 8px calc(8px + env(safe-area-inset-bottom));
+    border: 0;
+    background: rgba(34, 22, 16, 0.97);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+  body.f-layout.has-student-tabbar.is-admin-view .student-tabbar:not([hidden]) {
+    padding-top: 6px;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -14px 40px rgba(40, 20, 10, 0.22);
+  }
+  body.f-layout.has-student-tabbar .student-tabbar button {
+    position: relative;
+    min-height: 52px;
+    gap: 4px;
+    color: rgba(243, 232, 214, 0.62);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  body.f-layout.has-student-tabbar .student-tabbar button.is-active { color: #f1d77a; font-weight: 600; }
+  body.f-layout.has-student-tabbar .student-tabbar button.is-active::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 50%;
+    width: 18px;
+    height: 2px;
+    margin-left: -9px;
+    border-radius: 2px;
+    background: #f1d77a;
+  }
+  body.f-layout.has-student-tabbar .student-tabbar button:active { transform: scale(0.95); }
+  body.f-layout.has-student-tabbar .student-tabbar svg { width: 22px; height: 22px; }
+
+  body.f-layout.has-student-tabbar .f-dock {
+    z-index: 42;
+    right: 0;
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    left: 0;
+    max-width: none;
+    padding: 8px 12px 6px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 245, 230, 0.08);
+    border-radius: 16px 16px 0 0;
+    background: rgba(34, 22, 16, 0.97);
+    box-shadow: 0 -14px 40px rgba(40, 20, 10, 0.22);
+  }
+  body.f-layout.has-student-tabbar .status-message { bottom: calc(140px + env(safe-area-inset-bottom)); }
+  body.f-layout.has-student-tabbar.is-admin-view .status-message { bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+  /* 信息带：宠物一行、课时一行 */
+  body.f-layout.has-student-tabbar .section-heading { margin-bottom: 20px; }
+  body.f-layout.has-student-tabbar .section-actions { grid-template-columns: minmax(0, 1fr); }
+  body.f-layout.has-student-tabbar .visitor-pet {
+    min-height: 84px;
+    padding: 14px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--d-hair);
+  }
+  body.f-layout.has-student-tabbar .visitor-pet img,
+  body.f-layout.has-student-tabbar .visitor-pet.is-unassigned::before { width: 54px; height: 54px; flex-basis: 54px; }
+  body.f-layout.has-student-tabbar .visitor-pet strong { font-size: 19px; }
+  body.f-layout.has-student-tabbar .lesson-summary:not([hidden]) { padding: 12px 0; border-right: 0; }
+  body.f-layout.has-student-tabbar .lesson-summary .lesson-stat { gap: 5px; padding: 2px 16px; }
+  body.f-layout.has-student-tabbar .lesson-summary strong span { font-size: 27px; }
+  body.f-layout.has-student-tabbar .next-lesson-card:not([hidden]) { margin-bottom: 22px; padding: 10px 16px 12px; }
+  body.f-layout.has-student-tabbar .next-lesson-card strong { font-size: 16px; }
+
+  /* 按天的课表：纸面上一天一行，课是印着课程色的小签 */
+  body.f-layout.has-student-tabbar .schedule-agenda:not([hidden]) {
+    padding: 4px 16px;
+    border: 1px solid var(--d-hair);
+    border-radius: 4px;
+    background: var(--d-paper);
+  }
+  body.f-layout.has-student-tabbar .agenda-day { gap: 14px; padding: 14px 0; border-bottom: 1px solid rgba(70, 40, 25, 0.08); }
+  body.f-layout.has-student-tabbar .agenda-day:last-child { border-bottom: 0; }
+  body.f-layout.has-student-tabbar .agenda-day.is-today { margin: 0; padding: 14px 0; border-radius: 0; background: none; box-shadow: none; }
+  body.f-layout.has-student-tabbar .agenda-date { width: 40px; flex: 0 0 40px; align-items: center; gap: 4px; padding-top: 2px; }
+  body.f-layout.has-student-tabbar .agenda-date span { color: var(--d-muted); font-size: 11px; letter-spacing: 0.08em; }
+  body.f-layout.has-student-tabbar .agenda-date strong { color: var(--d-ink); font: 400 22px/1 var(--d-serif); font-variant-numeric: lining-nums; }
+  body.f-layout.has-student-tabbar .agenda-day.is-today .agenda-date span { color: var(--d-wine); font-weight: 700; }
+  body.f-layout.has-student-tabbar .agenda-day.is-today .agenda-date strong {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--d-wine);
+    color: #fbf4ea;
+    font-size: 18px;
+    font-weight: 400;
+  }
+  body.f-layout.has-student-tabbar .agenda-day.is-past .agenda-date strong { color: rgba(125, 106, 92, 0.7); }
+  body.f-layout.has-student-tabbar .agenda-items { gap: 8px; }
+  body.f-layout.has-student-tabbar .agenda-item {
+    min-height: 54px;
+    justify-content: center;
+    gap: 4px;
+    padding: 9px 14px 9px 16px;
+    border: 1px solid rgba(70, 40, 25, 0.10);
+    border-radius: 3px;
+    background:
+      linear-gradient(90deg, rgba(252, 248, 240, 0.82), rgba(252, 248, 240, 0.50)),
+      linear-gradient(color-mix(in srgb, var(--course-color, #6e1f17) 12%, transparent), color-mix(in srgb, var(--course-color, #6e1f17) 12%, transparent)),
+      var(--f-flower, none) center / cover no-repeat,
+      #f6efe2; /* --f-flower 要等 f.js 给列表项也发一幅画才会出现，见汇报 */
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--course-color, #6e1f17) 60%, #3a2418), 0 1px 2px rgba(60, 30, 15, 0.06);
+    color: var(--d-ink);
+    transition: transform 160ms ease;
+  }
+  body.f-layout.has-student-tabbar .agenda-item:active { transform: scale(0.985); }
+  body.f-layout.has-student-tabbar .agenda-item strong { color: #241812; font: 400 17px/1.25 var(--d-serif); }
+  body.f-layout.has-student-tabbar .agenda-item span { color: #4a3a2f; font-size: 12.5px; opacity: 1; }
+  body.f-layout.has-student-tabbar .agenda-item.is-done { opacity: 0.55; }
+  body.f-layout.has-student-tabbar .agenda-item.is-current { box-shadow: inset 3px 0 0 var(--d-wine), 0 0 0 1px var(--d-wine), 0 6px 14px rgba(110, 31, 23, 0.14); }
+  body.f-layout.has-student-tabbar .agenda-empty { padding-top: 8px; color: rgba(125, 106, 92, 0.85); font-size: 13px; font-style: italic; }
+
+  body.f-layout.has-student-tabbar .course-end-dates:not([hidden]) { grid-template-columns: minmax(0, 1fr); margin-top: 22px; padding: 18px 16px 8px; }
+  body.f-layout.has-student-tabbar .course-end-dates:not([hidden])::before { font-size: 19px; }
+  body.f-layout.has-student-tabbar .course-end-date-item { grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 12px; min-height: 48px; }
+
+  /* 子页面 */
+  body.f-layout.has-student-tabbar .challenge-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+  body.f-layout.has-student-tabbar .challenge-summary-card { grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; min-height: 0; padding: 14px; }
+  body.f-layout.has-student-tabbar .challenge-summary-card > span { width: 36px; height: 36px; }
+  body.f-layout.has-student-tabbar .challenge-summary-card.is-coin { grid-column: 1 / -1; }
+  body.f-layout.has-student-tabbar .challenge-summary-card > em { grid-column: 2; text-align: left; }
+  body.f-layout.has-student-tabbar .challenge-summary-card strong { font-size: 24px; }
+  body.f-layout.has-student-tabbar .challenge-tabs { display: flex; width: 100%; }
+  body.f-layout.has-student-tabbar .challenge-tab { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 0 10px; }
+  body.f-layout.has-student-tabbar .challenge-start-copy { flex-direction: column; align-items: stretch; padding: 16px; }
+  body.f-layout.has-student-tabbar #startChallengeSession.challenge-start-button { width: 100%; }
+  body.f-layout.has-student-tabbar .challenge-question-card { padding: 22px 18px 20px; }
+  body.f-layout.has-student-tabbar .choice-challenge-options { grid-template-columns: minmax(0, 1fr); }
+  body.f-layout.has-student-tabbar .challenge-next-button { width: 100%; }
+
+  body.f-layout.has-student-tabbar .pet-portrait-stage { border-width: 8px; }
+  body.f-layout.has-student-tabbar .pet-profile-copy h3 { font-size: 28px; }
+  body.f-layout.has-student-tabbar .pet-level-row strong { font-size: 34px; }
+
+  body.f-layout.has-student-tabbar .coin-shop-student-summary:not([hidden]) { grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; padding: 16px; }
+  body.f-layout.has-student-tabbar .coin-shop-student-summary p { grid-column: 1 / -1; justify-self: start; max-width: none; text-align: left; }
+  body.f-layout.has-student-tabbar .coin-shop-student-summary strong { font-size: 28px; }
+
+  body.f-layout.has-student-tabbar .me-sheet {
+    width: 100%;
+    max-width: 100%;
+    margin: auto 0 0;
+    padding: 24px 20px calc(18px + env(safe-area-inset-bottom));
+    border-bottom: 0;
+    border-radius: 14px 14px 0 0;
+    outline: 0;
+  }
+  body.f-layout.has-student-tabbar .me-sheet::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: -10px auto 14px;
+    border-radius: 2px;
+    background: rgba(70, 40, 25, 0.18);
+  }
+}
+
+/* 触控尺寸：后台外壳的按钮规则带 #appShell，这里用同等以上的权重把学生页的可点区域保到 ≥44px */
+body.f-layout.has-student-tabbar #appShell :is(#closePetDetail, #closePetLeaderboard, #closeCoinShop, #closeStudentChallenge, #refreshCoinShop, #savePetName) { min-height: 44px; min-width: 44px; }
+body.f-layout.has-student-tabbar #appShell :is(#petNameInput, #studentChallengeBank) { min-height: 46px; }
+body.f-layout.has-student-tabbar #appShell :is(#petCheckinButton, #matchPetBattle, #nextChallengeQuestion, #finishChallengeSession, #startChallengeSession) { min-height: 48px; }
+body.f-layout.has-student-tabbar #appShell :is(.pet-feed-button, .coin-shop-purchase-button) { min-height: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.f-layout.has-student-tabbar .pet-detail-image,
+  body.f-layout.has-student-tabbar .challenge-result { animation: none !important; }
+  body.f-layout.has-student-tabbar .visitor-pet img,
+  body.f-layout.has-student-tabbar .operations-nav button::after,
+  body.f-layout.has-student-tabbar .challenge-tab::after,
+  body.f-layout.has-student-tabbar .section-actions > .secondary-button,
+  body.f-layout.has-student-tabbar .pet-food-card,
+  body.f-layout.has-student-tabbar .challenge-option,
+  body.f-layout.has-student-tabbar .challenge-coin-shop-shortcut,
+  body.f-layout.has-student-tabbar .agenda-item,
+  body.f-layout.has-student-tabbar .student-tabbar button { transition: none !important; }
+  body.f-layout.has-student-tabbar .visitor-pet:not(.is-unassigned):hover img,
+  body.f-layout.has-student-tabbar .pet-food-card:hover,
+  body.f-layout.has-student-tabbar .challenge-option:hover:not(:disabled),
+  body.f-layout.has-student-tabbar .challenge-coin-shop-shortcut:hover { transform: none; }
+}
+
+/* ===== f-phone ===== */
+/* 初稿 F · phone（由子助手负责） */
+
+/* ==========================================================================
+   老师端 · 手机（≤ 640px）
+   - 页面只有一个滚动：周网格不再是内嵌滚动框，星期表头吸在顶栏下面。
+   - 顶栏左边是"选周"（第 N 周 · 日期 ▾），右边是菜单；打开抽屉时顶栏留在最上面，菜单变成关闭。
+   - 首屏保持电脑版的"左文右画 + 压边卡片"，压到约三分之一屏。
+   - 底部工具条：三段分组（视图 / 翻周 / 新建），每个按钮 ≥ 44px，让开安全区。
+   ========================================================================== */
+@media (max-width: 640px) {
+  :root {
+    --fp-gutter: 12px;
+    --fp-top-h: 52px;
+    --fp-top: calc(var(--fp-top-h) + env(safe-area-inset-top));
+    --fp-dock-h: 56px;
+    --fp-dock-gap: 10px;
+    --fp-dock-space: calc(var(--fp-dock-h) + var(--fp-dock-gap) + env(safe-area-inset-bottom));
+    --fp-foot-h: 72px;   /* drawer footer: 10 + 44 + 1 + 16 bottom padding */
+    --fp-tools-h: 120px; /* font-size row + holiday legend + note */
+  }
+  html, body { overflow-x: clip; }
+
+  body.f-layout .app-shell,
+  body.f-layout .app-shell.has-sidebar {
+    padding: 0 var(--fp-gutter) calc(var(--fp-dock-space) + 28px);
+  }
+
+  /* ---------- Top bar ---------- */
+  body.f-layout .f-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: var(--fp-top);
+    margin: 0 calc(-1 * var(--fp-gutter)) 14px;
+    padding: env(safe-area-inset-top) var(--fp-gutter) 0;
+  }
+  body.f-layout .f-range { display: none; }
+  body.f-layout .f-menu-button {
+    height: 44px;
+    min-width: 44px;
+    margin-right: -4px;
+    padding: 0 6px 0 10px;
+    gap: 10px;
+    letter-spacing: 0.14em;
+  }
+  body.f-layout .f-menu-lines,
+  body.f-layout .f-menu-lines::before { width: 22px; }
+  /* Drawer open: the bar stays on top, so the same button closes it. */
+  body.f-layout.f-drawer-open .f-top { z-index: 55; background: var(--d-paper); }
+  body.f-layout.f-drawer-open .f-menu-button > span:last-child { font-size: 0; letter-spacing: 0; }
+  body.f-layout.f-drawer-open .f-menu-button > span:last-child::after { content: "关闭"; font-size: 12px; letter-spacing: 0.14em; }
+
+  /* The week picker lives in the dock's DOM but sits in the top-left of the bar. */
+  body.f-layout .f-dock { -webkit-backdrop-filter: none; backdrop-filter: none; } /* no containing block for the fixed chip */
+  body.f-layout .f-dock .week-picker {
+    position: fixed;
+    z-index: 2;
+    top: calc(env(safe-area-inset-top) + (var(--fp-top-h) - 44px) / 2);
+    left: calc(var(--fp-gutter) - 8px);
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    max-width: calc(100vw - 130px);
+    height: 44px;
+    min-width: 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--d-ink);
+    line-height: 44px;
+    white-space: nowrap;
+    transition: opacity 200ms ease, transform 160ms ease;
+  }
+  body.f-layout .f-dock .week-picker:hover,
+  body.f-layout .f-dock .week-picker:active { background: rgba(110, 31, 23, 0.06); }
+  body.f-layout .f-dock .week-picker #weekLabel { flex: 0 0 auto; font: 400 17px/1.2 var(--d-serif); letter-spacing: 0.02em; }
+  body.f-layout .f-dock .week-picker small {
+    display: block;
+    flex: 0 1 auto;
+    height: auto;
+    max-height: none;
+    overflow: hidden;
+    min-width: 0;
+    margin: 0;
+    padding-top: 2px;
+    color: var(--d-muted);
+    font: 400 12px/1.2 "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+  }
+  body.f-layout .f-dock .week-picker svg { flex: 0 0 auto; width: 15px; height: 15px; align-self: center; color: var(--d-muted); }
+  body.f-layout.f-drawer-open .f-dock .week-picker { opacity: 0; pointer-events: none; }
+
+  /* ---------- Hero: same "copy left · painting right · card across the seam", one third of the screen ---------- */
+  body.f-layout .f-hero {
+    grid-template-columns: minmax(0, 1fr) 33%;
+    grid-template-rows: auto auto;
+    min-height: 0;
+    margin-bottom: 14px;
+  }
+  body.f-layout .f-copy {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    min-width: 0;
+    max-width: none;
+    padding: 18px 12px 14px 16px;
+  }
+  body.f-layout .f-eyebrow { margin-bottom: 8px; font-size: 11px; letter-spacing: 0.14em; }
+  body.f-layout .f-hero #scheduleTitle {
+    font-size: clamp(25px, 7.4vw, 31px);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+  body.f-layout .f-hero #todayText { margin-top: 6px; font-size: 13px; line-height: 1.5; }
+  body.f-layout .f-art {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    border-left: 1px solid var(--d-hair);
+    background:
+      linear-gradient(90deg, rgba(248, 242, 230, 0.45), transparent 35%),
+      url("../login/05.webp") 40% center / cover no-repeat;
+  }
+  body.f-layout .f-card {
+    position: relative;
+    z-index: 3;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    right: auto;
+    top: auto;
+    grid-template-columns: 62px minmax(0, 1fr);
+    width: auto;
+    min-height: 0;
+    margin: 0 12px 12px;
+    transform: none;
+    border-width: 5px;
+    box-shadow: 0 1px 3px rgba(60, 30, 15, 0.08), 0 14px 30px rgba(60, 30, 15, 0.2);
+    transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body.f-layout .f-card:hover { transform: none; }
+  body.f-layout .f-card:active { transform: scale(0.985); }
+  body.f-layout .f-card-art { background-size: 360%; }
+  body.f-layout .f-card-body { gap: 4px; min-width: 0; padding: 10px 12px 10px 13px; border-left-width: 3px; }
+  body.f-layout .f-card-body small { font-size: 10px; letter-spacing: 0.16em; }
+  body.f-layout .f-card-name { font-size: 20px; line-height: 1.2; }
+  body.f-layout .f-card-time { font-size: 13px; }
+  body.f-layout .f-card-count { font-size: 11.5px; }
+  body.f-layout .f-watermark { display: none; }
+
+  /* ---------- Touch-edit switch (phones only): one quiet row ---------- */
+  body.f-layout.phone-timeline .touch-timeline-controls {
+    flex-wrap: nowrap;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 0 2px;
+  }
+  body.f-layout .touch-timeline-controls button {
+    flex: 0 0 auto;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--d-hair);
+    border-radius: 999px;
+    background: var(--d-paper);
+    color: var(--d-ink);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  body.f-layout .touch-timeline-controls button[aria-pressed="true"] { border-color: var(--d-wine); background: var(--d-wine); color: #fbf4ea; }
+  body.f-layout .touch-timeline-controls small { flex: 1 1 auto; min-width: 0; color: var(--d-muted); font-size: 11.5px; line-height: 1.45; }
+
+  /* ---------- Week grid: one page scroll, header pinned under the top bar ---------- */
+  body.f-layout .schedule-scroll {
+    max-height: none;
+    height: auto;
+    overflow: clip;
+  }
+  body.f-layout #scheduleGrid.schedule-grid {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: 38px repeat(7, minmax(0, 1fr));
+    grid-template-rows: 54px repeat(216, var(--slot-height));
+  }
+  body.f-layout #scheduleGrid .grid-corner,
+  body.f-layout #scheduleGrid .day-header { top: var(--fp-top); }
+  /* pinned header paints over the "now" pill and the cards scrolling under it */
+  body.f-layout #scheduleGrid .day-header { z-index: 8; }
+  body.f-layout #scheduleGrid .grid-corner { z-index: 9; width: auto; }
+  body.f-layout #scheduleGrid .day-header {
+    min-width: 0;
+    padding: 6px 0 5px;
+    box-shadow: 0 1px 0 var(--d-hair);
+  }
+  body.f-layout #scheduleGrid .day-header > span.day-weekday:not(.calendar-day-status) {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  body.f-layout #scheduleGrid .day-header .day-number {
+    min-width: 28px;
+    height: 28px;
+    margin-top: 2px;
+    font-size: 17px;
+    line-height: 28px;
+    text-align: center;
+  }
+  body.f-layout #scheduleGrid .day-header.is-today .day-number { display: inline-grid; place-items: center; border-radius: 50%; }
+  body.f-layout #scheduleGrid .time-slot { padding-top: 3px; }
+  body.f-layout #scheduleGrid .time-slot strong {
+    font: 400 10.5px/1 Georgia, "Palatino Linotype", serif;
+    font-variant-numeric: tabular-nums lining-nums;
+    letter-spacing: 0;
+  }
+  body.f-layout #scheduleGrid .now-line-time { font-size: 9.5px; letter-spacing: 0; }
+
+  body.f-layout #scheduleGrid .course-card,
+  body.f-layout #scheduleGrid .course-card.is-short,
+  body.f-layout #scheduleGrid .course-card.is-compact,
+  body.f-layout #scheduleGrid .course-card.is-micro {
+    margin: 1px 1px 1px 2px;
+    padding: 5px 2px 4px 6px;
+    border-radius: 3px;
+  }
+  body.f-layout #scheduleGrid .course-card strong {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    color: #241812;
+    font: 400 11.5px/1.22 var(--d-serif);
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+  }
+  body.f-layout #scheduleGrid .course-card .course-time {
+    display: -webkit-box;
+    margin-top: 3px;
+    overflow: hidden;
+    font: 500 9px/1.25 "Segoe UI", "Microsoft YaHei", sans-serif;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  body.f-layout #scheduleGrid .course-card.is-short strong { -webkit-line-clamp: 2; }
+  body.f-layout #scheduleGrid .course-card.is-compact strong { -webkit-line-clamp: 2; }
+  body.f-layout #scheduleGrid .course-card.is-compact .course-time,
+  body.f-layout #scheduleGrid .course-card.is-micro .course-time,
+  body.f-layout #scheduleGrid .course-card.is-tiny .course-time { display: none; }
+  body.f-layout #scheduleGrid .course-card.is-micro strong,
+  body.f-layout #scheduleGrid .course-card.is-tiny strong { font-size: 10px; -webkit-line-clamp: 1; }
+  body.f-layout #scheduleGrid .course-card:active { filter: brightness(0.96); }
+
+  /* ---------- Dock: three groups, thumb height, clear of the home indicator ---------- */
+  body.f-layout .f-dock {
+    left: 8px;
+    right: 8px;
+    bottom: calc(var(--fp-dock-gap) + env(safe-area-inset-bottom));
+    justify-content: space-between;
+    gap: 4px;
+    max-width: none;
+    padding: 5px;
+    transform: none;
+    border-radius: 15px;
+    background: rgba(34, 22, 16, 0.97);
+    box-shadow: 0 14px 36px rgba(40, 20, 10, 0.32), 0 2px 6px rgba(40, 20, 10, 0.18);
+  }
+  body.f-layout .f-dock-mark { display: none; }
+  body.f-layout .f-dock-group { padding: 0; }
+  body.f-layout .f-dock .schedule-view-switcher,
+  body.f-layout .f-dock .week-controls {
+    display: flex;
+    width: auto;
+    gap: 0;
+    padding: 0;
+    border: 1px solid rgba(255, 245, 230, 0.12);
+    border-radius: 11px;
+    background: rgba(255, 245, 230, 0.05);
+  }
+  body.f-layout .f-dock .schedule-view-switcher button,
+  body.f-layout .f-dock .week-controls .icon-button,
+  body.f-layout .f-dock .week-controls .today-button {
+    flex: 0 0 auto;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    font-size: 15px;
+  }
+  body.f-layout .f-dock .week-controls .today-button { width: 50px; }
+  body.f-layout .f-dock .week-controls .today-button span { display: inline; font-size: 14px; }
+  body.f-layout .f-dock .schedule-view-switcher button.is-active { border-color: #f1d77a; background: rgba(241, 215, 122, 0.08); color: #f1d77a; }
+  body.f-layout .f-dock .week-controls svg { width: 18px; height: 18px; }
+  body.f-layout .f-dock #addCourse {
+    position: relative;
+    flex: 0 0 auto;
+    width: 52px;
+    min-width: 44px;
+    height: 46px;
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+    border-radius: 11px;
+  }
+  body.f-layout .f-dock #addCourse svg { width: 20px; height: 20px; stroke-width: 2.4; }
+  /* label stays readable by screen readers */
+  body.f-layout .f-dock #addCourse span {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  body.f-layout .f-dock button { transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), background-color 160ms ease; }
+
+  /* Toast sits above the dock instead of under it */
+  body.f-layout .status-message {
+    z-index: 42;
+    right: 12px;
+    left: 12px;
+    bottom: calc(var(--fp-dock-space) + 10px);
+  }
+
+  /* ---------- Drawer: slides in under the bar, leaves a strip of page to tap ---------- */
+  body.f-layout .app-shell > .app-sidebar,
+  body.f-layout .app-shell.has-sidebar > .app-sidebar {
+    top: var(--fp-top);
+    width: min(360px, calc(100vw - 44px));
+    gap: 18px;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--d-hair);
+    overscroll-behavior: contain;
+    box-shadow: -18px 0 50px rgba(60, 30, 15, 0.2);
+  }
+  body.f-layout .f-scrim { top: var(--fp-top); }
+  body.f-layout .app-sidebar .sidebar-month-controls .icon-button { width: 44px; height: 44px; flex-basis: 44px; }
+  body.f-layout .app-sidebar .sidebar-month-head strong { font: 400 17px/1 var(--d-serif); }
+  body.f-layout .app-sidebar .sidebar-day { height: 40px; font-size: 14px; }
+  body.f-layout .app-sidebar .sidebar-day.is-today,
+  body.f-layout .app-sidebar .sidebar-day.is-today.is-in-week { border-radius: 8px; background: var(--d-wine); color: #fbf4ea; }
+  body.f-layout .app-sidebar .sidebar-item,
+  body.f-layout .app-sidebar .sidebar-renew { min-height: 44px; }
+  body.f-layout .app-sidebar .sidebar-footer { padding-top: 10px; }
+  /* Font size + holiday legend float over the drawer's lower part (f.js keeps them outside the
+     sidebar). Reserve that strip inside the drawer so the lists never run underneath. */
+  body.f-layout .f-drawer-tools {
+    right: 0;
+    bottom: calc(var(--fp-foot-h) + env(safe-area-inset-bottom));
+    width: min(360px, calc(100vw - 44px));
+    padding: 12px 16px 10px;
+    background: var(--d-paper);
+  }
+  body.f-layout .f-drawer-tools .calendar-view-toolbar { gap: 8px; }
+  body.f-layout .f-drawer-tools .page-font-control { min-height: 44px; }
+  body.f-layout .app-shell > .app-sidebar::after {
+    content: "";
+    order: 98;
+    flex: 0 0 var(--fp-tools-h);
+    margin-top: auto;
+  }
+  body.f-layout .app-sidebar > .sidebar-footer { order: 99; margin-top: 0; }
+  body.f-layout .app-sidebar .sidebar-footer button { min-height: 44px; }
+  body.f-layout .app-sidebar .sidebar-logout { width: 44px; flex-basis: 44px; }
+}
+
+/* Narrow phones (360 and below): a little less type, same structure */
+@media (max-width: 370px) {
+  :root { --fp-gutter: 10px; }
+  body.f-layout .f-hero { grid-template-columns: minmax(0, 1fr) 30%; }
+  body.f-layout .f-dock .week-picker small { display: none; }
+  body.f-layout .f-dock .schedule-view-switcher button,
+  body.f-layout .f-dock .week-controls .icon-button { width: 44px; }
+  body.f-layout .f-dock .week-controls .today-button { width: 46px; }
+  body.f-layout .f-dock #addCourse { width: 46px; }
+  body.f-layout #scheduleGrid .time-slot strong { font-size: 10px; }
+  body.f-layout #scheduleGrid .course-card,
+  body.f-layout #scheduleGrid .course-card.is-short,
+  body.f-layout #scheduleGrid .course-card.is-compact,
+  body.f-layout #scheduleGrid .course-card.is-micro { padding: 5px 1px 4px 5px; }
+  body.f-layout #scheduleGrid .course-card strong { font-size: 10.5px; }
+  body.f-layout #scheduleGrid .course-card .course-time { font-size: 8.5px; }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  body.f-layout .f-card,
+  body.f-layout .f-dock button,
+  body.f-layout .f-dock .week-picker,
+  body.f-layout .app-sidebar,
+  body.f-layout .f-scrim { transition: none !important; }
+  body.f-layout .f-card:active,
+  body.f-layout .f-dock button:active { transform: none; }
+}
