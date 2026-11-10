@@ -394,7 +394,47 @@
     card.querySelector(".f-card-count").textContent = next.laterThatDay ? `${dayWord}之后还有 ${next.laterThatDay} 节` : `${dayWord}最后一节`;
   }
 
+  // Cursor glow (user 11-09): a soft warm light follows the mouse, and a course card under the
+  // pointer catches a highlight where the pointer is. Mouse/trackpad only; off for reduced motion.
+  function cursorGlow() {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const glow = document.createElement("div");
+    glow.className = "f-glow";
+    glow.setAttribute("aria-hidden", "true");
+    document.body.append(glow);
+    let last = null;
+    let frame = 0;
+    let lit = null;
+    const paint = () => {
+      frame = 0;
+      if (!last) return;
+      glow.style.transform = `translate3d(${last.clientX}px, ${last.clientY}px, 0)`;
+      glow.classList.add("is-on");
+      const card = last.target instanceof Element
+        ? last.target.closest("#scheduleGrid .course-card, .calendar-course-chip, .agenda-item, .f-card, .f-stub")
+        : null;
+      if (lit && lit !== card) lit.classList.remove("f-lit");
+      lit = card;
+      if (card) {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", `${last.clientX - r.left}px`);
+        card.style.setProperty("--my", `${last.clientY - r.top}px`);
+        card.classList.add("f-lit");
+      }
+    };
+    document.addEventListener("pointermove", (e) => {
+      if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
+      last = e;
+      if (!frame) frame = requestAnimationFrame(paint);
+    }, { passive: true });
+    const off = () => { glow.classList.remove("is-on"); lit?.classList.remove("f-lit"); lit = null; };
+    document.documentElement.addEventListener("mouseleave", off);
+    window.addEventListener("blur", off);
+  }
+
   build();
+  cursorGlow();
   // The app scrolls its grid to today's lesson after its first data render (which can come seconds
   // later, after sign-in). Desktop: start at the hero. Phone: the hero fills the screen, so go
   // straight to the next lesson (the agenda list for students, the grid card for teachers).

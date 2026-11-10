@@ -4336,3 +4336,72 @@ body.f-layout .f-fly-sheet[open] {
   opacity: 1;
   pointer-events: none;
 }
+
+/* ---------- 底部工具条：磨砂玻璃（用户 11-09）----------
+   模糊放在 ::before 上，不放在工具条本身：手机上"选周"按钮是 position:fixed 放到顶栏的，
+   工具条自己带 backdrop-filter 会变成它的定位容器，把它拽回工具条里。 */
+body.f-layout .f-dock,
+body.f-layout.has-student-tabbar .f-dock {
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(250, 244, 234, 0.42);
+  color: var(--d-ink);
+  box-shadow: 0 16px 40px rgba(60, 35, 20, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body.f-layout .f-dock::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  pointer-events: none;
+}
+body.f-layout .f-dock-mark { background: rgba(42, 29, 22, 0.88); color: #f8f2e6; }
+body.f-layout .f-dock .schedule-view-switcher button,
+body.f-layout .f-dock .week-controls .icon-button,
+body.f-layout .f-dock .week-controls .today-button,
+body.f-layout .f-dock .week-picker {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.32);
+  color: var(--d-ink);
+}
+body.f-layout .f-dock .schedule-view-switcher button:hover,
+body.f-layout .f-dock .week-controls button:hover { background: rgba(255, 255, 255, 0.6); }
+body.f-layout .f-dock .schedule-view-switcher button.is-active {
+  border-color: var(--d-wine);
+  background: rgba(110, 31, 23, 0.08);
+  color: var(--d-wine);
+}
+body.f-layout .f-dock .schedule-view-switcher,
+body.f-layout .f-dock .week-controls { border-color: rgba(255, 255, 255, 0.45); }
+body.f-layout .f-dock #addCourse { background: var(--d-wine); color: #fbf6ee; }
+body.f-layout .f-dock #addCourse:hover { background: var(--d-wine-hover, #85281e); }
+@media (max-width: 640px) {
+  body.f-layout .f-dock .schedule-view-switcher button,
+  body.f-layout .f-dock .week-controls .icon-button,
+  body.f-layout .f-dock .week-controls .today-button { background: transparent; border-color: transparent; }
+  body.f-layout .f-dock .schedule-view-switcher button.is-active { border-color: var(--d-wine); }
+}
+
+/* ---------- 鼠标泛光（layout.js cursorGlow，只在有鼠标的设备上）---------- */
+.f-glow {  position: fixed;  z-index: 30; /* 在课表之上、底部工具条和弹窗之下 */  top: 0;  left: 0;  width: 420px;  height: 420px;  margin: -210px 0 0 -210px;  border-radius: 50%;  background: radial-gradient(circle, rgba(255, 214, 120, 0.2) 0%, rgba(255, 214, 120, 0.1) 30%, rgba(255, 214, 120, 0.04) 50%, rgba(255, 214, 120, 0) 70%);  opacity: 0;  pointer-events: none;  transition: opacity 260ms ease;  will-change: transform;}
+.f-glow.is-on { opacity: 1; }
+/* 鼠标所在的卡片：表面一块跟着鼠标走的高光（叠在花画上面，不替换花画） */
+body.f-layout :is(#scheduleGrid .course-card, .calendar-course-chip, .agenda-item, .f-stub) { position: relative; }
+body.f-layout :is(#scheduleGrid .course-card, .calendar-course-chip, .agenda-item, .f-card, .f-stub)::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(140px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 250, 232, 0.5), rgba(255, 250, 232, 0) 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+body.f-layout :is(#scheduleGrid .course-card, .calendar-course-chip, .agenda-item, .f-card, .f-stub).f-lit::after { opacity: 1; }
+body.f-layout :is(#scheduleGrid .course-card, .calendar-course-chip, .agenda-item, .f-stub) > * { position: relative; z-index: 2; }
