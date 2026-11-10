@@ -4296,27 +4296,13 @@ body.f-layout .course-dialog.f-flipping[open] { opacity: 0; animation: none; }
 .f-fly-front { box-sizing: border-box; padding: 6px 8px; color: var(--d-ink, #2a1d16); font: 600 12px/1.3 "Segoe UI", "Microsoft YaHei", sans-serif; }
 .f-fly-front > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .f-fly-back {
-  display: flex;
-  align-items: flex-end;
-  padding: 0 30px;
   border-radius: 14px;
   transform: rotateY(180deg);
   background:
     linear-gradient(180deg, rgba(248, 242, 230, 0) 0, rgba(248, 242, 230, 0.55) 120px, #f8f2e6 176px),
-    var(--f-flower, url("art/flower-03.webp")) center 38% / calc(100% + 32px) 176px no-repeat,
+    var(--f-flower, url("art/flower-03.webp")) center top / cover no-repeat,
     #f8f2e6;
   box-shadow: 0 24px 60px rgba(42, 29, 22, 0.28);
-}
-.f-fly-back strong {
-  position: absolute;
-  top: 150px;
-  left: 30px;
-  right: 30px;
-  overflow: hidden;
-  color: var(--d-ink, #2a1d16);
-  font: 400 32px/1.15 var(--d-serif, Georgia, serif);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ---------- 课程颜色 = 卡片左边的竖条（用户 11-09 定）----------
@@ -4333,4 +4319,20 @@ body.f-layout #scheduleGrid .course-card:hover,
 body.f-layout .is-month-view .calendar-course-chip:hover,
 body.f-layout .agenda-item:hover {
   box-shadow: inset 6px 0 0 var(--f-strip), inset 7px 0 0 rgba(70, 40, 25, 0.14), 0 6px 16px rgba(60, 30, 15, 0.14);
+}
+/* 飞行卡背面 = 弹窗内容的副本（layout.js makeFly），按卡片大小缩放 */
+.f-fly-back { background: #f8f2e6; }
+body.f-layout .f-fly-sheet,
+body.f-layout .f-fly-sheet[open] {
+  position: absolute;
+  inset: 0 auto auto 0;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  box-shadow: none;
+  transform-origin: 0 0;
+  animation: none;
+  opacity: 1;
+  pointer-events: none;
 }
