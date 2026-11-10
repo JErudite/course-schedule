@@ -4269,3 +4269,68 @@ body.f-layout.has-student-tabbar #appShell :is(.pet-feed-button, .coin-shop-purc
 
 /* Students: the hero card already answers "next lesson" (from the same data), so drop the footnote. */
 body.f-layout #nextLessonCard { display: none !important; }
+
+/* ---------- 打开课程：卡片翻面、飞到屏幕中间变成弹窗（layout.js flipOpen） ---------- */
+body.f-layout .course-dialog.f-flipping,
+body.f-layout .course-dialog.f-flipping[open] { opacity: 0; animation: none; }
+.f-fly {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  perspective: 1200px;
+  pointer-events: none;
+}
+.f-fly-inner { position: absolute; inset: 0; transform-style: preserve-3d; }
+.f-fly-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.f-fly-front { box-sizing: border-box; padding: 6px 8px; color: var(--d-ink, #2a1d16); font: 600 12px/1.3 "Segoe UI", "Microsoft YaHei", sans-serif; }
+.f-fly-front > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f-fly-back {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 30px;
+  border-radius: 14px;
+  transform: rotateY(180deg);
+  background:
+    linear-gradient(180deg, rgba(248, 242, 230, 0) 0, rgba(248, 242, 230, 0.55) 120px, #f8f2e6 176px),
+    var(--f-flower, url("art/flower-03.webp")) center 38% / calc(100% + 32px) 176px no-repeat,
+    #f8f2e6;
+  box-shadow: 0 24px 60px rgba(42, 29, 22, 0.28);
+}
+.f-fly-back strong {
+  position: absolute;
+  top: 150px;
+  left: 30px;
+  right: 30px;
+  overflow: hidden;
+  color: var(--d-ink, #2a1d16);
+  font: 400 32px/1.15 var(--d-serif, Georgia, serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 课程颜色 = 卡片左边的竖条（用户 11-09 定）----------
+   花画一律保持原色。竖条加粗到 6px：没选颜色是白色，选了颜色就是那个颜色。
+   layout.js 给选了颜色的卡片加 data-f-tint（app.js 给无颜色课的默认色是 #6f8a64）。 */
+body.f-layout :is(#scheduleGrid .course-card, .is-month-view .calendar-course-chip, .agenda-item) { --f-strip: #ffffff; }
+body.f-layout :is(#scheduleGrid .course-card, .is-month-view .calendar-course-chip, .agenda-item)[data-f-tint] { --f-strip: var(--course-color); }
+body.f-layout #scheduleGrid .course-card,
+body.f-layout .is-month-view .calendar-course-chip,
+body.f-layout .agenda-item {
+  box-shadow: inset 6px 0 0 var(--f-strip), inset 7px 0 0 rgba(70, 40, 25, 0.14), 0 1px 2px rgba(60, 30, 15, 0.08);
+}
+body.f-layout #scheduleGrid .course-card:hover,
+body.f-layout .is-month-view .calendar-course-chip:hover,
+body.f-layout .agenda-item:hover {
+  box-shadow: inset 6px 0 0 var(--f-strip), inset 7px 0 0 rgba(70, 40, 25, 0.14), 0 6px 16px rgba(60, 30, 15, 0.14);
+}

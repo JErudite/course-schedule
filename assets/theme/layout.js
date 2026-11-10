@@ -64,10 +64,19 @@
     drawer.addEventListener("click", (e) => { if (e.target.closest(".sidebar-day")) setOpen(false); });
     // The course dialog's header painting follows the card that opened it.
     document.addEventListener("click", (e) => {
-      const card = e.target.closest(".course-card, .calendar-course-chip");
+      const card = e.target.closest(".course-card, .calendar-course-chip, .agenda-item");
       const flower = card?.style.getPropertyValue("--f-flower");
       if (flower) $("#courseDialog")?.style.setProperty("--f-flower", flower);
+      if (card) flipFrom = { card, at: performance.now() };
     }, true);
+    const courseDialog = $("#courseDialog");
+    if (courseDialog) {
+      new MutationObserver(() => {
+        const from = flipFrom;
+        flipFrom = null;
+        if (courseDialog.open && from && performance.now() - from.at < 800) flipOpen(from.card, courseDialog);
+      }).observe(courseDialog, { attributes: true, attributeFilter: ["open"] });
+    }
 
     // Hero
     const hero = document.createElement("section");
@@ -115,6 +124,63 @@
     new MutationObserver(refresh).observe($("#weekRange") || document.body, { characterData: true, childList: true, subtree: true });
   }
 
+  // Opening a course: the clicked card lifts, turns over, and its back flies to the middle of the
+  // screen and becomes the dialog. The flying card is a popover so it sits in the top layer above the
+  // modal dialog; the real dialog stays invisible underneath until the card lands, then takes over.
+  let flipFrom = null;
+  function flipOpen(card, dialog) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !HTMLElement.prototype.showPopover) return;
+    const a = card.getBoundingClientRect();
+    if (!a.width || !a.height) return;
+    dialog.classList.add("f-flipping");
+    const b = dialog.getBoundingClientRect();
+    const cs = getComputedStyle(card);
+    const ds = getComputedStyle(dialog);
+    const name = (card.querySelector("strong")?.textContent || card.getAttribute("aria-label") || "").split("，")[0].trim();
+
+    const fly = document.createElement("div");
+    fly.className = "f-fly";
+    fly.setAttribute("popover", "manual");
+    fly.setAttribute("aria-hidden", "true");
+    fly.style.setProperty("--f-flower", card.style.getPropertyValue("--f-flower") || dialog.style.getPropertyValue("--f-flower"));
+    fly.innerHTML = '<div class="f-fly-inner"><div class="f-fly-face f-fly-front"></div><div class="f-fly-face f-fly-back"><strong></strong></div></div>';
+    const front = fly.querySelector(".f-fly-front");
+    front.style.background = cs.background;
+    front.style.boxShadow = cs.boxShadow;
+    front.style.borderRadius = cs.borderRadius;
+    front.innerHTML = card.innerHTML;
+    fly.querySelector(".f-fly-back strong").textContent = name;
+    Object.assign(fly.style, { left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px` });
+    document.body.append(fly);
+    fly.showPopover();
+    card.style.visibility = "hidden";
+
+    const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+    const flip = fly.querySelector(".f-fly-inner").animate(
+      [{ transform: "rotateY(0deg) scale(1)" }, { transform: "rotateY(90deg) scale(1.08)", offset: 0.5 }, { transform: "rotateY(180deg) scale(1)" }],
+      { duration: 420, easing: "ease-in-out", fill: "forwards" });
+    const move = fly.animate(
+      [
+        { left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`, borderRadius: cs.borderRadius },
+        { left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px`, borderRadius: ds.borderRadius },
+      ],
+      { duration: 460, delay: 220, easing: ease, fill: "forwards" });
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      dialog.removeEventListener("close", finish);
+      card.style.visibility = "";
+      dialog.classList.remove("f-flipping");
+      dialog.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" });
+      fly.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-out" }).finished
+        .finally(() => { flip.cancel(); move.cancel(); fly.remove(); });
+    };
+    move.finished.then(finish, finish);
+    dialog.addEventListener("close", finish, { once: true });
+  }
+
   // 14 public-domain flower paintings. Course names are sorted and dealt out in order, so up to 14
   // courses never share a painting, and the same course keeps its painting on every card.
   function paintFlowers() {
@@ -127,6 +193,10 @@
       const n = (names.indexOf(nameOf(card)) % 14) + 1;
       // A url() inside a custom property resolves against the stylesheet that uses it (theme.css).
       card.style.setProperty("--f-flower", `url("art/flower-${String(n).padStart(2, "0")}.webp")`);
+      // A course with its own colour gets its painting printed in that colour (app.js gives
+      // colourless courses the default sage accent #6f8a64; those keep the painting's own colours).
+      const color = card.style.getPropertyValue("--course-color").trim().toLowerCase();
+      card.toggleAttribute("data-f-tint", Boolean(color) && color !== "#6f8a64");
     });
   }
 
