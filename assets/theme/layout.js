@@ -151,29 +151,24 @@
     const ac = { x: a.left + a.width / 2, y: a.top + a.height / 2 };
     const bc = { x: b.left + b.width / 2, y: b.top + b.height / 2 };
 
-    // Horizontal: a damped spring pulling towards the centre, started with a flick to the right. Its
-    // first swing peaks at the right of the screen; the way back is the swing home.
-    const omega = 2 * Math.PI / 0.78; // period, in flight lengths
-    const gamma = 3.4; // damping: the swing back overshoots only a little
+    // Horizontal: a critically damped spring towards the centre, started with a flick to the right.
+    // It overshoots once to the right, turns round sharply (no slow hang at the far right) and comes
+    // back to the centre without ever passing it to the left (user 11-10).
+    const K = 7;
     const c1 = ac.x - bc.x;
-    const springX = (t, v0) => {
-      const e = Math.exp(-gamma * t);
-      const c2 = (v0 + gamma * c1) / omega;
-      return bc.x + e * (c1 * Math.cos(omega * t) + c2 * Math.sin(omega * t));
-    };
-    const maxRight = (v0) => { let m = -Infinity; for (let t = 0; t <= 0.6; t += 0.01) m = Math.max(m, springX(t, v0)); return m; };
+    const springX = (t, v0) => bc.x + (c1 + (v0 + K * c1) * t) * Math.exp(-K * t);
+    const maxRight = (v0) => { let m = -Infinity; for (let t = 0; t <= 0.6; t += 0.005) m = Math.max(m, springX(t, v0)); return m; };
     const wantRight = Math.max(bc.x + 40, Math.min(vw - b.width * 0.35 - 16, bc.x + vw * 0.26));
     let lo = 0;
     let hi = vw * 60;
     for (let k = 0; k < 40; k += 1) { const mid = (lo + hi) / 2; if (maxRight(mid) < wantRight) lo = mid; else hi = mid; }
     const v0 = hi;
-    // Only the swing out comes from the spring. From the right-hand peak (where it is momentarily still)
-    // it glides straight back and stops dead centre: no overshoot to the left (user 11-10).
-    let tPeak = 0;
-    let xPeak = -Infinity;
-    for (let t = 0; t <= 0.6; t += 0.002) { const v = springX(t, v0); if (v > xPeak) { xPeak = v; tPeak = t; } }
-    const BACK_END = 0.82;
-    const swingX = (t) => (t <= tPeak ? springX(t, v0) : xPeak + (bc.x - xPeak) * easeInOut(clamp01((t - tPeak) / (BACK_END - tPeak))));
+    const BACK_END = 0.8; // from here the last few pixels ease exactly onto the centre
+    const swingX = (t) => {
+      const x = springX(t, v0);
+      const settle = smooth(clamp01((t - BACK_END) / (1 - BACK_END)));
+      return x + (bc.x - x) * settle;
+    };
 
     const steps = 80;
     const frames = [];
@@ -183,7 +178,7 @@
       const p = i / steps;
       const wind = Math.sin(clamp01(p / WIND) * Math.PI); // 0 → 1 → 0 over the wind-up
       const t = clamp01((p - WIND) / (1 - WIND)); // flight time after the wind-up
-      const land = clamp01((t - BACK_END) / (1 - BACK_END));
+      const land = smooth(clamp01((t - BACK_END) / (1 - BACK_END)));
       const x = swingX(t);
       // Vertical: rise a little on the toss, then come down to the centre.
       const y = ac.y + (bc.y - ac.y) * easeOut(clamp01(t / 0.7)) - Math.sin(clamp01(t / 0.75) * Math.PI) * vh * 0.06 + wind * 6;
