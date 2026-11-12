@@ -171,6 +171,10 @@ let importedQuestions = [];
 let questionImportFileName = "";
 let challengeState = {
   reviewMode: false,
+  mode: "level",
+  modeChosen: false,
+  summary: null,
+  questionType: "choice",
   sessionLimit: 10,
   type: "choice",
   bankId: "",
@@ -2615,10 +2619,11 @@ function formatChallengeDate(value) {
 function renderChallengeSummary(summary) {
   const choiceAttempts = Number(summary.choice_attempts) || 0;
   const wordAttempts = Number(summary.word_attempts) || 0;
-  const totalAttempts = Number(summary.total_attempts ?? choiceAttempts + wordAttempts);
+  const listenAttempts = Number(summary.listen_attempts) || 0;
+  const totalAttempts = Number(summary.total_attempts ?? choiceAttempts + wordAttempts + listenAttempts);
   document.querySelector("#totalChallengeCount").textContent = `${totalAttempts} / 50`;
   document.querySelector("#choiceChallengeCount").textContent = `选择题 ${choiceAttempts}`;
-  document.querySelector("#wordChallengeCount").textContent = `单词题 ${wordAttempts}`;
+  document.querySelector("#wordChallengeCount").textContent = listenAttempts ? `单词 ${wordAttempts} · 听音 ${listenAttempts}` : `单词题 ${wordAttempts}`;
   document.querySelector("#challengeSessionCount").textContent = `${Number(summary.sessions_used) || 0} / 5`;
   document.querySelector("#challengeCoinCount").textContent = `${Number(summary.earned_coins) || 0} 金币`;
   document.querySelector("#challengeBonusState").textContent = summary.completion_bonus_claimed
@@ -2627,15 +2632,83 @@ function renderChallengeSummary(summary) {
   if (challengeState.sessionId) document.querySelector("#challengeQuestionProgress").textContent = `本轮第 ${Math.min(challengeState.sessionLimit, challengeState.sessionAnswered + (challengeState.answered ? 0 : 1))} / ${challengeState.sessionLimit} 题 · 今日剩余 ${Math.max(0, 50 - totalAttempts)} 题`;
 }
 
+// 连续闯关：今天答满 10 题算一天，连续 7、14、21… 天的那天答完第 10 题奖励 30 金币。
+function renderChallengeStreak(summary) {
+  const streak = Number(summary.day_streak) || 0;
+  const qualified = summary.today_qualified === true;
+  const answered = Number(summary.today_answered) || 0;
+  const left = Number(summary.days_to_reward) || 7;
+  document.querySelector("#challengeStreakTitle").textContent = `连续闯关 ${streak} 天`;
+  let detail;
+  if (qualified && summary.streak_reward_claimed && streak > 0 && streak % 7 === 0) detail = `今天领到连续 ${streak} 天奖励 30 金币！再坚持 7 天再领一次`;
+  else if (qualified) detail = `今天已计入，再坚持 ${left} 天领 30 金币`;
+  else if (left === 1) detail = `今天再答 ${Math.max(0, 10 - answered)} 题就能领 30 金币`;
+  else detail = `今天再答 ${Math.max(0, 10 - answered)} 题计入 · 离 30 金币奖励还差 ${left} 天`;
+  document.querySelector("#challengeStreakDetail").textContent = detail;
+  const done = qualified ? (streak % 7 || 7) : streak % 7;
+  const dots = document.querySelector("#challengeStreakDots");
+  dots.replaceChildren(...Array.from({ length: 7 }, (_, index) => {
+    const dot = createElement("span", index < done ? "is-done" : (!qualified && index === done ? "is-today" : ""));
+    if (index === 6) dot.textContent = "🎁";
+    return dot;
+  }));
+  document.querySelector("#challengeStreakBand").classList.toggle("is-lit", streak > 0);
+}
+
 async function loadChallengeSummary() {
-  const { data, error } = await supabaseClient.rpc("get_my_challenge_summary_v2");
+  const { data, error } = await supabaseClient.rpc("get_my_challenge_summary_v3");
   if (error) {
     showStatus("挑战进度读取失败，请稍后重试");
     return null;
   }
   const summary = Array.isArray(data) ? data[0] : data;
+  challengeState.summary = summary || {};
   renderChallengeSummary(summary || {});
+  renderChallengeStreak(summary || {});
+  renderChallengeLessonMode();
   return summary || {};
+}
+
+// ---------- 发音：有道美音，失败时退回浏览器朗读 ----------
+let challengeAudio = null;
+function speakWithBrowser(word) {
+  if (!("speechSynthesis" in window)) return false;
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.lang = "en-US";
+  utterance.rate = 0.9;
+  const voice = window.speechSynthesis.getVoices().find((item) => /^en(-|_)US/i.test(item.lang));
+  if (voice) utterance.voice = voice;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+  return true;
+}
+
+function playChallengeWord(word, { auto = false } = {}) {
+  const text = String(word || "").trim();
+  if (!text) return Promise.resolve(false);
+  if (challengeAudio) { challengeAudio.pause(); challengeAudio.onerror = null; }
+  const audio = new Audio(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`);
+  challengeAudio = audio;
+  let fellBack = false;
+  const fallback = () => {
+    if (fellBack || challengeAudio !== audio) return false;
+    fellBack = true;
+    return speakWithBrowser(text);
+  };
+  audio.onerror = fallback;
+  return audio.play().then(() => true).catch((error) => {
+    // 自动播放被浏览器拦下时不退回朗读（同样会被拦），提示孩子点喇叭。
+    if (error?.name === "NotAllowedError") {
+      if (auto) document.querySelector("#challengeListenButton").classList.add("needs-tap");
+      return false;
+    }
+    return fallback();
+  });
+}
+
+function setSpeakButton(button, word) {
+  button.hidden = !word;
+  button.dataset.word = word || "";
 }
 
 function setChallengeType(type) {
@@ -2645,11 +2718,11 @@ function setChallengeType(type) {
   challengeState.sessionId = null;
   challengeState.bankId = "";
   challengeState.answered = false;
-  document.querySelector("#showChoiceChallenge").classList.toggle("is-active", type === "choice");
-  document.querySelector("#showChoiceChallenge").setAttribute("aria-selected", String(type === "choice"));
-  document.querySelector("#showWordChallenge").classList.toggle("is-active", type === "word");
-  document.querySelector("#showWordChallenge").setAttribute("aria-selected", String(type === "word"));
-  document.querySelector("#choiceChallengeOptions").hidden = type !== "choice";
+  [["#showChoiceChallenge", "choice"], ["#showWordChallenge", "word"], ["#showListenChallenge", "listen"]].forEach(([id, value]) => {
+    document.querySelector(id).classList.toggle("is-active", type === value);
+    document.querySelector(id).setAttribute("aria-selected", String(type === value));
+  });
+  document.querySelector("#choiceChallengeOptions").hidden = type === "word";
   document.querySelector("#wordChallengeForm").hidden = type !== "word";
   document.querySelector("#challengeResult").hidden = true;
   document.querySelector("#nextChallengeQuestion").hidden = true;
@@ -2658,19 +2731,57 @@ function setChallengeType(type) {
   renderAvailableChallengeBanks();
 }
 
-async function setChallengeMode(reviewMode) {
+function challengeModeIs(mode) {
+  return (challengeState.mode || (challengeState.reviewMode ? "review" : "level")) === mode;
+}
+
+async function setChallengeMode(mode) {
   if (challengeState.starting) return;
-  challengeState.reviewMode = reviewMode;
+  if (mode === true) mode = "review";
+  if (mode === false || !mode) mode = "level";
+  if (mode === "lesson" && !challengeState.summary?.progress_bank_id) mode = "level";
+  challengeState.mode = mode;
+  challengeState.reviewMode = mode === "review";
+  if (challengeState.reviewMode && challengeState.type === "listen") challengeState.type = "word";
+  // 本课闯关主要出单词：从选择题切过来时顺手换到单词题（选择题仍可手动选，按整级出）。
+  if (mode === "lesson" && challengeState.type === "choice") challengeState.type = "word";
   setChallengeType(challengeState.type);
-  document.querySelector("#showRegularChallenge").classList.toggle("is-active", !reviewMode);
-  document.querySelector("#showRegularChallenge").setAttribute("aria-pressed", String(!reviewMode));
-  document.querySelector("#showMistakeReview").classList.toggle("is-active", reviewMode);
-  document.querySelector("#showMistakeReview").setAttribute("aria-pressed", String(reviewMode));
-  document.querySelector("#challengeRoundSize").textContent = reviewMode ? "错题每轮最多 10 题" : "每轮 10 题";
-  document.querySelector("#startChallengeSession span").textContent = reviewMode ? "开始本轮复习" : "开始本轮挑战";
+  [["#showLessonChallenge", "lesson"], ["#showRegularChallenge", "level"], ["#showMistakeReview", "review"]].forEach(([id, value]) => {
+    document.querySelector(id).classList.toggle("is-active", mode === value);
+    document.querySelector(id).setAttribute("aria-pressed", String(mode === value));
+  });
+  document.querySelector("#showListenChallenge").hidden = mode === "review";
+  document.querySelector("#challengeRoundSize").textContent = mode === "review" ? "错题每轮最多 10 题" : "每轮 10 题";
+  document.querySelector("#startChallengeSession span").textContent = mode === "review" ? "开始本轮复习" : (mode === "lesson" ? "开始本课闯关" : "开始本轮挑战");
   availableChallengeBanks = [];
   renderAvailableChallengeBanks();
   await loadAvailableChallengeBanks();
+}
+
+function renderChallengeLessonMode() {
+  const summary = challengeState.summary || {};
+  const hasProgress = Boolean(summary.progress_bank_id);
+  document.querySelector("#showLessonChallenge").hidden = !hasProgress;
+  if (challengeState.summary && !hasProgress && challengeModeIs("lesson")) void setChallengeMode("level");
+  const note = document.querySelector("#challengeLessonNote");
+  const lessonMode = challengeModeIs("lesson");
+  note.hidden = !lessonMode;
+  if (lessonMode) {
+    const lesson = Number(summary.current_lesson) || 1;
+    note.textContent = challengeState.type === "choice"
+      ? `${summary.progress_bank_name} · 现在第 ${lesson} 课。选择题按整级出题。`
+      : `${summary.progress_bank_name} · 现在第 ${lesson} 课。题目来自第 ${Math.max(1, lesson - 1)}–${lesson} 课的单词，不够 10 题时往前补。`;
+  }
+  document.querySelector(".challenge-bank-field").hidden = lessonMode;
+}
+
+function renderChallengeStreakChip(type, choiceStreak, wordStreak, listenStreak) {
+  const chip = document.querySelector("#challengeStreakChip");
+  const streak = type === "choice" ? choiceStreak : (type === "word" ? wordStreak : listenStreak);
+  chip.hidden = streak <= 0;
+  if (type === "choice") chip.textContent = `连对 ${streak}`;
+  else chip.textContent = streak >= 5 ? `连对 ${streak} · 经验 ×2` : `连对 ${streak} · 连对 5 题经验翻倍`;
+  chip.classList.toggle("is-hot", type !== "choice" && streak >= 5);
 }
 
 function renderChallengeQuestion(question) {
@@ -2681,15 +2792,27 @@ function renderChallengeQuestion(question) {
   challengeState.dailyRemaining = Number(question.daily_remaining) || 0;
   challengeState.choiceStreak = Number(question.choice_streak) || 0;
   challengeState.answered = false;
-  document.querySelector("#challengeQuestionType").textContent = `${challengeState.reviewMode ? "错题复习 · " : ""}${question.challenge_type === "choice" ? "选择题挑战" : "单词挑战"}`;
-  document.querySelector("#choiceChallengeOptions").hidden = question.challenge_type !== "choice";
-  document.querySelector("#wordChallengeForm").hidden = question.challenge_type !== "word";
+  const type = question.challenge_type;
+  challengeState.questionType = type;
+  const typeLabel = { choice: "选择题挑战", word: "单词挑战", listen: "听音选词" }[type] || "挑战";
+  const lessonLabel = question.scope === "lesson" && question.lesson_from
+    ? ` · 第 ${question.lesson_from === question.lesson_to ? question.lesson_to : `${question.lesson_from}–${question.lesson_to}`} 课` : "";
+  document.querySelector("#challengeQuestionType").textContent = `${challengeState.reviewMode ? "错题复习 · " : ""}${typeLabel}${lessonLabel}`;
+  renderChallengeStreakChip(type, challengeState.choiceStreak, Number(question.word_streak) || 0, Number(question.listen_streak) || 0);
+  document.querySelector("#choiceChallengeOptions").hidden = type === "word";
+  document.querySelector("#wordChallengeForm").hidden = type !== "word";
   document.querySelector("#wordChallengeAnswer").value = "";
-  document.querySelector("#challengePrompt").textContent = question.prompt;
+  document.querySelector("#challengePrompt").textContent = type === "listen" ? "听一听，是哪个单词？" : question.prompt;
   document.querySelector("#challengeResult").hidden = true;
   document.querySelector("#nextChallengeQuestion").hidden = true;
+  const listenButton = document.querySelector("#challengeListenButton");
+  listenButton.hidden = type !== "listen";
+  listenButton.classList.remove("needs-tap");
+  listenButton.dataset.word = type === "listen" ? question.audio_word || "" : "";
+  setSpeakButton(document.querySelector("#challengeSpeakPrompt"), type === "word" ? question.audio_word : "");
   const options = document.querySelector("#choiceChallengeOptions");
   options.replaceChildren();
+  options.classList.toggle("is-listen", type === "listen");
   (question.options || []).forEach((option, index) => {
     const button = createElement("button", "challenge-option");
     button.type = "button";
@@ -2699,13 +2822,14 @@ function renderChallengeQuestion(question) {
     options.append(button);
   });
   if (window.lucide) window.lucide.createIcons();
+  if (type === "listen" && question.audio_word) void playChallengeWord(question.audio_word, { auto: true });
 }
 
 async function loadNextChallengeQuestion() {
   if (!currentUser || canEdit || !challengeState.sessionId) return;
   const questionCard = document.querySelector("#challengeQuestionCard");
   questionCard.classList.add("is-loading");
-  const { data, error } = await supabaseClient.rpc("get_next_pet_challenge_question_v3", { p_session_id: challengeState.sessionId });
+  const { data, error } = await supabaseClient.rpc("get_next_pet_challenge_question_v4", { p_session_id: challengeState.sessionId });
   questionCard.classList.remove("is-loading");
   if (error) {
     document.querySelector("#challengePrompt").textContent = error.message?.includes("session completed")
@@ -2713,6 +2837,8 @@ async function loadNextChallengeQuestion() {
       : (error.message?.includes("limit") ? "今日挑战次数已用完，明天再来吧" : "当前没有可用题目，请稍后再试");
     document.querySelector("#choiceChallengeOptions").replaceChildren();
     document.querySelector("#wordChallengeForm").hidden = true;
+    document.querySelector("#challengeListenButton").hidden = true;
+    document.querySelector("#challengeSpeakPrompt").hidden = true;
     document.querySelector("#challengeQuestionProgress").textContent = "本轮已完成";
     document.querySelector("#nextChallengeQuestion").hidden = true;
     document.querySelector("#finishChallengeSession").hidden = false;
@@ -2730,17 +2856,24 @@ function renderChallengeResult(result) {
   const resultBox = document.querySelector("#challengeResult");
   const correct = result.is_correct === true;
   resultBox.className = `challenge-result ${correct ? "is-correct" : "is-wrong"}`;
-  const reward = correct ? `答对了，获得 1 金币${Number(result.gained_experience) ? ` · ${result.gained_experience} 经验` : ""}` : "这次答错了，本题无奖励";
+  const experience = Number(result.gained_experience) || 0;
+  const reward = correct
+    ? `答对了，获得 1 金币${experience ? ` · ${experience} 经验${result.experience_doubled ? "（连对翻倍）" : ""}` : ""}`
+    : "这次答错了，本题无奖励";
   const bonus = Number(result.completion_bonus_coins) ? ` · 完成今日 50 题额外 +${result.completion_bonus_coins} 金币` : "";
+  const streakReward = Number(result.streak_reward_coins) ? ` · 🔥 连续闯关 ${result.day_streak} 天奖励 +${result.streak_reward_coins} 金币` : "";
   document.querySelector("#challengeResultTitle").textContent = reward;
-  document.querySelector("#challengeResultDetail").textContent = `本题用时 ${formatChallengeDuration(result.duration_seconds)} · 本轮剩余 ${result.session_remaining} 题${bonus}`;
+  document.querySelector("#challengeResultDetail").textContent = `本题用时 ${formatChallengeDuration(result.duration_seconds)} · 本轮剩余 ${result.session_remaining} 题${bonus}${streakReward}`;
   document.querySelector("#challengeCorrectAnswer").textContent = `正确答案：${result.correct_answer || "暂无"}`;
+  setSpeakButton(document.querySelector("#challengeSpeakAnswer"), result.audio_word);
   document.querySelector("#challengeAnswerExplanation").textContent = result.explanation
     ? `解析：${result.explanation}`
     : "本题暂无解析";
   resultBox.hidden = false;
   document.querySelector("#nextChallengeQuestion").hidden = result.session_remaining <= 0;
   document.querySelector("#finishChallengeSession").hidden = result.session_remaining > 0;
+  renderChallengeStreakChip(challengeState.questionType || challengeState.type, Number(result.choice_streak) || 0, Number(result.word_streak) || 0, Number(result.listen_streak) || 0);
+  if (Number(result.streak_reward_coins)) resultBox.classList.add("has-streak-reward");
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -2749,7 +2882,7 @@ async function submitChallengeAnswer(answer, clickedButton = null) {
   if (clickedButton) clickedButton.disabled = true;
   document.querySelector("#submitWordChallenge").disabled = true;
   challengeState.answered = true;
-  const { data, error } = await supabaseClient.rpc("answer_pet_challenge_question_v3", {
+  const { data, error } = await supabaseClient.rpc("answer_pet_challenge_question_v4", {
     p_attempt_id: challengeState.attemptId,
     p_answer: answer,
   });
@@ -2762,6 +2895,12 @@ async function submitChallengeAnswer(answer, clickedButton = null) {
   }
   const result = Array.isArray(data) ? data[0] : data;
   if (!result) return;
+  document.querySelectorAll("#choiceChallengeOptions .challenge-option").forEach((button) => {
+    const text = button.querySelector("strong")?.textContent;
+    button.disabled = true;
+    button.classList.toggle("is-answer", text?.toLowerCase() === String(result.correct_answer || "").toLowerCase());
+    button.classList.toggle("is-picked-wrong", button === clickedButton && result.is_correct !== true);
+  });
   currentUser.pet_experience = Number(result.total_experience) || currentUser.pet_experience;
   currentUser.pet_coins = Number(result.total_coins) || currentUser.pet_coins;
   challengeState.sessionAnswered = Number(result.session_answered) || 0;
@@ -2769,7 +2908,140 @@ async function submitChallengeAnswer(answer, clickedButton = null) {
   await loadChallengeSummary();
   if (!petDetailPage.hidden) renderPetDetail();
   updateVisitorPet();
-  showStatus(result.is_correct ? `答对了，获得 ${result.gained_experience} 经验` : "答错了，继续加油");
+  showStatus(Number(result.streak_reward_coins)
+    ? `连续闯关 ${result.day_streak} 天，奖励 ${result.streak_reward_coins} 金币！`
+    : (result.is_correct ? `答对了，获得 ${result.gained_experience} 经验` : "答错了，继续加油"));
+}
+
+// ---------- 本周答题榜（挑战页 + 宠物排行页“本周答题”） ----------
+async function loadChallengeWeekBoard(where = "challenge") {
+  const prefix = where === "pet" ? "petWeekBoard" : "challengeWeekBoard";
+  const list = document.querySelector(`#${prefix}List`);
+  const me = document.querySelector(`#${prefix}Me`);
+  const { data, error } = await supabaseClient.rpc("get_challenge_weekly_leaderboard");
+  list.replaceChildren();
+  if (error) {
+    list.append(createElement("li", "challenge-week-board-empty", "本周答题榜暂时读不到，请稍后再试"));
+    me.hidden = true;
+    return false;
+  }
+  const rows = (data || []).map((row) => ({ ...row, rank_position: row.rank_position === null ? null : Number(row.rank_position), correct_count: Number(row.correct_count) || 0 }));
+  const top = rows.filter((row) => row.rank_position !== null && row.rank_position <= 5);
+  if (!top.length) list.append(createElement("li", "challenge-week-board-empty", "本周还没有人答对题，快来拿第一名！"));
+  top.forEach((row) => {
+    const item = createElement("li", `challenge-week-board-row rank-${Math.min(row.rank_position, 4)}${row.is_self ? " is-self" : ""}`);
+    const rank = createElement("span", "challenge-week-board-rank", row.rank_position <= 3 ? ["🥇", "🥈", "🥉"][row.rank_position - 1] : String(row.rank_position));
+    rank.setAttribute("aria-label", `第 ${row.rank_position} 名`);
+    item.append(rank, createElement("strong", "", row.is_self ? `${row.display_name}（我）` : row.display_name), createElement("em", "", `${row.correct_count} 题`));
+    list.append(item);
+  });
+  const self = rows.find((row) => row.is_self);
+  me.hidden = canEdit || !self || (self.rank_position !== null && self.rank_position <= 5);
+  if (self) {
+    me.textContent = self.rank_position === null
+      ? "我本周还没有答对的题，答对 1 题就能上榜"
+      : (self.rank_position <= 5 ? `我排第 ${self.rank_position} 名 · 本周答对 ${self.correct_count} 题` : `我排第 ${self.rank_position} 名 · 本周答对 ${self.correct_count} 题，加油冲进前 5！`);
+  }
+  const [, month, date] = String(rows[0]?.week_start || "").split("-").map(Number);
+  if (month && date) document.querySelector(`#${prefix}Range`).textContent = `${month} 月 ${date} 日（周一）起 · 按答对题数`;
+  return true;
+}
+
+function setLeaderboardTab(tab) {
+  const weekly = tab === "weekly";
+  document.querySelector("#showPetRanking").classList.toggle("is-active", !weekly);
+  document.querySelector("#showPetRanking").setAttribute("aria-selected", String(!weekly));
+  document.querySelector("#showWeeklyAnswerRanking").classList.toggle("is-active", weekly);
+  document.querySelector("#showWeeklyAnswerRanking").setAttribute("aria-selected", String(weekly));
+  document.querySelector("#petWeekBoard").hidden = !weekly;
+  ["#petRankingStatusBand", "#petRankingTableHead", "#petLeaderboardList"].forEach((id) => { document.querySelector(id).hidden = weekly; });
+  document.querySelector("#petLeaderboardEmpty").hidden = weekly || petLeaderboard.length > 0;
+  if (weekly) void loadChallengeWeekBoard("pet");
+}
+
+// ---------- 老师端：学生学习进度 ----------
+let challengeProgressByStudent = new Map();
+let challengeProgressStudentId = null;
+let challengeProgressBanks = [];
+
+async function loadChallengeProgress() {
+  if (!canEdit) return false;
+  const { data, error } = await supabaseClient.rpc("get_challenge_progress_v1", { p_student_id: null });
+  if (error) return false;
+  challengeProgressByStudent = new Map((data || []).map((row) => [row.student_id, row]));
+  document.querySelectorAll(".student-progress-chip").forEach((chip) => renderStudentProgressChip(chip, chip.dataset.studentId));
+  return true;
+}
+
+function renderStudentProgressChip(chip, studentId) {
+  const progress = challengeProgressByStudent.get(studentId);
+  chip.classList.toggle("is-set", Boolean(progress));
+  chip.textContent = progress ? `${String(progress.bank_name).replace(/^Power Up\s*/i, "PU")} · 第 ${progress.current_lesson} 课` : "设学习进度";
+}
+
+function createStudentProgressChip(student) {
+  const chip = createElement("button", "student-progress-chip");
+  chip.type = "button";
+  chip.dataset.studentId = student.id;
+  chip.title = `设置${student.username}的学习进度（本课闯关按这个出题）`;
+  renderStudentProgressChip(chip, student.id);
+  chip.addEventListener("click", () => openChallengeProgressDialog(student));
+  return chip;
+}
+
+async function openChallengeProgressDialog(student) {
+  if (!canEdit) return;
+  challengeProgressStudentId = student.id;
+  const dialog = document.querySelector("#challengeProgressDialog");
+  const status = document.querySelector("#challengeProgressStatus");
+  document.querySelector("#challengeProgressTitle").textContent = `${student.username}的学习进度`;
+  status.textContent = "";
+  if (!challengeProgressBanks.length) {
+    const { data } = await supabaseClient.rpc("get_admin_pet_challenge_banks");
+    challengeProgressBanks = (data || []).filter((bank) => bank.is_active);
+  }
+  const select = document.querySelector("#challengeProgressBank");
+  select.replaceChildren(...challengeProgressBanks.map((bank) => new Option(bank.bank_name, bank.bank_id)));
+  const progress = challengeProgressByStudent.get(student.id);
+  if (progress) select.value = progress.bank_id;
+  const lesson = document.querySelector("#challengeProgressLesson");
+  lesson.value = progress ? String(progress.current_lesson) : "1";
+  lesson.max = String(progress?.max_lesson || 24);
+  document.querySelector("#clearChallengeProgress").hidden = !progress;
+  status.textContent = progress
+    ? `从 ${progress.set_on} 的第 ${progress.start_lesson} 课起，之后到课/补课 ${progress.attended_since} 次，现在第 ${progress.current_lesson} 课（最多第 ${progress.max_lesson} 课）。`
+    : "还没设进度：学生只能选整级闯关。";
+  if (!dialog.open) dialog.showModal();
+  lesson.focus();
+}
+
+async function saveChallengeProgress(clear = false) {
+  if (!canEdit || !challengeProgressStudentId) return;
+  const status = document.querySelector("#challengeProgressStatus");
+  const lesson = Number(document.querySelector("#challengeProgressLesson").value);
+  const bankId = document.querySelector("#challengeProgressBank").value;
+  if (!clear && (!bankId || !Number.isInteger(lesson) || lesson < 1 || lesson > 60)) {
+    status.textContent = "请选择级别，并填写 1 到 24 之间的课次";
+    return;
+  }
+  const save = document.querySelector("#saveChallengeProgress");
+  save.disabled = true;
+  const { data, error } = await supabaseClient.rpc("set_student_challenge_progress", {
+    p_student_id: challengeProgressStudentId,
+    p_bank_id: clear ? null : bankId,
+    p_current_lesson: clear ? null : lesson,
+  });
+  save.disabled = false;
+  if (error) {
+    status.textContent = /between/.test(error.message || "") ? `课次超出范围：${error.message.replace(/\D+/g, " ").trim().split(" ").join("–")}` : "保存失败，请稍后重试";
+    return;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row) challengeProgressByStudent.set(challengeProgressStudentId, row);
+  else challengeProgressByStudent.delete(challengeProgressStudentId);
+  document.querySelectorAll(".student-progress-chip").forEach((chip) => renderStudentProgressChip(chip, chip.dataset.studentId));
+  document.querySelector("#challengeProgressDialog").close();
+  showStatus(row ? `已保存：现在第 ${row.current_lesson} 课，之后到课/补课打卡会自动进课` : "已清除学习进度");
 }
 
 function invalidateHolidayPreview() {
@@ -2913,22 +3185,29 @@ async function loadCourseHolidayHistory() {
 
 function renderAvailableChallengeBanks() {
   const select = document.querySelector("#studentChallengeBank");
-  const banks = availableChallengeBanks.filter((bank) => bank.challenge_type === challengeState.type);
-  select.replaceChildren(...banks.map((bank) => new Option(`${bank.bank_name} · ${bank.question_count} 题`, bank.bank_id)));
+  const lessonMode = challengeModeIs("lesson");
+  const progressBankId = challengeState.summary?.progress_bank_id;
+  const banks = availableChallengeBanks.filter((bank) => bank.challenge_type === challengeState.type
+    && (!lessonMode || bank.bank_id === progressBankId));
+  select.replaceChildren(...banks.map((bank) => new Option(`${bank.bank_name} · ${bank.question_count} ${bank.challenge_type === "listen" ? "个词" : "题"}`, bank.bank_id)));
   select.disabled = banks.length === 0;
   document.querySelector("#challengeBankEmpty").hidden = banks.length > 0;
   document.querySelector("#challengeBankEmpty").textContent = challengeState.reviewMode
     ? "该类型暂无待复习错题。答对的错题会移出待复习队列。"
-    : "该类型暂无至少包含 10 道启用题目的子题库";
+    : (challengeState.type === "listen" ? "该级别的单词题还不够 10 个不同的英文词，暂时不能听音闯关" : "该类型暂无至少包含 10 道启用题目的子题库");
   document.querySelector("#startChallengeSession").disabled = banks.length === 0;
+  document.querySelector("#challengeRoundRule").textContent = challengeState.type === "choice"
+    ? "每天最多挑战 5 轮，每题答对得 1 金币"
+    : "每天最多 5 轮，每题答对得 1 金币，连对 5 题起经验翻倍";
   challengeState.bankId = banks[0]?.bank_id || "";
   challengeState.bankName = banks[0]?.bank_name || "";
   if (banks.length) select.value = challengeState.bankId;
+  renderChallengeLessonMode();
 }
 
 async function loadAvailableChallengeBanks() {
   const reviewMode = challengeState.reviewMode;
-  const { data, error } = await supabaseClient.rpc(reviewMode ? "get_available_pet_review_banks" : "get_available_pet_challenge_banks");
+  const { data, error } = await supabaseClient.rpc(reviewMode ? "get_available_pet_review_banks" : "get_available_pet_challenge_banks_v2");
   if (reviewMode !== challengeState.reviewMode) return false;
   if (error) { availableChallengeBanks = []; renderAvailableChallengeBanks(); showStatus("子题库读取失败，请稍后重试"); return false; }
   availableChallengeBanks = (data || []).map((bank) => ({ ...bank, question_count: Number(bank.question_count) || 0 }));
@@ -2943,22 +3222,33 @@ async function startChallengeSession() {
   if (!challengeState.bankId) { showStatus("请先选择一个子题库"); return; }
   const button = document.querySelector("#startChallengeSession"); button.disabled = true;
   challengeState.starting = true;
-  const { data, error } = await supabaseClient.rpc(challengeState.reviewMode ? "start_pet_review_session" : "start_pet_challenge_session", {
+  const { data, error } = await supabaseClient.rpc("start_pet_challenge_session_v4", {
     p_challenge_type: challengeState.type,
     p_bank_id: challengeState.bankId,
+    p_review: challengeState.reviewMode,
+    p_scope: challengeModeIs("lesson") ? "lesson" : "level",
   });
   button.disabled = false;
   challengeState.starting = false;
-  if (error) { showStatus(error.message?.includes("limit") ? "今日最多挑战 5 轮" : "挑战轮次开始失败，请重试"); return; }
+  if (error) {
+    const text = error.message || "";
+    showStatus(text.includes("limit") ? "今日最多挑战 5 轮"
+      : (text.includes("lesson pool") ? "这一课的单词还不够 10 题，先试试整级闯关吧"
+        : (text.includes("lesson progress") ? "老师还没给你设学习进度，先选整级闯关吧" : "挑战轮次开始失败，请重试")));
+    return;
+  }
   const session = Array.isArray(data) ? data[0] : data;
   if (!session) return;
   challengeState.sessionId = Number(session.session_id);
   challengeState.sessionAnswered = Number(session.session_answered) || 0;
   challengeState.sessionLimit = challengeState.sessionAnswered + Number(session.session_remaining || 0);
   document.querySelector("#challengeStartPanel").hidden = true;
+  document.querySelector("#challengeWeekBoard").hidden = true;
   document.querySelector("#challengeQuestionCard").hidden = false;
   await loadNextChallengeQuestion();
 }
+
+const challengeTypeLabels = { choice: "选择题", word: "单词", listen: "听音" };
 
 function renderChallengeRecords() {
   const list = document.querySelector("#challengeRecordList");
@@ -2967,11 +3257,12 @@ function renderChallengeRecords() {
     const row = createElement("article", `challenge-record-row ${record.is_correct ? "is-correct" : "is-wrong"}`);
     const result = createElement("span", "challenge-record-result", record.is_correct ? "对" : "错");
     const identity = createElement("div", "challenge-record-identity");
-    identity.append(createElement("strong", "", record.student_username), createElement("small", "", `${record.pet_name} · ${record.challenge_type === "choice" ? "选择题" : "单词"}`));
+    identity.append(createElement("strong", "", record.student_username), createElement("small", "", `${record.pet_name} · ${challengeTypeLabels[record.challenge_type] || "单词"}`));
     const question = createElement("div", "challenge-record-question");
     question.append(createElement("strong", "", record.question_prompt), createElement("small", "", `回答：${record.submitted_answer || "-"}`));
     const metrics = createElement("div", "challenge-record-metrics");
-    metrics.append(createElement("strong", "", `+${record.reward_coins || 0} 金币 · +${record.reward_experience} 经验`), createElement("small", "", `${record.bank_name || "历史题库"} · ${formatChallengeDuration(record.duration_seconds)} · ${formatChallengeDate(record.answered_at)}`));
+    const streakReward = Number(record.streak_reward_coins) ? ` · 连续闯关 +${record.streak_reward_coins}` : "";
+    metrics.append(createElement("strong", "", `+${record.reward_coins || 0} 金币 · +${record.reward_experience} 经验${streakReward}`), createElement("small", "", `${record.bank_name || "历史题库"} · ${formatChallengeDuration(record.duration_seconds)} · ${formatChallengeDate(record.answered_at)}`));
     row.append(result, identity, question, metrics);
     list.append(row);
   });
@@ -2981,7 +3272,7 @@ function renderChallengeRecords() {
 
 async function loadAdminChallengeRecords() {
   if (!canEdit) return false;
-  const { data, error } = await supabaseClient.rpc("get_admin_pet_challenge_records_v2", { p_limit: 500 });
+  const { data, error } = await supabaseClient.rpc("get_admin_pet_challenge_records_v3", { p_limit: 500 });
   if (error) {
     challengeRecords = [];
     renderChallengeRecords();
@@ -3005,15 +3296,23 @@ async function showStudentChallenge() {
   hideAdminPages();
   studentChallengePage.hidden = false;
   document.body.classList.add("is-admin-view");
-  setChallengeType("choice");
+  challengeState.sessionId = null;
+  setChallengeType(challengeState.type || "choice");
   document.querySelector("#challengeStartPanel").hidden = false;
+  document.querySelector("#challengeWeekBoard").hidden = false;
   document.querySelector("#challengeQuestionCard").hidden = true;
   document.querySelector("#showMistakeReview").hidden = true;
-  const [, , reviewAvailability] = await Promise.all([
+  const [summary, , reviewAvailability] = await Promise.all([
     loadChallengeSummary(), loadAvailableChallengeBanks(), supabaseClient.rpc("get_available_pet_review_banks"),
+    loadChallengeWeekBoard("challenge"),
   ]);
   document.querySelector("#showMistakeReview").hidden = Boolean(reviewAvailability.error);
-  if (reviewAvailability.error && challengeState.reviewMode) await setChallengeMode(false);
+  // 设了学习进度的学生默认进“本课闯关”；没设的照旧整级。
+  if (!challengeState.modeChosen) {
+    const defaultMode = summary?.progress_bank_id ? "lesson" : "level";
+    if (!challengeModeIs(defaultMode)) await setChallengeMode(defaultMode);
+  }
+  if (reviewAvailability.error && challengeState.reviewMode) await setChallengeMode("level");
   document.querySelector("#showChoiceChallenge").focus();
 }
 
@@ -3108,7 +3407,8 @@ async function showStudentManagement() {
   document.body.classList.add("is-admin-view");
   renderStudentList();
   document.querySelector("#studentUsernameInput").focus();
-  await loadStudents();
+  // 学习进度单独读，读不到不影响学生列表（老测试环境里没有这个函数时直接跳过）。
+  await Promise.all([loadStudents(), window.loadChallengeProgress?.()]);
 }
 
 async function showAttendanceManagement() {
@@ -3199,6 +3499,7 @@ async function showPetLeaderboard(returnView = canEdit ? "admin" : "schedule") {
   hideAdminPages();
   petLeaderboardPage.hidden = false;
   document.body.classList.add("is-admin-view");
+  setLeaderboardTab("pet");
   await loadPetLeaderboard();
   document.querySelector("#closePetLeaderboard").focus();
 }
@@ -5999,7 +6300,7 @@ function renderStudentList() {
       palette.hidden = !palette.hidden;
     });
     colorPicker.append(colorButton, palette);
-    identity.append(dragHandle, colorPicker, studentName);
+    identity.append(dragHandle, colorPicker, studentName, createStudentProgressChip(student));
     if (student.disabled_at) identity.append(createElement("small", "operations-hint", "已停用"));
 
     const currentField = createStudentCountField(`${student.username}当前已上`, student.current_lesson_count);
@@ -6888,8 +7189,9 @@ function bindEvents() {
     invalidateHolidayPreview();
   });
   document.querySelector("#applyCourseHoliday").addEventListener("click", applyCourseHoliday);
-  document.querySelector("#showRegularChallenge").addEventListener("click", () => setChallengeMode(false));
-  document.querySelector("#showMistakeReview").addEventListener("click", () => setChallengeMode(true));
+  document.querySelector("#showLessonChallenge").addEventListener("click", () => { challengeState.modeChosen = true; setChallengeMode("lesson"); });
+  document.querySelector("#showRegularChallenge").addEventListener("click", () => { challengeState.modeChosen = true; setChallengeMode("level"); });
+  document.querySelector("#showMistakeReview").addEventListener("click", () => { challengeState.modeChosen = true; setChallengeMode("review"); });
   document.querySelector("#previousWeek").addEventListener("click", () => shiftSelectedSchedulePeriod(-1));
   document.querySelector("#nextWeek").addEventListener("click", () => shiftSelectedSchedulePeriod(1));
   document.querySelector("#currentWeek").addEventListener("click", openSchedulePeriodOverview);
@@ -7098,6 +7400,20 @@ function bindEvents() {
   document.querySelector("#saveImportedQuestions").addEventListener("click", saveImportedQuestions);
   document.querySelector("#showChoiceChallenge").addEventListener("click", () => setChallengeType("choice"));
   document.querySelector("#showWordChallenge").addEventListener("click", () => setChallengeType("word"));
+  document.querySelector("#showListenChallenge").addEventListener("click", () => setChallengeType("listen"));
+  ["#challengeSpeakPrompt", "#challengeSpeakAnswer", "#challengeListenButton"].forEach((id) => {
+    document.querySelector(id).addEventListener("click", (event) => {
+      event.currentTarget.classList.remove("needs-tap");
+      void playChallengeWord(event.currentTarget.dataset.word);
+    });
+  });
+  document.querySelector("#showPetRanking").addEventListener("click", () => setLeaderboardTab("pet"));
+  document.querySelector("#showWeeklyAnswerRanking").addEventListener("click", () => setLeaderboardTab("weekly"));
+  document.querySelector("#challengeProgressForm").addEventListener("submit", (event) => { event.preventDefault(); void saveChallengeProgress(false); });
+  document.querySelector("#clearChallengeProgress").addEventListener("click", () => {
+    if (window.confirm("清除后这个学生只能整级闯关，确定清除？")) void saveChallengeProgress(true);
+  });
+  document.querySelector("#cancelChallengeProgress").addEventListener("click", () => document.querySelector("#challengeProgressDialog").close());
   document.querySelector("#studentChallengeBank").addEventListener("change", (event) => {
     challengeState.bankId = event.target.value;
   });
@@ -7107,7 +7423,8 @@ function bindEvents() {
     challengeState.sessionId = null;
     document.querySelector("#challengeQuestionCard").hidden = true;
     document.querySelector("#challengeStartPanel").hidden = false;
-    loadChallengeSummary(); loadAvailableChallengeBanks();
+    document.querySelector("#challengeWeekBoard").hidden = false;
+    loadChallengeSummary(); loadAvailableChallengeBanks(); loadChallengeWeekBoard("challenge");
   });
   document.querySelector("#wordChallengeForm").addEventListener("submit", (event) => {
     event.preventDefault();

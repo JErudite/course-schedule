@@ -7,14 +7,14 @@
     <meta name="referrer" content="no-referrer" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data: blob: https://dpjyjzszqmgakwtdhmwq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src 'none'; worker-src 'self' blob:"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://dpjyjzszqmgakwtdhmwq.supabase.co wss://dpjyjzszqmgakwtdhmwq.supabase.co; img-src 'self' data: blob: https://dpjyjzszqmgakwtdhmwq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; media-src https://dict.youdao.com; worker-src 'self' blob:"
     />
     <title>我的课程表</title>
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
     <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="styles.css?v=20261108-2" />
-    <link rel="stylesheet" href="assets/theme/theme.css?v=20261109-13" />
+    <link rel="stylesheet" href="assets/theme/theme.css?v=20261112-1" />
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -599,11 +599,23 @@
             <span>返回</span>
           </button>
         </div>
-        <div class="leaderboard-status-band">
+        <div class="challenge-tabs leaderboard-tabs" role="tablist" aria-label="排行榜类型">
+          <button class="challenge-tab is-active" id="showPetRanking" type="button" role="tab" aria-selected="true"><i data-lucide="crown"></i><span>宠物经验</span></button>
+          <button class="challenge-tab" id="showWeeklyAnswerRanking" type="button" role="tab" aria-selected="false"><i data-lucide="trophy"></i><span>本周答题</span></button>
+        </div>
+        <section class="challenge-week-board leaderboard-week-board" id="petWeekBoard" aria-label="本周答题榜" hidden>
+          <div class="challenge-week-board-head">
+            <div><strong>本周答题榜</strong><small id="petWeekBoardRange">每周一 00:00 重新计算 · 按答对题数</small></div>
+            <i data-lucide="trophy"></i>
+          </div>
+          <ol class="challenge-week-board-list" id="petWeekBoardList"></ol>
+          <p class="challenge-week-board-me" id="petWeekBoardMe" hidden></p>
+        </section>
+        <div class="leaderboard-status-band" id="petRankingStatusBand">
           <div><i data-lucide="radio"></i><strong>实时排名</strong><span>经验变化后自动更新</span></div>
           <div><i data-lucide="calendar-clock"></i><strong>每周一 00:00</strong><span>结算上一周奖励</span></div>
         </div>
-        <div class="leaderboard-table-head" aria-hidden="true">
+        <div class="leaderboard-table-head" id="petRankingTableHead" aria-hidden="true">
           <span>排名</span>
           <span>宠物</span>
           <span>等级与经验</span>
@@ -722,9 +734,18 @@
             <em id="challengeBonusState">满 50 题奖励 10 金币 · 点击进入商城</em>
           </button>
         </div>
+        <section class="challenge-streak-band" id="challengeStreakBand" aria-live="polite">
+          <span class="challenge-streak-flame" aria-hidden="true">🔥</span>
+          <div>
+            <strong id="challengeStreakTitle">连续闯关 0 天</strong>
+            <small id="challengeStreakDetail">每天答满 10 题算闯关一天，连续 7 天奖励 30 金币</small>
+          </div>
+          <div class="challenge-streak-dots" id="challengeStreakDots" aria-hidden="true"></div>
+        </section>
         <section class="challenge-start-panel" id="challengeStartPanel">
           <div class="challenge-tabs" role="group" aria-label="学习模式">
-            <button class="challenge-tab is-active" id="showRegularChallenge" type="button" aria-pressed="true">题目挑战</button>
+            <button class="challenge-tab" id="showLessonChallenge" type="button" aria-pressed="false" hidden><i data-lucide="book-marked"></i><span>本课闯关</span></button>
+            <button class="challenge-tab is-active" id="showRegularChallenge" type="button" aria-pressed="true">整级闯关</button>
             <button class="challenge-tab" id="showMistakeReview" type="button" aria-pressed="false" hidden><i data-lucide="book-open-check"></i><span>错题复习</span></button>
           </div>
           <div class="challenge-tabs" role="tablist" aria-label="挑战类型">
@@ -734,7 +755,11 @@
             <button class="challenge-tab" id="showWordChallenge" type="button" role="tab" aria-selected="false">
               <i data-lucide="languages"></i><span>单词题</span>
             </button>
+            <button class="challenge-tab" id="showListenChallenge" type="button" role="tab" aria-selected="false">
+              <i data-lucide="headphones"></i><span>听音</span>
+            </button>
           </div>
+          <p class="challenge-lesson-note" id="challengeLessonNote" hidden></p>
           <label class="form-field challenge-bank-field">
             <span>选择子题库</span>
             <select id="studentChallengeBank"></select>
@@ -745,7 +770,7 @@
           <div class="challenge-start-copy">
             <div>
               <strong id="challengeRoundSize">每轮 10 题</strong>
-              <span>每天最多挑战 5 轮，每题答对得 1 金币</span>
+              <span id="challengeRoundRule">每天最多挑战 5 轮，每题答对得 1 金币</span>
             </div>
             <button class="primary-button challenge-start-button" id="startChallengeSession" type="button">
               <i data-lucide="play"></i><span>开始本轮挑战</span>
@@ -753,12 +778,27 @@
           </div>
           <p class="empty-list-hint" id="challengeBankEmpty" hidden>该类型暂无至少包含 10 道启用题目的子题库</p>
         </section>
+        <section class="challenge-week-board" id="challengeWeekBoard" aria-labelledby="challengeWeekBoardTitle">
+          <div class="challenge-week-board-head">
+            <div><strong id="challengeWeekBoardTitle">本周答题榜</strong><small id="challengeWeekBoardRange">每周一 00:00 重新计算 · 按答对题数</small></div>
+            <i data-lucide="trophy"></i>
+          </div>
+          <ol class="challenge-week-board-list" id="challengeWeekBoardList"></ol>
+          <p class="challenge-week-board-me" id="challengeWeekBoardMe" hidden></p>
+        </section>
         <section class="challenge-question-card" id="challengeQuestionCard" aria-live="polite" hidden>
           <div class="challenge-question-head">
             <small id="challengeQuestionType">选择题挑战</small>
+            <span class="challenge-streak-chip" id="challengeStreakChip" hidden></span>
             <strong id="challengeQuestionProgress">本轮第 1 / 10 题</strong>
           </div>
-          <h3 id="challengePrompt">准备开始今天的挑战</h3>
+          <div class="challenge-prompt-row">
+            <h3 id="challengePrompt">准备开始今天的挑战</h3>
+            <button class="challenge-speak-button" id="challengeSpeakPrompt" type="button" aria-label="听英文发音" title="听英文发音" hidden>🔊</button>
+          </div>
+          <button class="challenge-listen-button" id="challengeListenButton" type="button" hidden>
+            <span aria-hidden="true">🔊</span><strong>再听一遍</strong><small id="challengeListenHint">听发音，选出你听到的单词</small>
+          </button>
           <div class="choice-challenge-options" id="choiceChallengeOptions"></div>
           <form class="word-challenge-form" id="wordChallengeForm" hidden>
             <label class="form-field">
@@ -775,7 +815,10 @@
               <strong id="challengeResultTitle"></strong>
               <small id="challengeResultDetail"></small>
               <div class="challenge-answer-feedback" id="challengeAnswerFeedback">
-                <strong id="challengeCorrectAnswer"></strong>
+                <div class="challenge-answer-line">
+                  <strong id="challengeCorrectAnswer"></strong>
+                  <button class="challenge-speak-button" id="challengeSpeakAnswer" type="button" aria-label="听正确答案的英文发音" title="听英文发音" hidden>🔊</button>
+                </div>
                 <p id="challengeAnswerExplanation"></p>
               </div>
             </div>
@@ -1144,6 +1187,26 @@
       </div>
     </dialog>
 
+    <dialog class="confirm-dialog challenge-progress-dialog" id="challengeProgressDialog" aria-labelledby="challengeProgressTitle">
+      <form class="challenge-progress-form" id="challengeProgressForm">
+        <h3 id="challengeProgressTitle">学习进度</h3>
+        <p class="challenge-progress-intro">设好级别和“现在第几课”后，学生每次到课或补课打卡自动进一课（请假不算），“本课闯关”按当前课出单词题。</p>
+        <label class="form-field">
+          <span>级别题库</span>
+          <select id="challengeProgressBank"></select>
+        </label>
+        <label class="form-field">
+          <span>现在第几课</span>
+          <input id="challengeProgressLesson" type="number" min="1" max="24" step="1" inputmode="numeric" required />
+        </label>
+        <p class="challenge-progress-status" id="challengeProgressStatus" role="status" aria-live="polite"></p>
+        <div class="confirm-actions challenge-progress-actions">
+          <button class="secondary-button" id="clearChallengeProgress" type="button">清除进度</button>
+          <button class="secondary-button" id="cancelChallengeProgress" type="button">取消</button>
+          <button class="primary-button" id="saveChallengeProgress" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
     <dialog class="confirm-dialog" id="coinShopDeleteDialog">
       <div class="confirm-dialog-icon" aria-hidden="true"><i data-lucide="package-x"></i></div>
       <h3>删除商城商品</h3>
@@ -1166,9 +1229,9 @@
 
     <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
 
-    <script src="vendor/lucide-subset.js?v=20261009-1"></script>
+    <script src="vendor/lucide-subset.js?v=20261112-1"></script>
     <script src="vendor/supabase-2.111.0.min.js"></script>
-    <script src="app.js?v=20261109-2"></script>
+    <script src="app.js?v=20261112-1"></script>
     <script src="assets/operations.js?v=20261012-1"></script>
     <script src="assets/export.js?v=20261008-1"></script>
     <script src="assets/admin-layout.js?v=20260910-2"></script>

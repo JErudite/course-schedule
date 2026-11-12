@@ -4405,3 +4405,208 @@ body.f-layout :is(#scheduleGrid .course-card, .calendar-course-chip, .agenda-ite
 }
 body.f-layout :is(#scheduleGrid .course-card, .calendar-course-chip, .agenda-item, .f-card, .f-stub).f-lit::after { opacity: 1; }
 body.f-layout :is(#scheduleGrid .course-card, .calendar-course-chip, .agenda-item, .f-stub) > * { position: relative; z-index: 2; }
+
+/* ======================================================================
+   2026-11 学习挑战升级：连续闯关条、本课闯关、听音选词、发音按钮、连对角标、本周答题榜、学习进度
+   沿用府邸语言：奶油纸底、发丝线、酒红强调、暖金只给金币和奖励。手机优先，窄屏不横向滚动。
+   ====================================================================== */
+body.f-layout .challenge-week-board[hidden],
+body.f-layout .challenge-bank-field[hidden] { display: none; }
+
+/* 连续闯关条 */
+body.f-layout .challenge-streak-band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--fs-ochre-line, rgba(150, 105, 30, 0.3));
+  border-radius: 4px;
+  background: linear-gradient(120deg, rgba(176, 128, 40, 0.11), rgba(176, 128, 40, 0.02) 70%), var(--fs-mat, #fbf6ec);
+  color: var(--d-ink);
+}
+body.f-layout .challenge-streak-flame { font-size: 28px; line-height: 1; filter: grayscale(0.85) opacity(0.6); transition: filter 300ms ease; }
+body.f-layout .challenge-streak-band.is-lit .challenge-streak-flame { filter: none; }
+body.f-layout .challenge-streak-band > div:not(.challenge-streak-dots) { display: grid; gap: 3px; min-width: 0; }
+body.f-layout .challenge-streak-band strong { font: 400 20px/1.2 var(--d-serif); color: var(--fs-ochre, #8a5f17); }
+body.f-layout .challenge-streak-band small { color: var(--d-muted); font-size: 12.5px; line-height: 1.5; }
+body.f-layout .challenge-streak-dots { display: flex; align-items: center; gap: 5px; }
+body.f-layout .challenge-streak-dots span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid rgba(150, 105, 30, 0.35);
+  border-radius: 50%;
+  background: transparent;
+  font-size: 10px;
+  line-height: 1;
+}
+body.f-layout .challenge-streak-dots span.is-done { border-color: transparent; background: var(--fs-ochre, #8a5f17); }
+body.f-layout .challenge-streak-dots span.is-today { border-style: dashed; border-color: var(--fs-ochre, #8a5f17); }
+body.f-layout .challenge-streak-dots span:last-child { width: 24px; height: 24px; font-size: 13px; }
+
+/* 本课闯关说明 */
+body.f-layout .challenge-lesson-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--d-wine);
+  background: var(--fs-wine-soft, rgba(110, 31, 23, 0.07));
+  color: var(--fs-ink-2, #4a3a2f);
+  font-size: 14px;
+  line-height: 1.6;
+}
+body.f-layout .challenge-lesson-note[hidden] { display: none; }
+
+/* 题干 + 发音按钮 */
+body.f-layout .challenge-prompt-row { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+body.f-layout .challenge-prompt-row h3 { flex: 1 1 auto; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+body.f-layout .challenge-speak-button {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(70, 40, 25, 0.2);
+  border-radius: 50%;
+  background: var(--d-paper);
+  color: var(--d-wine);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+body.f-layout .challenge-speak-button:hover { border-color: var(--d-wine); }
+body.f-layout .challenge-speak-button:active { transform: scale(0.94); }
+body.f-layout .challenge-speak-button[hidden] { display: none; }
+body.f-layout .challenge-answer-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+body.f-layout .challenge-answer-line .challenge-speak-button { width: 36px; height: 36px; font-size: 16px; }
+
+/* 听音：大喇叭按钮 */
+body.f-layout .challenge-listen-button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 14px;
+  width: 100%;
+  max-width: 420px;
+  padding: 14px 20px;
+  border: 1px solid rgba(110, 31, 23, 0.3);
+  border-radius: 999px;
+  background: var(--d-paper);
+  color: var(--d-ink);
+  text-align: left;
+  cursor: pointer;
+}
+body.f-layout .challenge-listen-button[hidden] { display: none; }
+body.f-layout .challenge-listen-button > span { grid-row: span 2; font-size: 30px; line-height: 1; }
+body.f-layout .challenge-listen-button strong { color: var(--d-wine); font: 400 19px/1.2 var(--d-serif); }
+body.f-layout .challenge-listen-button small { color: var(--d-muted); font-size: 12.5px; }
+body.f-layout .challenge-listen-button:active { transform: scale(0.98); }
+body.f-layout .challenge-listen-button.needs-tap { border-color: var(--d-wine); animation: challenge-tap-pulse 1.4s ease-in-out infinite; }
+body.f-layout .challenge-listen-button.needs-tap small::before { content: "点这里听发音 · "; color: var(--d-wine); font-weight: 600; }
+@keyframes challenge-tap-pulse { 50% { box-shadow: 0 0 0 6px rgba(110, 31, 23, 0.12); } }
+body.f-layout .choice-challenge-options.is-listen .challenge-option strong { font-family: var(--d-serif); font-size: 20px; letter-spacing: 0.01em; }
+
+/* 作答后：标出正确选项 / 选错的那个 */
+body.f-layout .challenge-option.is-answer { border-color: rgba(69, 98, 54, 0.55); background: rgba(84, 118, 60, 0.1); }
+body.f-layout .challenge-option.is-answer > span { border-color: transparent; background: var(--fs-sage, #456236); color: #f6f1e4; }
+body.f-layout .challenge-option.is-picked-wrong { border-color: rgba(110, 31, 23, 0.45); background: var(--fs-wine-soft, rgba(110, 31, 23, 0.07)); }
+
+/* 连对角标 */
+body.f-layout .challenge-question-head { align-items: center; flex-wrap: wrap; }
+body.f-layout .challenge-streak-chip {
+  margin-right: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--d-hair);
+  border-radius: 999px;
+  color: var(--d-muted);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+body.f-layout .challenge-streak-chip[hidden] { display: none; }
+body.f-layout .challenge-streak-chip.is-hot { border-color: var(--fs-ochre-line, rgba(150, 105, 30, 0.3)); background: var(--fs-ochre-soft, rgba(176, 128, 40, 0.12)); color: var(--fs-ochre, #8a5f17); font-weight: 600; }
+body.f-layout .challenge-result.has-streak-reward { border-color: var(--fs-ochre-line, rgba(150, 105, 30, 0.3)); }
+
+/* 本周答题榜 */
+body.f-layout .challenge-week-board {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 18px 20px;
+  border: 1px solid var(--d-hair);
+  border-radius: 4px;
+  background: var(--fs-mat, #fbf6ec);
+}
+body.f-layout .challenge-week-board-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+body.f-layout .challenge-week-board-head > div { display: grid; gap: 3px; }
+body.f-layout .challenge-week-board-head strong { color: var(--d-ink); font: 400 20px/1.2 var(--d-serif); }
+body.f-layout .challenge-week-board-head small { color: var(--d-muted); font-size: 12px; }
+body.f-layout .challenge-week-board-head svg { width: 22px; height: 22px; color: var(--fs-ochre, #8a5f17); }
+body.f-layout .challenge-week-board-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+body.f-layout .challenge-week-board-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 6px;
+  border-top: 1px solid var(--d-hair);
+}
+body.f-layout .challenge-week-board-row:first-child { border-top: 0; }
+body.f-layout .challenge-week-board-row.is-self { background: var(--fs-wine-soft, rgba(110, 31, 23, 0.07)); }
+body.f-layout .challenge-week-board-rank { color: var(--d-muted); font: 400 18px/1 var(--d-serif); text-align: center; }
+body.f-layout .challenge-week-board-row strong { overflow: hidden; color: var(--d-ink); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+body.f-layout .challenge-week-board-row.is-self strong { color: var(--d-wine); font-weight: 700; }
+body.f-layout .challenge-week-board-row em { color: var(--d-ink); font: 400 17px/1 var(--d-serif); font-style: normal; font-variant-numeric: tabular-nums; }
+body.f-layout .challenge-week-board-empty { padding: 10px 0; color: var(--d-muted); font-size: 13.5px; }
+body.f-layout .challenge-week-board-me { margin: 0; padding-top: 10px; border-top: 1px dashed var(--d-hair); color: var(--d-wine); font-size: 14px; font-weight: 600; }
+body.f-layout .challenge-week-board-me[hidden] { display: none; }
+body.f-layout .leaderboard-tabs { margin: 4px 0 14px; }
+body.f-layout #appShell .leaderboard-week-board { margin-top: 4px; }
+
+/* 老师端：学生行里的学习进度 + 弹窗 */
+body.f-layout .student-progress-chip {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px dashed rgba(70, 40, 25, 0.28);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--d-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+body.f-layout .student-progress-chip.is-set { border-style: solid; border-color: rgba(110, 31, 23, 0.25); background: rgba(110, 31, 23, 0.05); color: var(--d-wine); font-weight: 600; }
+body.f-layout .student-progress-chip:hover { border-color: var(--d-wine); color: var(--d-wine); }
+body.f-layout .student-identity { flex-wrap: wrap; row-gap: 6px; }
+body.f-layout .challenge-progress-form { display: grid; gap: 14px; }
+body.f-layout .challenge-progress-form h3 { margin: 0; }
+body.f-layout .challenge-progress-intro { margin: 0; color: var(--d-muted); font-size: 13.5px; line-height: 1.7; }
+body.f-layout .challenge-progress-status { min-height: 1.6em; margin: 0; color: var(--d-ink); font-size: 13.5px; line-height: 1.6; }
+body.f-layout .challenge-progress-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+body.f-layout .challenge-progress-actions #clearChallengeProgress { margin-right: auto; }
+body.f-layout .challenge-progress-actions #clearChallengeProgress[hidden] { display: none; }
+
+@media (max-width: 640px) {
+  body.f-layout .challenge-streak-band { grid-template-columns: auto minmax(0, 1fr); gap: 10px 12px; padding: 12px 14px; }
+  body.f-layout .challenge-streak-dots { grid-column: 1 / -1; justify-content: space-between; }
+  body.f-layout .challenge-streak-band strong { font-size: 18px; }
+  body.f-layout.has-student-tabbar .challenge-tabs { flex-wrap: wrap; max-width: 100%; }
+  body.f-layout.has-student-tabbar .challenge-tabs[role="group"] .challenge-tab { padding: 0 13px; font-size: 13.5px; white-space: nowrap; }
+  body.f-layout.has-student-tabbar .challenge-tabs[role="group"] .challenge-tab svg { display: none; }
+  body.f-layout.has-student-tabbar .challenge-tabs[role="tablist"] { gap: 16px; }
+  body.f-layout .challenge-week-board { padding: 14px; }
+  body.f-layout .challenge-listen-button { max-width: none; padding: 12px 16px; }
+  body.f-layout .choice-challenge-options.is-listen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.f-layout .choice-challenge-options.is-listen .challenge-option { grid-template-columns: minmax(0, 1fr); justify-items: center; min-height: 64px; text-align: center; }
+  body.f-layout .choice-challenge-options.is-listen .challenge-option > span { display: none; }
+  body.f-layout .challenge-progress-actions button { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.f-layout .challenge-listen-button.needs-tap { animation: none; }
+}
