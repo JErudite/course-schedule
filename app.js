@@ -199,7 +199,11 @@ const scheduleAttendance = new Map();
 const scheduleAttendanceLoaded = new Set();
 // Bumped whenever records may have changed; responses fetched under an older value are dropped.
 let scheduleAttendanceGeneration = 0;
-let scheduleAttendanceBusy = false;
+// Attendance saves in flight, one key per course/student/date. Only that row waits; the rest of the
+// dialog stays usable (the old single lock greyed every button for a whole round trip).
+const attendancePending = new Set();
+let attendanceAllRunning = false;
+const attendanceKey = (courseId, studentId, isoDate) => `${courseId}|${studentId}|${isoDate}`;
 let attendanceHistoryRows = null;
 let todayAttendanceSummary = null;
 let todayAttendanceRequest = 0;
@@ -3677,12 +3681,18 @@ function enableMonthChipDrag(chip, course, date) {
     if (!state || event.pointerId !== state.pointerId) return;
     if (chip.hasPointerCapture(event.pointerId)) chip.releasePointerCapture(event.pointerId);
     const moved = state.moved;
-    const target = state.target?.dataset.date || null;
+    const targetCell = state.target;
+    const target = targetCell?.dataset.date || null;
     end();
     if (!moved) return;
     swallowClick = true;
     if (!target || target === toISODate(date)) return;
     const dayShift = Math.round((parseISODate(target) - date) / 86400000);
+    // Show it on the new day straight away, in time order; the reload after saving redraws the month
+    // (and a cancelled or failed move puts it back).
+    const list = targetCell.querySelector(".month-course-list");
+    const after = [...list.querySelectorAll(".calendar-course-chip")].find((other) => Number(other.dataset.start) > course.startTime);
+    list.insertBefore(chip, after || null);
     chip.classList.add("is-saving");
     await moveCourseOccurrenceByDays(course, toISODate(date), dayShift);
   });
@@ -3850,7 +3860,7 @@ async function loadScheduleAttendance({ force = false, range = getScheduleAttend
     .gte("attendance_date", dates[0])
     .lte("attendance_date", dates[dates.length - 1]);
   // A save or realtime change since the request started makes this snapshot stale.
-  if (generation !== scheduleAttendanceGeneration || !canEdit || scheduleAttendanceBusy || error) return false;
+  if (generation !== scheduleAttendanceGeneration || !canEdit || attendancePending.size || attendanceAllRunning || error) return false;
   dates.forEach((isoDate) => {
     scheduleAttendance.set(isoDate, new Map());
     scheduleAttendanceLoaded.add(isoDate);
@@ -3906,7 +3916,7 @@ function renderDialogAttendance() {
   const roster = getOccurrenceRoster(course, isoDate);
   studentsRow.hidden = roster.length > 0;
   allButton.hidden = !roster.some((entry) => !entry.status);
-  allButton.disabled = scheduleAttendanceBusy;
+  allButton.disabled = attendanceAllRunning;
   if (!roster.length) {
     list.replaceChildren(createElement("p", "dialog-attendance-empty", "这节课还没有分配学生"));
     return;
@@ -3923,10 +3933,11 @@ function renderDialogAttendance() {
       identity.append(createElement("small", remaining === 0 ? "is-empty" : remaining <= lowThreshold ? "is-low" : "", `剩 ${remaining} 次`));
     }
     const controls = createElement("div", "dialog-attendance-controls");
+    const rowBusy = attendanceAllRunning || attendancePending.has(attendanceKey(course.id, entry.studentId, isoDate));
     attendanceStatusOptions.forEach(({ value, label, className }) => {
       const button = createElement("button", `dialog-attendance-choice ${className}${entry.status === value ? " is-selected" : ""}`, label);
       button.type = "button";
-      button.disabled = scheduleAttendanceBusy;
+      button.disabled = rowBusy;
       button.setAttribute("aria-pressed", String(entry.status === value));
       button.addEventListener("click", () => setOccurrenceAttendance(course, isoDate, entry.studentId, value));
       controls.append(button);
@@ -3934,7 +3945,7 @@ function renderDialogAttendance() {
     const undo = createElement("button", "dialog-attendance-undo", "撤销");
     undo.type = "button";
     undo.hidden = !entry.status;
-    undo.disabled = scheduleAttendanceBusy;
+    undo.disabled = rowBusy;
     undo.title = "改回待打卡；原为到课会返还 1 次课时";
     undo.addEventListener("click", () => clearOccurrenceAttendance(course, isoDate, entry.studentId));
     controls.append(undo);
@@ -3966,8 +3977,19 @@ function afterOccurrenceAttendanceSaved(isoDate) {
   void Promise.all(tasks).then(() => refreshScheduleAttendance());
 }
 
+// The lesson balance moves with the mark straight away; the server's figures replace it after the
+// save (afterOccurrenceAttendanceSaved reloads the students).
+function shiftStudentLessons(studentId, from, to) {
+  const delta = (to === "present" ? 1 : 0) - (from === "present" ? 1 : 0);
+  const student = students.find((item) => item.id === studentId);
+  if (student && delta) student.current_lesson_count = (Number(student.current_lesson_count) || 0) + delta;
+}
+
+// Saves are optimistic: the mark, the balance and the message change on the click, and only a
+// failed save puts things back (with the reason).
 async function setOccurrenceAttendance(course, isoDate, studentId, status) {
-  if (!canEdit || scheduleAttendanceBusy) return;
+  const key = attendanceKey(course.id, studentId, isoDate);
+  if (!canEdit || attendanceAllRunning || attendancePending.has(key)) return;
   const previous = getScheduleAttendanceStatus(course.id, studentId, isoDate);
   if (previous === status) return;
   const student = students.find((item) => item.id === studentId);
@@ -3975,23 +3997,10 @@ async function setOccurrenceAttendance(course, isoDate, studentId, status) {
     showStatus(`${student.username}无法进行打卡，课程次数不足`, { label: "去续课", run: () => window.CourseOperations?.renewLessons(studentId) });
     return;
   }
-  scheduleAttendanceBusy = true;
+  attendancePending.add(key);
   scheduleAttendanceGeneration += 1;
   setScheduleAttendanceStatus(course.id, studentId, isoDate, status);
-  renderOccurrenceAttendanceChange();
-  const { error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
-    p_student_id: studentId,
-    p_course_id: course.id,
-    p_attendance_date: isoDate,
-    p_status: status,
-  });
-  scheduleAttendanceBusy = false;
-  if (error) {
-    setScheduleAttendanceStatus(course.id, studentId, isoDate, previous);
-    renderOccurrenceAttendanceChange();
-    showStatus(describeAttendanceSaveError(error));
-    return;
-  }
+  shiftStudentLessons(studentId, previous, status);
   renderOccurrenceAttendanceChange();
   const name = student?.username || "学生";
   const refunded = previous === "present" ? "；已返还原到课的课时" : "";
@@ -4001,65 +4010,95 @@ async function setOccurrenceAttendance(course, isoDate, studentId, status) {
     leave: `${name} 已登记请假，不扣课时${refunded}`,
   };
   showStatus(messages[status]);
-  afterOccurrenceAttendanceSaved(isoDate);
-}
-
-async function clearOccurrenceAttendance(course, isoDate, studentId) {
-  if (!canEdit || scheduleAttendanceBusy) return;
-  const previous = getScheduleAttendanceStatus(course.id, studentId, isoDate);
-  if (!previous) return;
-  scheduleAttendanceBusy = true;
-  scheduleAttendanceGeneration += 1;
-  setScheduleAttendanceStatus(course.id, studentId, isoDate, "");
-  renderOccurrenceAttendanceChange();
-  const { error } = await supabaseClient.rpc("clear_attendance_for_date_v3", {
+  const { error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
     p_student_id: studentId,
     p_course_id: course.id,
     p_attendance_date: isoDate,
+    p_status: status,
   });
-  scheduleAttendanceBusy = false;
+  attendancePending.delete(key);
   if (error) {
     setScheduleAttendanceStatus(course.id, studentId, isoDate, previous);
+    shiftStudentLessons(studentId, status, previous);
     renderOccurrenceAttendanceChange();
     showStatus(describeAttendanceSaveError(error));
     return;
   }
   renderOccurrenceAttendanceChange();
-  const name = students.find((item) => item.id === studentId)?.username || "学生";
-  showStatus(`${name} 已改回待打卡${previous === "present" ? "，返还 1 次课时" : ""}`);
   afterOccurrenceAttendanceSaved(isoDate);
 }
 
+async function clearOccurrenceAttendance(course, isoDate, studentId) {
+  const key = attendanceKey(course.id, studentId, isoDate);
+  if (!canEdit || attendanceAllRunning || attendancePending.has(key)) return;
+  const previous = getScheduleAttendanceStatus(course.id, studentId, isoDate);
+  if (!previous) return;
+  attendancePending.add(key);
+  scheduleAttendanceGeneration += 1;
+  setScheduleAttendanceStatus(course.id, studentId, isoDate, "");
+  shiftStudentLessons(studentId, previous, "");
+  renderOccurrenceAttendanceChange();
+  const name = students.find((item) => item.id === studentId)?.username || "学生";
+  showStatus(`${name} 已改回待打卡${previous === "present" ? "，返还 1 次课时" : ""}`);
+  const { error } = await supabaseClient.rpc("clear_attendance_for_date_v3", {
+    p_student_id: studentId,
+    p_course_id: course.id,
+    p_attendance_date: isoDate,
+  });
+  attendancePending.delete(key);
+  if (error) {
+    setScheduleAttendanceStatus(course.id, studentId, isoDate, previous);
+    shiftStudentLessons(studentId, "", previous);
+    renderOccurrenceAttendanceChange();
+    showStatus(describeAttendanceSaveError(error));
+    return;
+  }
+  renderOccurrenceAttendanceChange();
+  afterOccurrenceAttendanceSaved(isoDate);
+}
+
+// "全部到课": every pending student is marked at once and the saves go out together (they used to
+// go one after another, one round trip each).
 async function markOccurrenceAllPresent() {
   const occurrence = getDialogOccurrence();
-  if (!occurrence || scheduleAttendanceBusy) return;
+  if (!occurrence || attendanceAllRunning || attendancePending.size) return;
   const { course, isoDate } = occurrence;
   const pending = getOccurrenceRoster(course, isoDate).filter((entry) => !entry.status);
   if (!pending.length) return;
-  scheduleAttendanceBusy = true;
-  scheduleAttendanceGeneration += 1;
-  renderDialogAttendance();
-  let checkedIn = 0;
   const skipped = [];
-  let failure = null;
-  for (const entry of pending) {
-    if (entry.student && getStudentRemainingCount(entry.student) === 0) { skipped.push(entry.name); continue; }
-    const { error } = await supabaseClient.rpc("set_attendance_for_date_v3", {
-      p_student_id: entry.studentId,
-      p_course_id: course.id,
-      p_attendance_date: isoDate,
-      p_status: "present",
-    });
-    if (error && String(error.message || "").includes("课程次数不足")) { skipped.push(entry.name); continue; }
-    if (error) { failure = error; break; }
-    checkedIn += 1;
+  const marking = pending.filter((entry) => {
+    if (entry.student && getStudentRemainingCount(entry.student) === 0) { skipped.push(entry.name); return false; }
+    return true;
+  });
+  attendanceAllRunning = true;
+  scheduleAttendanceGeneration += 1;
+  marking.forEach((entry) => {
     setScheduleAttendanceStatus(course.id, entry.studentId, isoDate, "present");
-    renderScheduleAttendanceMarks();
-  }
-  scheduleAttendanceBusy = false;
+    shiftStudentLessons(entry.studentId, "", "present");
+  });
+  renderOccurrenceAttendanceChange();
+  if (marking.length) showStatus(`已登记 ${marking.length} 人到课${skipped.length ? `；${skipped.join("、")}课程次数不足，未打卡` : ""}`);
+  const results = await Promise.all(marking.map((entry) => supabaseClient.rpc("set_attendance_for_date_v3", {
+    p_student_id: entry.studentId,
+    p_course_id: course.id,
+    p_attendance_date: isoDate,
+    p_status: "present",
+  }).then(({ error }) => ({ entry, error }), (error) => ({ entry, error }))));
+  let checkedIn = 0;
+  let failure = null;
+  results.forEach(({ entry, error }) => {
+    if (!error) { checkedIn += 1; return; }
+    setScheduleAttendanceStatus(course.id, entry.studentId, isoDate, "");
+    shiftStudentLessons(entry.studentId, "present", "");
+    if (String(error.message || "").includes("课程次数不足")) skipped.push(entry.name);
+    else failure = failure || error;
+  });
+  attendanceAllRunning = false;
   renderOccurrenceAttendanceChange();
   if (failure) showStatus(describeAttendanceSaveError(failure));
-  else showStatus(`${checkedIn ? `已登记 ${checkedIn} 人到课` : "没有新增到课"}${skipped.length ? `；${skipped.join("、")}课程次数不足，未打卡` : ""}`);
+  else if (checkedIn !== marking.length || !marking.length) {
+    showStatus(`${checkedIn ? `已登记 ${checkedIn} 人到课` : "没有新增到课"}${skipped.length ? `；${skipped.join("、")}课程次数不足，未打卡` : ""}`);
+  }
   if (checkedIn) afterOccurrenceAttendanceSaved(isoDate);
 }
 

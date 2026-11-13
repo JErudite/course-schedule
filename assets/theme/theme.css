@@ -4616,7 +4616,7 @@ body.can-edit .is-month-view .calendar-course-chip { cursor: grab; }
 body.touch-timeline-editing .is-month-view .calendar-course-chip { touch-action: none; }
 body.is-month-dragging, body.is-month-dragging * { cursor: grabbing !important; user-select: none; }
 body.f-layout .is-month-view .calendar-course-chip.is-dragging { opacity: 0.35; }
-body.f-layout .is-month-view .calendar-course-chip.is-saving { opacity: 0.6; pointer-events: none; }
+body.f-layout .is-month-view .calendar-course-chip.is-saving { pointer-events: none; }
 .month-drag-ghost {
   box-shadow: 0 14px 30px rgba(60, 35, 20, 0.28), inset 6px 0 0 var(--f-strip, #fff) !important;
   transform: rotate(-2deg) scale(1.04);
@@ -4645,3 +4645,5 @@ body.f-layout .is-month-view .month-course-list.has-more-below {
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
   mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
 }
+/* 保存中不再变灰：拖到哪就直接显示在哪，后台保存（11-12 提速）；保存失败会自动退回并提示 */
+body.f-layout .course-card.is-saving { opacity: 1; cursor: progress; }
