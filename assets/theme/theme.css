@@ -4610,3 +4610,38 @@ body.f-layout .challenge-progress-actions #clearChallengeProgress[hidden] { disp
 @media (prefers-reduced-motion: reduce) {
   body.f-layout .challenge-listen-button.needs-tap { animation: none; }
 }
+
+/* ---------- 月视图拖动课程到别的日期（app.js enableMonthChipDrag）---------- */
+body.can-edit .is-month-view .calendar-course-chip { cursor: grab; }
+body.touch-timeline-editing .is-month-view .calendar-course-chip { touch-action: none; }
+body.is-month-dragging, body.is-month-dragging * { cursor: grabbing !important; user-select: none; }
+body.f-layout .is-month-view .calendar-course-chip.is-dragging { opacity: 0.35; }
+body.f-layout .is-month-view .calendar-course-chip.is-saving { opacity: 0.6; pointer-events: none; }
+.month-drag-ghost {
+  box-shadow: 0 14px 30px rgba(60, 35, 20, 0.28), inset 6px 0 0 var(--f-strip, #fff) !important;
+  transform: rotate(-2deg) scale(1.04);
+  opacity: 0.95;
+}
+body.f-layout .is-month-view .month-day.is-drop-target {
+  outline: 2px dashed var(--d-wine);
+  outline-offset: -4px;
+  background-color: rgba(110, 31, 23, 0.06);
+}
+
+/* 月视图：一天的课超过 5 节时，格子里出现小滚动条（用户 11-12），整行不会被撑得很高 */
+body.f-layout .is-month-view .month-course-list {
+  max-height: 172px; /* 约 5 节 */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(110, 31, 23, 0.35) transparent;
+  padding-right: 2px;
+}
+body.f-layout .is-month-view .month-course-list::-webkit-scrollbar { width: 5px; }
+body.f-layout .is-month-view .month-course-list::-webkit-scrollbar-thumb { border-radius: 3px; background: rgba(110, 31, 23, 0.35); }
+@media (max-width: 640px) {
+  body.f-layout .is-month-view .month-course-list { max-height: 104px; }
+}
+body.f-layout .is-month-view .month-course-list.has-more-below {
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+}

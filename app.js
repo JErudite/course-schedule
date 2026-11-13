@@ -3611,8 +3611,107 @@ function createCalendarCourseButton(course, date) {
   button.dataset.courseId = course.id;
   markCourseTimeState(button, date, course);
   renderCourseAttendanceMarks(button);
-  button.addEventListener("click", () => showCourse(course.id, toISODate(date)));
+  const drag = calendarOverview.classList.contains("is-month-view") ? enableMonthChipDrag(button, course, date) : null;
+  button.addEventListener("click", (event) => {
+    if (drag?.consumeClick()) { event.preventDefault(); return; }
+    showCourse(course.id, toISODate(date));
+  });
   return button;
+}
+
+// Month view: drag a lesson onto another day of the same month (same time of day). Repeating lessons ask whether to
+// move only this lesson or this and the following ones, like dragging in the week view.
+function enableMonthChipDrag(chip, course, date) {
+  let state = null;
+  let swallowClick = false;
+  const clearTarget = () => calendarOverview.querySelectorAll(".month-day.is-drop-target").forEach((cell) => cell.classList.remove("is-drop-target"));
+  // Drop targets: days of the month on show (not the greyed days of the months either side).
+  const cellAt = (x, y) => document.elementFromPoint(x, y)?.closest(".month-day[data-date]:not(.is-outside-month)") || null;
+  const end = () => {
+    state?.ghost?.remove();
+    chip.classList.remove("is-dragging");
+    chip.removeAttribute("aria-grabbed");
+    document.body.classList.remove("is-month-dragging");
+    clearTarget();
+    state = null;
+  };
+
+  chip.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || !allowsTimelineGesture(event) || chip.classList.contains("is-saving")) return;
+    if (date.getMonth() !== selectedCalendarDate.getMonth()) return; // only lessons of the month on show
+    state = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, isTouch: event.pointerType !== "mouse", moved: false, ghost: null, target: null };
+    chip.setPointerCapture(event.pointerId);
+  });
+
+  chip.addEventListener("pointermove", (event) => {
+    if (!state || event.pointerId !== state.pointerId) return;
+    if (!state.moved && Math.hypot(event.clientX - state.x, event.clientY - state.y) < (state.isTouch ? 12 : 5)) return;
+    event.preventDefault();
+    if (!state.moved) {
+      state.moved = true;
+      const rect = chip.getBoundingClientRect();
+      const ghost = chip.cloneNode(true);
+      ghost.classList.add("month-drag-ghost");
+      ghost.removeAttribute("id");
+      ghost.setAttribute("aria-hidden", "true");
+      Object.assign(ghost.style, { position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", pointerEvents: "none", zIndex: "60" });
+      state.offsetX = state.x - rect.left;
+      state.offsetY = state.y - rect.top;
+      state.ghost = ghost;
+      calendarOverview.append(ghost); // inside the month view so its chip styles still apply
+      chip.classList.add("is-dragging");
+      chip.setAttribute("aria-grabbed", "true");
+      document.body.classList.add("is-month-dragging");
+    }
+    state.ghost.style.left = `${event.clientX - state.offsetX}px`;
+    state.ghost.style.top = `${event.clientY - state.offsetY}px`;
+    const cell = cellAt(event.clientX, event.clientY);
+    if (cell !== state.target) {
+      clearTarget();
+      state.target = cell;
+      if (cell && cell.dataset.date !== toISODate(date)) cell.classList.add("is-drop-target");
+    }
+  });
+
+  chip.addEventListener("pointerup", async (event) => {
+    if (!state || event.pointerId !== state.pointerId) return;
+    if (chip.hasPointerCapture(event.pointerId)) chip.releasePointerCapture(event.pointerId);
+    const moved = state.moved;
+    const target = state.target?.dataset.date || null;
+    end();
+    if (!moved) return;
+    swallowClick = true;
+    if (!target || target === toISODate(date)) return;
+    const dayShift = Math.round((parseISODate(target) - date) / 86400000);
+    chip.classList.add("is-saving");
+    await moveCourseOccurrenceByDays(course, toISODate(date), dayShift);
+  });
+
+  chip.addEventListener("pointercancel", () => { if (state) end(); });
+
+  return { consumeClick: () => { const value = swallowClick; swallowClick = false; return value; } };
+}
+
+async function moveCourseOccurrenceByDays(course, occurrenceDate, dayShift) {
+  if (!canEdit || !dayShift) { renderSchedule(); return false; }
+  if (course.repeatIntervalDays !== null) {
+    return persistScopedCourseChange(course, occurrenceDate, { start_time: course.startTime, day_shift: dayShift });
+  }
+  const candidate = {
+    ...course,
+    startDate: toISODate(addDays(parseISODate(course.startDate), dayShift)),
+    repeatEndDate: course.repeatEndDate ? toISODate(addDays(parseISODate(course.repeatEndDate), dayShift)) : null,
+    repeatWeekdays: shiftRepeatWeekdays(course.repeatWeekdays, dayShift),
+  };
+  const conflicts = getSeriesConflicts(candidate, course.id);
+  if (conflicts.length && !await requestCourseConflictConfirmation(candidate, conflicts)) {
+    showStatus("已取消移动，课程恢复原位置");
+    renderSchedule();
+    return false;
+  }
+  showStatus("正在移动课程…");
+  await persistCourseUpdate(course, candidate, "课程已移动并实时同步", conflicts.length > 0);
+  return true;
 }
 
 // Lessons that already happened fade out; the one in progress is emphasised.
@@ -4161,6 +4260,7 @@ function renderMonthSchedule() {
     const holidayInfo = getOfficialDayInfo(date);
     const courses = getOccurrencesForDate(date);
     const cell = createElement("article", "month-day");
+    cell.dataset.date = toISODate(date);
     if (!isCurrentMonth) cell.classList.add("is-outside-month");
     if (sameDay(date, scheduleToday)) cell.classList.add("is-today");
     if (holidayInfo) cell.classList.add(`is-${holidayInfo.type}`);
@@ -4180,12 +4280,18 @@ function renderMonthSchedule() {
     cell.append(heading);
 
     const courseList = createElement("div", "month-course-list");
-    courses.slice(0, 3).forEach((course) => courseList.append(createCalendarCourseButton(course, date)));
-    if (courses.length > 3) courseList.append(createElement("small", "month-more-count", `还有 ${courses.length - 3} 节`));
+    // Every lesson of the day is listed (the row grows), so each one can be opened or dragged (user 11-12).
+    courses.forEach((course) => courseList.append(createCalendarCourseButton(course, date)));
     cell.append(courseList);
     monthGrid.append(cell);
   }
   calendarOverview.append(monthGrid);
+  // Days with more lessons than fit scroll inside the cell; a fade at the bottom says there is more.
+  requestAnimationFrame(() => monthGrid.querySelectorAll(".month-course-list").forEach((list) => {
+    const mark = () => list.classList.toggle("has-more-below", list.scrollTop + list.clientHeight < list.scrollHeight - 2);
+    mark();
+    list.addEventListener("scroll", mark, { passive: true });
+  }));
 
   const occurrences = getOccurrencesBetween(monthStart, monthEnd);
   weekLabel.textContent = `${year}年${month + 1}月`;
@@ -5312,7 +5418,9 @@ async function persistCourseUpdate(original, candidate, successMessage, allowCon
 function requestCourseChangeScope(course, occurrenceDate, patch) {
   const scopeDialog = document.querySelector("#courseChangeScopeDialog");
   const action = Object.hasOwn(patch, "start_time") ? "调整时间" : "标注颜色";
-  document.querySelector("#courseChangeScopeText").textContent = `“${course.name}”是重复课程。${formatAttendanceDay(occurrenceDate, true)}的${action}要应用到哪里？本次之前的课程保持不变。`;
+  document.querySelector("#courseChangeScopeText").textContent = patch.day_shift
+    ? `“${course.name}”是重复课程。要把${formatAttendanceDay(occurrenceDate, true)}这节改到${formatAttendanceDay(toISODate(addDays(parseISODate(occurrenceDate), patch.day_shift)), true)}${patch.start_time !== course.startTime ? ` ${formatTime(patch.start_time)}` : ""}。只改这一次，还是这一次和之后的每一次都${patch.day_shift > 0 ? "往后" : "往前"}挪 ${Math.abs(patch.day_shift)} 天？本次之前的课程保持不变。`
+    : `“${course.name}”是重复课程。${formatAttendanceDay(occurrenceDate, true)}的${action}要应用到哪里？本次之前的课程保持不变。`;
   return new Promise((resolve) => {
     const finish = (value) => {
       scopeDialog.removeEventListener("click", click);
